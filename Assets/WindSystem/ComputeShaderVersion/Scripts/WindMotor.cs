@@ -63,32 +63,61 @@ public class WindMotor : MonoBehaviour
 
     private void OnEnable()
     {
-        
+        if (WindManager.Instance == null) return;
+        WindManager.Instance.AddWindMotor(this);
+        _createTime = Time.fixedTime;
     }
 
     private void OnDisable()
     {
-        
+        if (WindManager.Instance == null) return;
+        WindManager.Instance.RemoveWindMotor(this);
     }
 
     private void OnDestroy()
     {
-        
+        if (WindManager.Instance == null) return;
+        WindManager.Instance.RemoveWindMotor(this);
     }
     #endregion
 
     #region MainFunction
     void CheckMotorDead()
     {
-        
+        float curDuration = Time.fixedTime - _createTime;
+        if (curDuration > lifeTime)
+        {
+            if (loop)
+            {
+                _createTime = Time.fixedTime;
+            }
+            else
+            {
+                _createTime = 0.0f;
+                WindPool.Instance.PushWindMotor(this.gameObject);
+            }
+        }
     }
     #endregion
 
     #region UpdateForceAndOtherProperties
-
     public void UpdateWindMotor()
     {
-        
+        switch (MotorType)
+        {
+            case MotorType.Directional:
+                UpdateDirectionalWind();
+                break;
+            case MotorType.Omni:
+                UpdateOmniWind();
+                break;
+            case MotorType.Vortex:
+                UpdateVortexWind();
+                break;
+            case MotorType.Moving:
+                UpdateMovingWind();
+                break;
+        }
     }
 
     private float GetForce(float time)
@@ -98,22 +127,70 @@ public class WindMotor : MonoBehaviour
 
     private void UpdateDirectionalWind()
     {
-        
+        float curDuration = Time.fixedTime - _createTime;
+        float timePerCall = curDuration / lifeTime;
+        duration = timePerCall;
+        float rad = radius * radiusCurve.Evaluate(timePerCall);
+        MotorDirectional = new MotorDirectional()
+        {
+            Position = transform.position,
+            RadiusSq = rad * rad,
+            Force = transform.forward * GetForce(timePerCall)
+        };
+        CheckMotorDead();
     }
     
     private void UpdateOmniWind()
     {
-        
+        float curDuration = Time.fixedTime - _createTime;
+        float timePerCall = curDuration / lifeTime;
+        duration = timePerCall;
+        float rad = radius * radiusCurve.Evaluate(timePerCall);
+        MotorOmni = new MotorOmni()
+        {
+            Position = transform.position,
+            RadiusSq = rad * rad,
+            Force = GetForce(timePerCall)
+        };
+        CheckMotorDead();
     }
     
     private void UpdateVortexWind()
     {
-        
+        float curDuration = Time.fixedTime - _createTime;
+        float timePerCall = curDuration / lifeTime;
+        duration = timePerCall;
+        float rad = radius * radiusCurve.Evaluate(timePerCall);
+        MotorVortex = new MotorVortex()
+        {
+            Position = transform.position,
+            Axis = Vector3.Normalize(axis),
+            RadiusSq = rad * rad,
+            Force = GetForce(timePerCall)
+        };
+        CheckMotorDead();
     }
     
     private void UpdateMovingWind()
     {
-        
+        float curDuration = Time.fixedTime - _createTime;
+        float timePerCall = curDuration / lifeTime;
+        duration = timePerCall;
+        float rad = radius * radiusCurve.Evaluate(timePerCall);
+        float moveLen = moveLength * moveLengthCurve.Evaluate(timePerCall);
+        Vector3 pos = transform.position;
+        Vector3 prePos = _prePosition == Vector3.zero ? pos : _prePosition;
+        Vector3 moveDir = pos - prePos;
+        MotorMoving = new MotorMoving()
+        {
+            PrePosition = prePos,
+            MoveLength = moveLen,
+            MoveDir = moveDir,
+            RadiusSq = rad * rad,
+            Force = GetForce(timePerCall)
+        };
+        _prePosition = pos;
+        CheckMotorDead();
     }
     
     private void UpdateCylinderWind()
@@ -156,7 +233,7 @@ public class WindMotor : MonoBehaviour
     public float lifeTime = 5.0f;
     
     [Range(0.001f, 100f)] public float radius = 1.0f;
-    public AnimationCurve animationCurve = AnimationCurve.Linear(1, 1, 1, 1);
+    public AnimationCurve radiusCurve = AnimationCurve.Linear(1, 1, 1, 1);
     public Vector3 axis = Vector3.up;
 
     [Range(-12f, 12f)] public float force = 1.0f;

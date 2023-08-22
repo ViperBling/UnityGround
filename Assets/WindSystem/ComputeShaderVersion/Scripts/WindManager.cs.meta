@@ -3,7 +3,15 @@ guid: d31b67f8f3b509248a63529a9c020120
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - targetTransform: {instanceID: 0}
+  - windNoise: {instanceID: 0}
+  - shiftPosCS: {fileID: 7200000, guid: d68b70c017710e640ab6682d713e0bf0, type: 3}
+  - diffusionCS: {instanceID: 0}
+  - motorsSpeedCS: {instanceID: 0}
+  - advectionCS: {instanceID: 0}
+  - bufferExchangeCS: {instanceID: 0}
+  - mergeChannelCS: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
