@@ -54,7 +54,6 @@ namespace PRT
             for (int i = 0; i < _coefficientVoxelClearValue.Length; i++) _coefficientVoxelClearValue[i] = 0;
         }
         
-        
         public void ProbeCapture()
         {
             foreach (var go in Probes)

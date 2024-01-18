@@ -1,4 +1,4 @@
-Shader "UnityGround/Composite"
+﻿Shader "UnityGround/PRTComposite"
 {
     Properties
     {

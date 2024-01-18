@@ -11,7 +11,7 @@ namespace PRT
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 RenderTextureDescriptor rtDesc = renderingData.cameraData.cameraTargetDescriptor;
-                cmd.GetTemporaryRT(TempRTHandle.GetInstanceID(), rtDesc);
+                cmd.GetTemporaryRT(TempRTHandle.GetInstanceID(), rtDesc, FilterMode.Point);
 
                 BlitSrc = renderingData.cameraData.renderer.cameraColorTargetHandle;
             }

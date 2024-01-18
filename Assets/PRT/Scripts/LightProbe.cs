@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Drawing;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEditor;
@@ -60,7 +61,7 @@ namespace PRT
         {
             TryInit();
 
-            GameObject go = new GameObject("CubeMapCamera");
+            GameObject go = new GameObject("CubemapCamera");
             go.transform.position = transform.position;
             go.transform.rotation = Quaternion.identity;
             go.AddComponent<Camera>();
