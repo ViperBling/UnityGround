@@ -19,17 +19,5 @@ namespace PRT
                 probe.CaptureGBufferCubeMaps();
             }
         }
-        
-        void BatchSetShader(GameObject[] gameObjects, Shader shader)
-        {
-            foreach(var go in gameObjects)
-            {
-                MeshRenderer meshRenderer = go.GetComponent<MeshRenderer>();
-                if(meshRenderer != null)
-                {
-                    meshRenderer.sharedMaterial.shader = shader;
-                }
-            }
-        }
     }
 }

@@ -18,7 +18,7 @@ namespace PRT
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
                 
-                LightProbeVolume[] volumes = GameObject.FindObjectsOfType(typeof(LightProbeVolume)) as LightProbeVolume[];
+                LightProbeVolume[] volumes = FindObjectsOfType(typeof(LightProbeVolume)) as LightProbeVolume[];
                 LightProbeVolume volume = volumes.Length == 0 ? null : volumes[0];
                 if (volume != null)
                 {
@@ -26,7 +26,7 @@ namespace PRT
                     volume.ClearCoefficientVoxel(cmd);
 
                     Vector3 corner = volume.GetVoxelMinCorner();
-                    Vector4 voxelCorner = new Vector4(corner.x, corner.y, corner.z, 0);
+                    Vector4 voxelCorner = new Vector4(corner.x, corner.y, corner.z, 1);
                     Vector4 voxelSize = new Vector4(volume.ProbeSizeX, volume.ProbeSizeY, volume.ProbeSizeZ, 0);
                     
                     cmd.SetGlobalFloat("_CoefficientVoxelGridSize", volume.ProbeGridSize);
@@ -38,7 +38,7 @@ namespace PRT
                     cmd.SetGlobalFloat("_GIIntensity", volume.GIIntensity);
                 }
                 
-                LightProbe[] probes = GameObject.FindObjectsOfType(typeof(LightProbe)) as LightProbe[];
+                LightProbe[] probes = FindObjectsOfType(typeof(LightProbe)) as LightProbe[];
                 foreach (var probe in probes)
                 {
                     if (probe == null) continue;
@@ -59,16 +59,16 @@ namespace PRT
 
         public override void Create()
         {
-            _customPass = new CustomRenderPass();
+            m_ScriptablePass = new CustomRenderPass();
 
-            _customPass.renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
+            m_ScriptablePass.renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
-            renderer.EnqueuePass(_customPass);
+            renderer.EnqueuePass(m_ScriptablePass);
         }
 
-        private CustomRenderPass _customPass;
+        private CustomRenderPass m_ScriptablePass;
     }
 }

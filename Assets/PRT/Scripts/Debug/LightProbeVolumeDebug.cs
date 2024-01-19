@@ -15,14 +15,14 @@ namespace PRT
 
             if(GUILayout.Button("Probe Capture")) 
             {
-                LightProbeVolume probe = (LightProbeVolume)target;
-                probe.GenerateProbes();
+                LightProbeVolume probeVolume = (LightProbeVolume)target;
+                probeVolume.GenerateProbes();
             }
             
             if(GUILayout.Button("Capture Scene Probes")) 
             {
-                LightProbeVolume probe = (LightProbeVolume)target;
-                probe.ProbeCapture();
+                LightProbeVolume probeVolume = (LightProbeVolume)target;
+                probeVolume.ProbeCapture();
             }
         }
     }

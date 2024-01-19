@@ -3,13 +3,14 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "SH.hlsl"
 
-RWStructuredBuffer<Surfel> _Surfels;
+float4 _ProbePos;
+float _RandSeed;
 TextureCube _WorldPosCube;
 TextureCube _NormalCube;
 TextureCube _AlbedoCube;
 SamplerState sampler_point_clamp;
-float _RandSeed;
-float4 _ProbePos;
+
+RWStructuredBuffer<Surfel> _Surfels;
 
 // ref: https://stackoverflow.com/questions/4200224/random-noise-functions-for-glsl
 float rand(float2 uv)
@@ -36,7 +37,7 @@ float3 UniformSphereSample(float u, float v)
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
     float2 xy = float2(id.x, id.y) / float2(32, 16);
-    xy += float2(2, 1) * _RandSeed;
+    xy += _RandSeed;
 
     float u = rand(xy * 1.0);
     float v = rand(xy * 2.0);

@@ -26,7 +26,7 @@
             TEXTURE2D_X_HALF(_GBuffer2);
 
             float4x4 _ScreenToWorld[2];
-            SamplerState _PointClampSampler;
+            SamplerState sampler_point_clamp;
 
             float _CoefficientVoxelGridSize;
             float4 _CoefficientVoxelCorner;
@@ -44,16 +44,16 @@
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+                float2 uv : TEXCOORD0;
             };
 
             float4 GetFragmentWorldPos(float2 screenPos)
             {
-                float screenRawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, _PointClampSampler, screenPos);
+                float screenRawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_point_clamp, screenPos);
                 float4 ndc = float4(screenPos.x * 2 - 1, screenPos.y * 2 - 1, screenRawDepth, 1);
                 #if UNITY_UV_STARTS_AT_TOP
-                    ndc.y = 1 - ndc.y;
+                    ndc.y *= -1;
                 #endif
                 float4 worldPos = mul(UNITY_MATRIX_I_P, ndc);
                 worldPos /= worldPos.w;
@@ -74,17 +74,17 @@
                 float4 color = tex2D(_MainTex, i.uv);
 
                 float4 worldPos = GetFragmentWorldPos(i.uv);
-                float3 albedo = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, _PointClampSampler, i.uv, 0).xyz;
-                float3 normal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, _PointClampSampler, i.uv, 0).xyz;
+                float3 albedo = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, sampler_point_clamp, i.uv, 0).xyz;
+                float3 normal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, i.uv, 0).xyz;
 
                 float3 gi = SampleSHVoxel(
                     worldPos,
                     albedo,
                     normal,
                     _CoefficientVoxel,
-                    _CoefficientVoxelGridSize,
+                    _CoefficientVoxelSize,
                     _CoefficientVoxelCorner,
-                    _CoefficientVoxelSize);
+                    _CoefficientVoxelGridSize);
                 color.rgb += gi * _GIIntensity;
 
                 return color;

@@ -47,7 +47,7 @@ namespace PRT
                     }
                 }
             }
-
+            // 3x9 = 27, SH Coefficients
             CoefficientVoxel = new ComputeBuffer(probeNum * 27, sizeof(int));
             LastFrameCoefficientVoxel = new ComputeBuffer(probeNum * 27, sizeof(int));
             _coefficientVoxelClearValue = new int[probeNum * 27];
@@ -139,8 +139,8 @@ namespace PRT
 
         public LightProbeVolumeData VolumeData;
         
-        public ComputeBuffer CoefficientVoxel;          // array for each probe's SH coefficient
-        public ComputeBuffer LastFrameCoefficientVoxel; // last frame for inf bounce
+        public ComputeBuffer CoefficientVoxel;              // array for each probe's SH coefficient
+        public ComputeBuffer LastFrameCoefficientVoxel;     // last frame for inf bounce
         int[] _coefficientVoxelClearValue;
 
         [Range(0.0f, 50.0f)] public float SkyLightIntensity = 1.0f;

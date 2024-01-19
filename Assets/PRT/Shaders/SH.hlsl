@@ -77,7 +77,7 @@ float DecodeFloatFromInt(int x)
 int3 GetProbeIndex3DFromWorldPos(float3 worldPos, float4 coefficientVoxelSize, float coefficientVoxelGridSize, float4 coefficientVoxelCorner)
 {
     float3 probeIndex = floor((worldPos.xyz - coefficientVoxelCorner.xyz) / coefficientVoxelGridSize);
-    int3 probeIndex3 = int3(probeIndex);
+    int3 probeIndex3 = int3(probeIndex.x, probeIndex.y, probeIndex.z);
     return probeIndex3;
 }
 

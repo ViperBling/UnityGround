@@ -57,7 +57,6 @@ Shader "UnityGround/SHDebug"
                 float3 Lo = irradiance / PI;
 
                 return float4(Lo, 1.0);
-                // return 1;
             }
 
             ENDHLSL

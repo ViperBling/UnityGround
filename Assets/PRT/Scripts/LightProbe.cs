@@ -61,13 +61,13 @@ namespace PRT
         {
             TryInit();
 
-            GameObject go = new GameObject("CubemapCamera");
+            GameObject go = new GameObject("CubeMapCamera");
             go.transform.position = transform.position;
             go.transform.rotation = Quaternion.identity;
             go.AddComponent<Camera>();
             Camera cam = go.GetComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = Color.black;
+            cam.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
 
             GameObject[] gameObjects = FindObjectsOfType(typeof(GameObject)) as GameObject[];
             
@@ -77,7 +77,7 @@ namespace PRT
             BatchSetShader(gameObjects, Shader.Find("UnityGround/GBufferNormal"));
             cam.RenderToCubemap(RT_Normal);
             
-            BatchSetShader(gameObjects, Shader.Find("UnityGround/GBufferAlbedo"));
+            BatchSetShader(gameObjects, Shader.Find("Universal Render Pipeline/Unlit"));
             cam.RenderToCubemap(RT_Albedo);
             
             BatchSetShader(gameObjects, Shader.Find("Universal Render Pipeline/Lit"));
@@ -124,8 +124,8 @@ namespace PRT
         {
             Vector3 probePos = gameObject.transform.position;
 
-            gameObject.GetComponent<MeshRenderer>().enabled = !Application.isPlaying;
             MeshRenderer meshRenderer = gameObject.GetComponent<MeshRenderer>();
+            meshRenderer.enabled = !Application.isPlaying;
             meshRenderer.sharedMaterial.shader = Shader.Find("UnityGround/SHDebug");
             _matPropBlock.SetBuffer("_CoefficientSH9", CoefficientSH9);
             meshRenderer.SetPropertyBlock(_matPropBlock);
@@ -175,6 +175,7 @@ namespace PRT
                 {
                     if(isSky) continue;
                     Gizmos.DrawSphere(pos, 0.05f);
+                    Gizmos.color = new Color(color.x, color.y, color.z);
                     Gizmos.DrawLine(pos, pos + normal * 0.25f);
                 }
                 
@@ -204,7 +205,7 @@ namespace PRT
             var kid = SurfelSampleCS.FindKernel("MainCS");
 
             Vector3 pos = gameObject.transform.position;
-            SurfelSampleCS.SetVector("_ProbePos", new Vector4(pos.x, pos.y, pos.z, 0));
+            SurfelSampleCS.SetVector("_ProbePos", new Vector4(pos.x, pos.y, pos.z, 1.0f));
             SurfelSampleCS.SetFloat("_RandSeed", UnityEngine.Random.Range(0.0f, 1.0f));
             SurfelSampleCS.SetTexture(kid, "_WorldPosCube", worldPosCube);
             SurfelSampleCS.SetTexture(kid, "_NormalCube", normalCube);
@@ -220,7 +221,7 @@ namespace PRT
         private const int _rayNum = _tX * _tY;
         private const int _surfelByteSize = 3 * 12 + 4;  // sizeof(Surfel)
         
-        MaterialPropertyBlock _matPropBlock;
+        private MaterialPropertyBlock _matPropBlock;
         
         public Surfel[] ReadBackBuffer; // CPU side surfel array, for debug
         public ComputeBuffer Surfels;   // GPU side surfel array
@@ -228,7 +229,6 @@ namespace PRT
         Vector3[] _radianceDebugBuffer;
         public ComputeBuffer SurfelRadiance;
         
-        const int _coefficientSH9ByteSize = 9 * 3 * 4;
         int[] _coefficientClearValue;
         public ComputeBuffer CoefficientSH9; // GPU side SH9 coefficient, size: 9x3=27
 
@@ -236,8 +236,8 @@ namespace PRT
         public RenderTexture RT_Normal;
         public RenderTexture RT_Albedo;
 
-        public ComputeShader SurfelSampleCS;
         public ComputeShader SurfelReLightCS;
+        public ComputeShader SurfelSampleCS;
 
         [HideInInspector] public int IndexInProbeVolume = -1;
         private ComputeBuffer _tempBuffer;

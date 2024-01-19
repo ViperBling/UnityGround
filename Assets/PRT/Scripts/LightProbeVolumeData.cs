@@ -13,8 +13,8 @@ namespace PRT
         public void StorageSurfelData(LightProbeVolume volume)
         {
             int probeNum = volume.ProbeSizeX * volume.ProbeSizeY * volume.ProbeSizeZ;
-            int surfelPerProbe = 512;
-            int floatPerSurfel = 10;
+            int surfelPerProbe = 512;           // RayNum
+            int floatPerSurfel = 3 * 3 + 1;     // 3 Vector3 + 1 float
             
             Array.Resize<float>(ref SurfelStorageBuffer, probeNum * surfelPerProbe * floatPerSurfel);
 
@@ -65,13 +65,13 @@ namespace PRT
                     probe.ReadBackBuffer[i].position.x = SurfelStorageBuffer[cnt++];
                     probe.ReadBackBuffer[i].position.y = SurfelStorageBuffer[cnt++];
                     probe.ReadBackBuffer[i].position.z = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].normal.x = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].normal.y = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].normal.z = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].albedo.x = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].albedo.y = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].albedo.z = SurfelStorageBuffer[cnt++];
-                    probe.ReadBackBuffer[i].skyMask = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].normal.x   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].normal.y   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].normal.z   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].albedo.x   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].albedo.y   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].albedo.z   = SurfelStorageBuffer[cnt++];
+                    probe.ReadBackBuffer[i].skyMask    = SurfelStorageBuffer[cnt++];
                 }
                 probe.Surfels.SetData(probe.ReadBackBuffer);
             }

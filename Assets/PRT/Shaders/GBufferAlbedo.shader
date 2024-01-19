@@ -25,8 +25,8 @@ Shader "UnityGround/GBufferAlbedo"
 
             struct v2f
             {
-                float2 uv : TEXCOORD0;
                 float4 vertex : SV_POSITION;
+                float2 uv : TEXCOORD0;
             };
 
             TEXTURE2D(_BaseMap);
