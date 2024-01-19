@@ -10,37 +10,50 @@ namespace PRT
         {
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
-                RenderTextureDescriptor rtDesc = renderingData.cameraData.cameraTargetDescriptor;
-                cmd.GetTemporaryRT(TempRTHandle.GetInstanceID(), rtDesc, FilterMode.Point);
-
-                BlitSrc = renderingData.cameraData.renderer.cameraColorTargetHandle;
+                var rtDesc = renderingData.cameraData.cameraTargetDescriptor;
+                rtDesc.depthBufferBits = 0;
+                RenderingUtils.ReAllocateIfNeeded(ref TempRTHandle, rtDesc, FilterMode.Point, TextureWrapMode.Clamp, name: "TempRT");
+            }
+            
+            public override void OnCameraCleanup(CommandBuffer cmd)
+            {
+                DestColor = null;
+                DestDepth = null;
+            }
+            
+            public void Setup(RTHandle destColor, RTHandle destDepth)
+            {
+                DestColor = destColor;
+                DestDepth = destDepth;
             }
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
-                RenderTargetIdentifier tempRT = TempRTHandle.GetInstanceID();
+                CoreUtils.SetRenderTarget(cmd, DestColor, DestDepth, clearFlag, clearColor);
 
-                LightProbeVolume[] volumes = GameObject.FindObjectsOfType(typeof(LightProbeVolume)) as LightProbeVolume[];
+                LightProbeVolume[] volumes = FindObjectsOfType(typeof(LightProbeVolume)) as LightProbeVolume[];
                 LightProbeVolume volume = volumes.Length == 0 ? null : volumes[0];
                 if (volume != null)
                 {
-                    cmd.Blit(BlitSrc, tempRT, BlitMaterial);
-                    cmd.Blit(tempRT, BlitSrc);
+                    cmd.Blit(DestColor, TempRTHandle, BlitMaterial);
+                    cmd.Blit(TempRTHandle, DestColor);
                 }
+                
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
                 CommandBufferPool.Release(cmd);
             }
-
-            public override void OnCameraCleanup(CommandBuffer cmd)
+            
+            void Dispose()
             {
-                cmd.ReleaseTemporaryRT(TempRTHandle.GetInstanceID());
+                TempRTHandle?.Release();
             }
             
             public Material BlitMaterial;
             public RTHandle TempRTHandle;
-            public RenderTargetIdentifier BlitSrc;
+            public RTHandle DestColor;
+            public RTHandle DestDepth;
         }
 
         public override void Create()
@@ -54,6 +67,11 @@ namespace PRT
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             renderer.EnqueuePass(_customPass);
+        }
+
+        public override void SetupRenderPasses(ScriptableRenderer renderer, in RenderingData renderingData)
+        {
+            _customPass.Setup(renderer.cameraColorTargetHandle, renderer.cameraDepthTargetHandle);
         }
 
         public Material CompositeMaterial;
