@@ -87,6 +87,7 @@
                     _CoefficientVoxelGridSize);
                 color.rgb += gi * _GIIntensity;
 
+                // return float4(gi, 1.0);
                 return color;
             }
             

@@ -22,9 +22,9 @@ RWStructuredBuffer<int> _CoefficientVoxel;
 StructuredBuffer<int> _LastFrameCoefficientVoxel;
 float _GIIntensity;
 
-float _CoefficientVoxelGridSize;
-float4 _CoefficientVoxelCorner;
 float4 _CoefficientVoxelSize;
+float4 _CoefficientVoxelCorner;
+float _CoefficientVoxelGridSize;
 
 [numthreads(32, 16, 1)]
 void MainCS(uint3 id : SV_DispatchThreadID)
@@ -54,9 +54,9 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         surfel.albedo,
         surfel.normal,
         _LastFrameCoefficientVoxel,
-        _CoefficientVoxelGridSize,
+        _CoefficientVoxelSize,
         _CoefficientVoxelCorner,
-        _CoefficientVoxelSize);
+        _CoefficientVoxelGridSize);
     radiance += history * _GIIntensity;
 
     const float N = 32 * 16;
@@ -71,6 +71,7 @@ void MainCS(uint3 id : SV_DispatchThreadID)
     c[7] = SH(2,  1, dir) * radiance * 4.0 * PI / N;
     c[8] = SH(2,  2, dir) * radiance * 4.0 * PI / N;
 
+    // Write result to _CoefficientSH9
     for (int i = 0; i < 9; i++)
     {
         InterlockedAdd(_CoefficientSH9[i * 3 + 0], EncodeFloatToInt(c[i].x));
@@ -84,9 +85,9 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         int offset = _IndexInProbeVolume * coeffByteSize;
         for (int i = 0; i < 9; i++)
         {
-            InterlockedAdd(_CoefficientVoxel[i * 3 + 0], EncodeFloatToInt(c[i].x));
-            InterlockedAdd(_CoefficientVoxel[i * 3 + 1], EncodeFloatToInt(c[i].y));
-            InterlockedAdd(_CoefficientVoxel[i * 3 + 2], EncodeFloatToInt(c[i].z));
+            InterlockedAdd(_CoefficientVoxel[offset + i * 3 + 0], EncodeFloatToInt(c[i].x));
+            InterlockedAdd(_CoefficientVoxel[offset + i * 3 + 1], EncodeFloatToInt(c[i].y));
+            InterlockedAdd(_CoefficientVoxel[offset + i * 3 + 2], EncodeFloatToInt(c[i].z));
         }
     }
     _SurfelRadiance[surfelIndex] = radiance;

@@ -37,11 +37,11 @@ namespace PRT
                     for (int z = 0; z < ProbeSizeZ; z++)
                     {
                         Vector3 relativePos = new Vector3(x, y, z) * ProbeGridSize;
-                        Vector3 parentPos = gameObject.transform.position;
+                        var goTransform = gameObject.transform;
 
                         int index = x * ProbeSizeY * ProbeSizeZ + y * ProbeSizeZ + z;
-                        Probes[index] = Instantiate(ProbePrefab, gameObject.transform) as GameObject;
-                        Probes[index].transform.position = relativePos + parentPos;
+                        Probes[index] = Instantiate(ProbePrefab, goTransform) as GameObject;
+                        Probes[index].transform.position = relativePos + goTransform.position;
                         Probes[index].GetComponent<LightProbe>().IndexInProbeVolume = index;
                         Probes[index].GetComponent<LightProbe>().TryInit();
                     }

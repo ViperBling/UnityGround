@@ -98,8 +98,8 @@ namespace PRT
             cmd.SetComputeBufferParam(SurfelReLightCS, kid, "_SurfelRadiance", SurfelRadiance);
 
             var parent = transform.parent;
-            LightProbeVolume volume = parent == null ? null : parent.GetComponent<LightProbeVolume>();
-            ComputeBuffer coefficientVoxel = volume == null ? null : volume.CoefficientVoxel;
+            LightProbeVolume probeVolume = parent == null ? null : parent.GetComponent<LightProbeVolume>();
+            ComputeBuffer coefficientVoxel = probeVolume == null ? _tempBuffer : probeVolume.CoefficientVoxel;
             cmd.SetComputeBufferParam(SurfelReLightCS, kid, "_CoefficientVoxel", coefficientVoxel);
             cmd.SetComputeFloatParam(SurfelReLightCS, "_IndexInProbeVolume", IndexInProbeVolume);
             

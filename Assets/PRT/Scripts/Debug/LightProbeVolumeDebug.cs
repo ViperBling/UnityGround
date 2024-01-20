@@ -13,7 +13,7 @@ namespace PRT
         {
             DrawDefaultInspector();
 
-            if(GUILayout.Button("Probe Capture")) 
+            if(GUILayout.Button("Generate Probes")) 
             {
                 LightProbeVolume probeVolume = (LightProbeVolume)target;
                 probeVolume.GenerateProbes();

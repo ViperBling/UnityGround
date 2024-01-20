@@ -154,28 +154,40 @@ float3 SampleSHVoxel(
     {
         int3 idx3 = probeIndex3 + offset[i];
         bool isInsideVoxel = IsIndex3DInsideVoxel(idx3, coefficientVoxelSize);
-
+    
         if (!isInsideVoxel)
         {
             Lo[i] = float3(0, 0, 0);
             continue;
         }
-
+    
         float3 probePos = GetProbePositionFromIndex3D(idx3, coefficientVoxelGridSize, coefficientVoxelCorner);
         float3 dir = normalize(probePos - worldPos.xyz);
         float normalWeight = saturate(dot(dir, normal));
         weight += normalWeight;
-
+    
         int probeIndex = GetProbeIndex1DFromIndex3D(idx3, coefficientVoxelSize);
         DecodeSHCoeffFromVoxel(c, coefficientVoxel, probeIndex);
         Lo[i] = IrradianceSH9(c, normal) * BRDF * normalWeight;
     }
-
+    
     // Interpolation
     float3 minCorner = GetProbePositionFromIndex3D(probeIndex3, coefficientVoxelGridSize, coefficientVoxelCorner);
     float3 maxCorner = minCorner + coefficientVoxelGridSize;
     float3 rate = (worldPos.xyz - minCorner) / coefficientVoxelGridSize;
     float3 irradiance = TrilinearInterpolationFloat3(Lo, rate) / weight;
 
+    // int probeIndex = GetProbeIndex1DFromIndex3D(probeIndex3 + offset[0], coefficientVoxelSize);
+    // const int coeffByteSize = 27;
+    // int probeOffset = probeIndex * coeffByteSize;
+    // for (int i = 0; i < 9; i++)
+    // {
+    //     c[i].x = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 0]);
+    //     c[i].y = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 1]);
+    //     c[i].z = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 2]);
+    // }
+
+    // return c[0];
+    
     return irradiance;
 }

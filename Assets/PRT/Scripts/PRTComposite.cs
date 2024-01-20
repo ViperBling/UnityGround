@@ -30,7 +30,10 @@ namespace PRT
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
                 CommandBuffer cmd = CommandBufferPool.Get();
-                CoreUtils.SetRenderTarget(cmd, DestColor, DestDepth, clearFlag, clearColor);
+                if (DestColor != null && DestDepth != null)
+                {
+                    CoreUtils.SetRenderTarget(cmd, DestColor, DestDepth, clearFlag, clearColor);
+                }
 
                 LightProbeVolume[] volumes = FindObjectsOfType(typeof(LightProbeVolume)) as LightProbeVolume[];
                 LightProbeVolume volume = volumes.Length == 0 ? null : volumes[0];
