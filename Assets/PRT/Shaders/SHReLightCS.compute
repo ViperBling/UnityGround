@@ -11,15 +11,13 @@
 
 RWStructuredBuffer<Surfel> _Surfels;
 RWStructuredBuffer<float3> _SurfelRadiance; // for debug
+RWStructuredBuffer<int> _CoefficientSH9;
+RWStructuredBuffer<int> _CoefficientVoxel;
+StructuredBuffer<int> _LastFrameCoefficientVoxel;
 
 float _SkyLightIntensity;
 float4 _ProbePos;
-
-RWStructuredBuffer<int> _CoefficientSH9;
-
 int _IndexInProbeVolume;
-RWStructuredBuffer<int> _CoefficientVoxel;
-StructuredBuffer<int> _LastFrameCoefficientVoxel;
 float _GIIntensity;
 
 float4 _CoefficientVoxelSize;

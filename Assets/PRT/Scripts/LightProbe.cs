@@ -67,7 +67,7 @@ namespace PRT
             go.AddComponent<Camera>();
             Camera cam = go.GetComponent<Camera>();
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+            cam.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 1.0f);
 
             GameObject[] gameObjects = FindObjectsOfType(typeof(GameObject)) as GameObject[];
             

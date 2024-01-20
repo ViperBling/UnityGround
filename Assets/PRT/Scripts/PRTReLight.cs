@@ -27,7 +27,7 @@ namespace PRT
 
                     Vector3 corner = volume.GetVoxelMinCorner();
                     Vector4 voxelCorner = new Vector4(corner.x, corner.y, corner.z, 1);
-                    Vector4 voxelSize = new Vector4(volume.ProbeSizeX, volume.ProbeSizeY, volume.ProbeSizeZ, 0);
+                    Vector4 voxelSize = new Vector4(volume.ProbeSizeX, volume.ProbeSizeY, volume.ProbeSizeZ, 1);
                     
                     cmd.SetGlobalFloat("_CoefficientVoxelGridSize", volume.ProbeGridSize);
                     cmd.SetGlobalVector("_CoefficientVoxelSize", voxelSize);

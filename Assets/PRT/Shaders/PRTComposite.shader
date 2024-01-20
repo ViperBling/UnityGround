@@ -51,7 +51,7 @@
             float4 GetFragmentWorldPos(float2 screenPos)
             {
                 float screenRawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_point_clamp, screenPos);
-                float4 ndc = float4(screenPos.x * 2 - 1, screenPos.y * 2 - 1, screenRawDepth, 1);
+                float4 ndc = float4(screenPos.x * 2 - 1, screenPos.y * 2 - 1, screenRawDepth, 1.0);
                 #if UNITY_UV_STARTS_AT_TOP
                     ndc.y *= -1;
                 #endif
@@ -61,21 +61,21 @@
                 return worldPos;
             }
 
-            v2f vert (appdata v)
+            v2f vert (appdata vsIn)
             {
-                v2f o;
-                o.vertex = TransformObjectToHClip(v.vertex);
-                o.uv = v.uv;
-                return o;
+                v2f vsOut;
+                vsOut.vertex = TransformObjectToHClip(vsIn.vertex);
+                vsOut.uv = vsIn.uv;
+                return vsOut;
             }
 
-            float4 frag (v2f i) : SV_Target
+            float4 frag (v2f psIn) : SV_Target
             {
-                float4 color = tex2D(_MainTex, i.uv);
+                float4 color = tex2D(_MainTex, psIn.uv);
 
-                float4 worldPos = GetFragmentWorldPos(i.uv);
-                float3 albedo = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, sampler_point_clamp, i.uv, 0).xyz;
-                float3 normal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, i.uv, 0).xyz;
+                float4 worldPos = GetFragmentWorldPos(psIn.uv);
+                float3 albedo = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, sampler_point_clamp, psIn.uv, 0).xyz;
+                float3 normal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, psIn.uv, 0).xyz;
 
                 float3 gi = SampleSHVoxel(
                     worldPos,
@@ -87,7 +87,7 @@
                     _CoefficientVoxelGridSize);
                 color.rgb += gi * _GIIntensity;
 
-                // return float4(gi, 1.0);
+                // return float4(worldPos.xyz, 1.0);
                 return color;
             }
             

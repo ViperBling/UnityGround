@@ -176,18 +176,6 @@ float3 SampleSHVoxel(
     float3 maxCorner = minCorner + coefficientVoxelGridSize;
     float3 rate = (worldPos.xyz - minCorner) / coefficientVoxelGridSize;
     float3 irradiance = TrilinearInterpolationFloat3(Lo, rate) / weight;
-
-    // int probeIndex = GetProbeIndex1DFromIndex3D(probeIndex3 + offset[0], coefficientVoxelSize);
-    // const int coeffByteSize = 27;
-    // int probeOffset = probeIndex * coeffByteSize;
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     c[i].x = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 0]);
-    //     c[i].y = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 1]);
-    //     c[i].z = DecodeFloatFromInt(coefficientVoxel[probeOffset + i * 3 + 2]);
-    // }
-
-    // return c[0];
     
     return irradiance;
 }
