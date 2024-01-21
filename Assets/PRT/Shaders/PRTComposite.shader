@@ -55,7 +55,7 @@
                 #if UNITY_UV_STARTS_AT_TOP
                     ndc.y *= -1;
                 #endif
-                float4 worldPos = mul(UNITY_MATRIX_I_P, ndc);
+                float4 worldPos = mul(UNITY_MATRIX_I_VP, ndc);
                 worldPos /= worldPos.w;
                 
                 return worldPos;
@@ -87,7 +87,6 @@
                     _CoefficientVoxelGridSize);
                 color.rgb += gi * _GIIntensity;
 
-                // return float4(worldPos.xyz, 1.0);
                 return color;
             }
             
