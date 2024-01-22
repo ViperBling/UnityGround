@@ -141,7 +141,11 @@ float3 SampleSHVoxel(
         int3(1, 0, 0), int3(1, 0, 1), int3(1, 1, 0), int3(1, 1, 1), 
     };
 
-    float3 c[9];
+    float3 c[9] = {
+        float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0),
+        float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0),
+        float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0)
+    };
     float3 Lo[8] = {
         float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0),
         float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0), float3(0, 0, 0)

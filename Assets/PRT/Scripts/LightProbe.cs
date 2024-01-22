@@ -89,6 +89,7 @@ namespace PRT
 
         public void ReLight(CommandBuffer cmd)
         {
+            // 计算并写入球谐数据到CoefficientSH9 
             var kid = SurfelReLightCS.FindKernel("MainCS");
 
             Vector3 pos = gameObject.transform.position;
@@ -202,6 +203,7 @@ namespace PRT
 
         private void SampleSurfels(RenderTexture worldPosCube, RenderTexture normalCube, RenderTexture albedoCube)
         {
+            // 获取表面数据，读入到Surfel中
             var kid = SurfelSampleCS.FindKernel("MainCS");
 
             Vector3 pos = gameObject.transform.position;

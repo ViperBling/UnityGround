@@ -39,11 +39,14 @@ namespace PRT
                 }
                 
                 LightProbe[] probes = FindObjectsOfType(typeof(LightProbe)) as LightProbe[];
-                foreach (var probe in probes)
+                if (probes != null)
                 {
-                    if (probe == null) continue;
-                    probe.TryInit();
-                    probe.ReLight(cmd);
+                    foreach (var probe in probes)
+                    {
+                        if (probe == null) continue;
+                        probe.TryInit();
+                        probe.ReLight(cmd);
+                    }
                 }
                 
                 context.ExecuteCommandBuffer(cmd);

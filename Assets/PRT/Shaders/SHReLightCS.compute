@@ -76,9 +76,10 @@ void MainCS(uint3 id : SV_DispatchThreadID)
         InterlockedAdd(_CoefficientSH9[i * 3 + 1], EncodeFloatToInt(c[i].y));
         InterlockedAdd(_CoefficientSH9[i * 3 + 2], EncodeFloatToInt(c[i].z));
     }
-
+    
     if (_IndexInProbeVolume >= 0)
     {
+        // 把球谐写入Volume
         const int coeffByteSize = 27;
         int offset = _IndexInProbeVolume * coeffByteSize;
         for (int i = 0; i < 9; i++)

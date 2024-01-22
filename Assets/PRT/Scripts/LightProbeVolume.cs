@@ -90,7 +90,7 @@ namespace PRT
         {
             GenerateProbes();
             VolumeData.TryLoadSurfelData(this);
-            DebugMode = LightProbeVolumeDebugMode.ProbeGrid;
+            DebugMode = LightProbeVolumeDebugMode.ProbeRadiance;
         }
 
         private void Update()
@@ -106,7 +106,7 @@ namespace PRT
 
         private void OnDrawGizmos()
         {
-            Gizmos.DrawCube(GetVoxelMinCorner(), new Vector3(1, 1, 1));
+            // Gizmos.DrawCube(GetVoxelMinCorner(), new Vector3(1, 1, 1));
 
             if (Probes != null)
             {

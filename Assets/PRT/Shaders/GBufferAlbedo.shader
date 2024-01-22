@@ -2,11 +2,11 @@ Shader "UnityGround/GBufferAlbedo"
 {
     Properties
     {
-        _BaseMap ("Texture", 2D) = "white" {}
+        [MainTexture] _BaseMap("Texture", 2D) = "white" {}
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "RenderPipeline" = "UniversalRenderPipeline" }
+        Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalRenderPipeline" }
         LOD 100
 
         Pass
