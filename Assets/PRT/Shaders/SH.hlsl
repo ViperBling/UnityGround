@@ -168,7 +168,7 @@ float3 SampleSHVoxel(
         float3 probePos = GetProbePositionFromIndex3D(idx3, coefficientVoxelGridSize, coefficientVoxelCorner);
         float3 dir = normalize(probePos - worldPos.xyz);
         float normalWeight = saturate(dot(dir, normal));
-        weight += normalWeight;
+        // weight += normalWeight;
     
         int probeIndex = GetProbeIndex1DFromIndex3D(idx3, coefficientVoxelSize);
         DecodeSHCoeffFromVoxel(c, coefficientVoxel, probeIndex);
@@ -179,7 +179,8 @@ float3 SampleSHVoxel(
     float3 minCorner = GetProbePositionFromIndex3D(probeIndex3, coefficientVoxelGridSize, coefficientVoxelCorner);
     float3 maxCorner = minCorner + coefficientVoxelGridSize;
     float3 rate = (worldPos.xyz - minCorner) / coefficientVoxelGridSize;
-    float3 irradiance = TrilinearInterpolationFloat3(Lo, rate) / weight;
+    // float3 irradiance = TrilinearInterpolationFloat3(Lo, rate) / weight;
+    float3 irradiance = TrilinearInterpolationFloat3(Lo, rate);
     
     return irradiance;
 }

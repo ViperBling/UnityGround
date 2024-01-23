@@ -110,6 +110,7 @@ namespace PRT
 
             if (Probes != null)
             {
+                // if (DebugMode == LightProbeVolumeDebugMode.None) return;
                 foreach (var go in Probes)
                 {
                     LightProbe probe = go.GetComponent<LightProbe>();
@@ -120,7 +121,7 @@ namespace PRT
                     }
 
                     MeshRenderer meshRenderer = go.GetComponent<MeshRenderer>();
-                    if (Application.isPlaying) meshRenderer.enabled = false;
+                    if (Application.IsPlaying(go)) meshRenderer.enabled = false;
                     if (DebugMode == LightProbeVolumeDebugMode.None) meshRenderer.enabled = false;
                 }
             }
