@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Random = UnityEngine.Random;
@@ -58,6 +59,8 @@ public class Solver : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        _mainCamera = Camera.main;
+        
         Particle[] particles = new Particle[numParticles];
 
         Vector3 origin1 = new Vector3(
@@ -184,7 +187,7 @@ public class Solver : MonoBehaviour
         _commandBuffer.name = "FluidRender";
         
         UpdateCommandBuffer();
-        Camera.main.AddCommandBuffer(CameraEvent.AfterForwardAlpha, _commandBuffer);
+        _mainCamera.AddCommandBuffer(CameraEvent.AfterForwardAlpha, _commandBuffer);
     }
 
     // Update is called once per frame
@@ -194,7 +197,7 @@ public class Solver : MonoBehaviour
 
         if (Input.GetMouseButton(0))
         {
-            Ray mouseRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+            Ray mouseRay = _mainCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit hit;
             if (Physics.Raycast(mouseRay, out hit))
             {
@@ -269,21 +272,103 @@ public class Solver : MonoBehaviour
             uint[] debugResult = new uint[4];
             int[] values = new int[numParticles * 3];
             
+            _hashDebugBuffer.SetData(debugResult);
+            solverShader.Dispatch(solverShader.FindKernel("DebugHash"), Mathf.CeilToInt((float)numHashes / numThreads), 1, 1);
+            _hashDebugBuffer.GetData(debugResult);
+
+            uint totalAccessCount = debugResult[2];
+            uint totalNeighborCount = debugResult[3];
             
+            Debug.Log($"Total access: {totalAccessCount}, Avg access: {(float)totalAccessCount / numParticles}, Avg accept: {(float)totalNeighborCount / numParticles}");
+            Debug.Log($"Avg accept rate: {(float)totalNeighborCount / totalAccessCount * 100}%");
+            
+            _hashValueDebugBuffer.GetData(values);
+
+            HashSet<Vector3Int> set = new HashSet<Vector3Int>();
+            for (int i = 0; i < numParticles; i++)
+            {
+                Vector3Int hash = new Vector3Int(values[i * 3], values[i * 3 + 1], values[i * 3 + 2]);
+                set.Add(hash);
+            }
+            Debug.Log($"Total unique hash: {set.Count}, Ideal bucket load: {(float)set.Count / numHashes * 100}%");
+        }
+
+        if (!_paused)
+        {
+            for (int iter = 0; iter < 1; iter++)
+            {
+                solverShader.Dispatch(solverShader.FindKernel("CalcPressure"), Mathf.CeilToInt((float)numParticles / 128), 1, 1);
+                solverShader.Dispatch(solverShader.FindKernel("CalcForce"), Mathf.CeilToInt((float)numParticles / 128), 1, 1);
+                solverShader.Dispatch(solverShader.FindKernel("CalcPCA"), Mathf.CeilToInt((float)numParticles / numThreads), 1, 1);
+                solverShader.Dispatch(solverShader.FindKernel("Update"), Mathf.CeilToInt((float)numParticles / numThreads), 1, 1);
+            }
+
+            _solverFrame++;
+
+            if (_solverFrame > 1)
+            {
+                _totalFrameTime += Time.realtimeSinceStartupAsDouble - _lastFrameTimestamp;
+            }
+
+            if (_solverFrame == 400 || _solverFrame == 1200)
+            {
+                Debug.Log($"Avg frame time at #{_solverFrame}: {_totalFrameTime / (_solverFrame - 1) * 1000}ms.");
+            }
+
+            _lastFrameTimestamp = Time.realtimeSinceStartupAsDouble;
         }
     }
 
     void UpdateCommandBuffer()
     {
+        _commandBuffer.Clear();
+
+        int[] worldPosBufferIDs = new int[]
+        {
+            Shader.PropertyToID("WorldPosBuffer0"),
+            Shader.PropertyToID("WorldPosBuffer1"),
+        };
+        _commandBuffer.GetTemporaryRT(worldPosBufferIDs[0], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
+        _commandBuffer.GetTemporaryRT(worldPosBufferIDs[1], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
+
+        int depthID0 = Shader.PropertyToID("DepthBuffer0");
+        _commandBuffer.GetTemporaryRT(depthID0,  Screen.width, Screen.height, 32, FilterMode.Point, RenderTextureFormat.Depth);
+        _commandBuffer.SetRenderTarget((RenderTargetIdentifier)worldPosBufferIDs[0], (RenderTargetIdentifier)depthID0);
+        _commandBuffer.ClearRenderTarget(true, true, Color.clear);
+        _commandBuffer.DrawMeshInstancedIndirect(sphereMesh, 0, renderMat, 0, _sphereInstancedArgsBuffer);
+
+        int depthID1 = Shader.PropertyToID("DepthBuffer1");
+        _commandBuffer.GetTemporaryRT(depthID1,  Screen.width, Screen.height, 32, FilterMode.Point, RenderTextureFormat.Depth);
+        _commandBuffer.SetRenderTarget((RenderTargetIdentifier)worldPosBufferIDs[0], (RenderTargetIdentifier)depthID1);
+        _commandBuffer.ClearRenderTarget(true, true, Color.clear);
+        _commandBuffer.SetGlobalTexture("DepthBuffer", depthID0);
+        _commandBuffer.DrawMesh(_screenQuadMesh, Matrix4x4.identity, renderMat, 0, 1);
+
+        int normalBufferID = Shader.PropertyToID("NormalBuffer");
+        _commandBuffer.GetTemporaryRT(normalBufferID,  Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
+
+        int colorBufferID = Shader.PropertyToID("ColorBuffer");
+        _commandBuffer.GetTemporaryRT(colorBufferID,  Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.RGHalf);
         
+        _commandBuffer.SetRenderTarget(new RenderTargetIdentifier[] {normalBufferID, colorBufferID}, (RenderTargetIdentifier)depthID1);
+        _commandBuffer.ClearRenderTarget(false, true, Color.clear);
+        
+        _commandBuffer.SetGlobalTexture("WorldPosBuffer", worldPosBufferIDs[0]);
+        _commandBuffer.DrawMeshInstancedIndirect(particleMesh, 0, renderMat, 2, _quadInstancedArgsBuffer);
+        
+        _commandBuffer.SetGlobalTexture("NormalBuffer", normalBufferID);
+        _commandBuffer.SetGlobalTexture("ColorBuffer", colorBufferID);
+        _commandBuffer.SetRenderTarget(BuiltinRenderTextureType.CameraTarget);
+        
+        _commandBuffer.DrawMesh(_screenQuadMesh, Matrix4x4.identity, renderMat, 0, 3);
     }
 
     void LateUpdate()
     {
-        Matrix4x4 view = Camera.main.worldToCameraMatrix;
+        Matrix4x4 view = _mainCamera.worldToCameraMatrix;
 
         Shader.SetGlobalMatrix("InverseViewMat", view.inverse);
-        Shader.SetGlobalMatrix("InverseProjMat", Camera.main.projectionMatrix.inverse);
+        Shader.SetGlobalMatrix("InverseProjMat", _mainCamera.projectionMatrix.inverse);
     }
 
     void OnDisable()
@@ -304,7 +389,9 @@ public class Solver : MonoBehaviour
         
         _quadInstancedArgsBuffer.Dispose();
     }
-
+    
+    private Camera _mainCamera;
+    
     private const int numHashes = 1 << 20;
     private const int numThreads = 1 << 10;
     public int numParticles = 1024;

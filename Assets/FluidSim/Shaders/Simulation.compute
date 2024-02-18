@@ -1,0 +1,77 @@
+#pragma kernel MoveParticles
+#pragma kernel ResetCounter
+#pragma kernel InsertToBucket
+#pragma kernel DebugHash
+#pragma kernel PrefixSum1
+#pragma kernel PrefixSum2
+#pragma kernel PrefixSum3
+#pragma kernel Sort
+#pragma kernel CalcHashRange
+#pragma kernel CalcPressure
+#pragma kernel CalcForces
+#pragma kernel CalcPCA
+#pragma kernel Update
+
+#define PI 3.1415926535
+
+#include "PrefixSum.cginc"
+
+[numthreads(THREADS, 1, 1)]
+void MoveParticles(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void ResetCounter(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void InsertToBucket(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void DebugHash(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void Sort(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void CalcHashRange(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void CalcPressure(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void CalcForces(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void CalcPCA(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
+
+[numthreads(THREADS, 1, 1)]
+void Update(uint3 id : SV_DispatchThreadID)
+{
+    // ...
+}
