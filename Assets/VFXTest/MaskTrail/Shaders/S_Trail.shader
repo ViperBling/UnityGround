@@ -2,58 +2,71 @@ Shader "Unlit/S_Trail"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
-        [HDR] _BaseColor ("Base Color", Color) = (1,1,1,1)
+        _SDFTex0 ("_SDFTex0", 2D) = "white" {}
+        _SDFTex1 ("_SDFTex1", 2D) = "white" {}
+        _Blend ("Blend", Range(0, 1)) = 0
+        _Step ("Step", Range(0.000001, 1)) = 0
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" }
+        Tags { "RanderPipline" = "UniversalPipeline" "RanderType" = "Opaque" }
         LOD 100
+        
+        HLSLINCLUDE
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            CBUFFER_START(UnityPerMaterial)
+                float _Blend;
+                float _Step;
+            CBUFFER_END
+
+            TEXTURE2D(_SDFTex0);        SAMPLER(sampler_SDFTex0);
+            TEXTURE2D(_SDFTex1);        SAMPLER(sampler_SDFTex1);
+        ENDHLSL
 
         Pass
         {
-            CGPROGRAM
+            Name "ForwardUnlit"
+//            Tags {"LightMode" = "UniversalForward"}
+            
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            // make fog work
-            #pragma multi_compile_fog
 
-            #include "UnityCG.cginc"
-
-            struct appdata
+            struct Attributes
             {
-                float4 vertex : POSITION;
-                float2 uv : TEXCOORD0;
+                float4 PositionOS : POSITION;
+                float2 TexCoord : TEXCOORD0;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float2 uv : TEXCOORD0;
-                UNITY_FOG_COORDS(1)
-                float4 vertex : SV_POSITION;
+                float4 PositionCS : SV_POSITION;
+                float2 TexCoord : TEXCOORD0;
             };
 
-            sampler2D _MainTex;
-            float4 _MainTex_ST;
-
-            v2f vert (appdata v)
+            Varyings vert (Attributes vsIn)
             {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = TRANSFORM_TEX(v.uv, _MainTex);
-                UNITY_TRANSFER_FOG(o,o.vertex);
-                return o;
+                const VertexPositionInputs vertexInput = GetVertexPositionInputs(vsIn.PositionOS);
+                Varyings vsOut;
+                vsOut.TexCoord = vsIn.TexCoord;
+                vsOut.PositionCS = vertexInput.positionCS;
+                return vsOut;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag (Varyings psIn) : SV_Target
             {
-                // sample the texture
-                fixed4 col = tex2D(_MainTex, i.uv);
-                // apply fog
-                UNITY_APPLY_FOG(i.fogCoord, col);
-                return col;
+                half4 sdf0 = SAMPLE_TEXTURE2D(_SDFTex0, sampler_SDFTex0, psIn.TexCoord);
+                half4 sdf1 = SAMPLE_TEXTURE2D(_SDFTex1, sampler_SDFTex1, psIn.TexCoord);
+
+                sdf0.r = pow(sdf0.r, 0.1);
+                sdf1.r = pow(sdf1.r, 0.5);
+                
+                half sdf = lerp(sdf0.r, sdf1.r, _Blend);
+                half finalColor = step(_Step, sdf);
+                
+                return half4(finalColor.xxx, 1);
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }

@@ -1,6 +1,10 @@
 struct EdgePixel
 {
     int edge;
+    int inTarget;
+    int X;
+    int Y;
+    float distance;
 };
 
 int _Width;
@@ -11,28 +15,64 @@ RWStructuredBuffer<EdgePixel> Result;
 Texture2D<float4> Source;
 
 [numthreads(32, 32, 1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void GetEdge (uint3 id : SV_DispatchThreadID)
 {
     int index = id.y * _Width + id.x;
-
+    
     float4 thisPixel = Source[id.xy];
     float4 upPixel = Source[float2(id.x, id.y + 1)];
     float4 downPixel = Source[float2(id.x, id.y - 1)];
     float4 leftPixel = Source[float2(id.x - 1, id.y)];
     float4 rightPixel = Source[float2(id.x + 1, id.y)];
-
+    
     int thisWhite = thisPixel.x * thisPixel.y * thisPixel.z * thisPixel.w;
     int upWhite = upPixel.x * upPixel.y * upPixel.z * upPixel.w;
     int downWhite = downPixel.x * downPixel.y * downPixel.z * downPixel.w;
     int leftWhite = leftPixel.x * leftPixel.y * leftPixel.z * leftPixel.w;
     int rightWhite = rightPixel.x * rightPixel.y * rightPixel.z * rightPixel.w;
-    int otherWhite = upWhite + downWhite + leftWhite + rightWhite;
-
+    int otherWhite = upWhite * downWhite * leftWhite * rightWhite;
+    
     int isEdge = 0;
-    if (thisWhite > 0.1 && otherWhite < 0.1)
+    int inTarget = 0;
+    float distance = 999999;
+    int X = 999999;
+    int Y = 999999;
+    
+    // 值大于0.1就认为是白色
+    if(thisWhite > 0.1 && otherWhite < 0.1)
     {
         isEdge = 1;
+        distance = 0;
+        X = id.x;
+        Y = id.y;
     }
-
+    if (thisWhite > 0.1)
+    {
+        inTarget = 1;
+    }
+    
     Result[index].edge = isEdge;
+    Result[index].inTarget = inTarget;
+    Result[index].X = X;
+    Result[index].Y = Y;
+    Result[index].distance = distance;
+}
+
+#pragma kernel SetRT
+
+RWStructuredBuffer<EdgePixel> IsEdge;
+RWTexture2D<float4> DestRT;
+float _MaxDistance;
+
+[numthreads(32, 32, 1)]
+void SetRT (uint3 id : SV_DispatchThreadID)
+{
+    int index = id.y * _Width + id.x;
+    float edge = IsEdge[index].edge;
+    float distance = 0;
+    if (IsEdge[index].distance < 999999)
+    {
+        distance = IsEdge[index].distance / _MaxDistance;
+    }
+    DestRT[id.xy] = float4(distance, distance, distance, 1);
 }
