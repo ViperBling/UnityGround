@@ -208,7 +208,7 @@ public class Solver : MonoBehaviour
                 
                 solverShader.SetInt("MoveBeginIndex", _moveParticleBeginIndex);
                 solverShader.SetInt("MoveSize", moveParticles);
-                solverShader.SetVector("MovePos", pos);
+                solverShader.SetVector("MovePosition", pos);
                 solverShader.SetVector("MoveVelocity", Vector3.down * 70);
                 
                 solverShader.Dispatch(solverShader.FindKernel("MoveParticles"), 1, 1, 1);

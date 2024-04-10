@@ -22,7 +22,8 @@ Shader "Custom/Particle/Sphere"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Particle
             {
@@ -35,32 +36,32 @@ Shader "Custom/Particle/Sphere"
             int UsePositionSmoothing;
             float Radius;
 
-            struct appData
+            struct VertexInput
             {
-                float4 vertexPos : POSITION;
+                float4 positionOS : POSITION;
             };
 
-            struct v2f
+            struct PixelInput
             {
-                float4 position : SV_POSITION;
+                float4 positionCS : SV_POSITION;
             };
 
-            v2f vert(appData vsIn, uint id : SV_InstanceID)
+            PixelInput vert(VertexInput vsIn, uint id : SV_InstanceID)
             {
-                v2f vsOut;
+                PixelInput vsOut;
 
                 float3 spherePos = UsePositionSmoothing ? Principle[id * 4 * 3] : Particles[id].Position.xyz;
-                float3 localPos = vsIn.vertexPos.xyz * (Radius * 2 * 2);
+                float3 localPos = vsIn.positionOS.xyz * (Radius * 2 * 2);
                 
                 float3x3 ellip = float3x3(Principle[id * 4 + 0], Principle[id * 4 + 1], Principle[id * 4 + 2]);
                 
                 float3 worldPos = mul(ellip, localPos) + spherePos;
                 
-                vsOut.position = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
+                vsOut.positionCS = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
                 return vsOut;
             }
 
-            fixed4 frag(v2f psIn) : SV_Target
+            half4 frag(PixelInput psIn) : SV_Target
             {
                 return 0;
             }

@@ -14,29 +14,146 @@
 
 #define PI 3.1415926535
 
+#define GRIDS_PER_DIAMETER 2
+
+uint NumHash;
+
+struct Particle
+{
+    float4 Position;
+    float4 Velocity;
+};
+
+RWStructuredBuffer<uint> Hashes;
+RWStructuredBuffer<uint> LocalIndices;
+RWStructuredBuffer<uint> InverseIndices;
+
+uint NumParticles;
+
+float RadiusSqr;
+float Radius;
+float GasConstant;
+float RestDensity;
+float Mass;
+float Viscosity;
+float Gravity;
+float DeltaTime;
+
+float4 Planes[7];
+
+float Poly6Kernel;
+float SpikyKernel;
+float ViscosityKernel;
+
+uint MoveBeginIndex;
+uint MoveSize;
+float3 MovePosition;
+float3 MoveVelocity;
+
+RWStructuredBuffer<Particle> Particles;
+RWStructuredBuffer<Particle> Sorted;
+
+RWStructuredBuffer<float4> Forces;
+
+RWStructuredBuffer<float4> Mean;
+RWStructuredBuffer<float3> CovBuffer;
+RWStructuredBuffer<float3> PrincipleBuffer;
+RWStructuredBuffer<uint2> HashRangeBuffer;
+RWStructuredBuffer<uint> HashDebug;
+RWStructuredBuffer<int3> HashValueDebug;
+
 #include "PrefixSum.cginc"
+
+uint3 Murmur32Scramble(uint3 K)
+{
+    K *= 0xcc9e2d51;
+    K = (K << 15) | (K >> 17);
+    K *= 0x1b873593;
+    return K;
+}
+
+uint CalculateHash(int3 Normed)
+{
+    uint H = (Normed.z & 255) | ((Normed.y & 15) << 8) | ((Normed.x & 255) << 12);
+    return H;
+}
+
+float Poly6(float D)
+{
+    return Poly6Kernel * pow(RadiusSqr - D, 3);
+}
+
+float Spiky(float L)
+{
+    return SpikyKernel * pow(Radius - L, 2);
+}
+
+float Visosity(float L)
+{
+    return ViscosityKernel * (Radius - L);
+}
+
+float Isotropic(float D)
+{
+    return 1 - pow(D / RadiusSqr, 3);
+}
 
 [numthreads(THREADS, 1, 1)]
 void MoveParticles(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    uint TotalParticleToMove = MoveSize * MoveSize;
+
+    const float MoveAreaSize = 5.0;
+
+    for (uint x = 0; x < MoveSize; x++)
+    {
+        for (uint y = 0; y < MoveSize; y++)
+        {
+            uint Idx = (MoveBeginIndex + x * MoveSize + y) % NumParticles;
+            Particles[Idx].Position.xyz = MovePosition + float3(x, 0, y) / MoveSize * MoveAreaSize - float3(1, 0, 1) * MoveAreaSize * 0.5;
+            Particles[Idx].Velocity.xyz = MoveVelocity;
+
+            Forces[Idx] = 0;
+        }
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void ResetCounter(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumHash)
+    {
+        GlobalHashCounter[id.x] = 0;
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void InsertToBucket(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumParticles)
+    {
+        int3 Normed = floor(GRIDS_PER_DIAMETER / 2.0 * (Particles[id.x].Position.xyz / Radius));
+        uint H = CalculateHash(Normed);
+        Hashes[id.x] = H;
+
+        uint LocalIndex;
+        InterlockedAdd(GlobalHashCounter[H], 1, LocalIndex);
+
+        LocalIndices[id.x] = LocalIndex;
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void DebugHash(uint3 id : SV_DispatchThreadID)
 {
+    if (id.x < NumHash)
+    {
+        if (GlobalHashCounter[id.x] > 0)
+        {
+            InterlockedAdd(HashDebug[0], 1);
+            InterlockedMax(HashDebug[1], GlobalHashCounter[id.x]);
+        }
+    }
     // ...
 }
 
