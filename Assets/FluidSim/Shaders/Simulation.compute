@@ -78,25 +78,37 @@ uint CalculateHash(int3 Normed)
     return H;
 }
 
-float Poly6(float D)
+float GetPoly6(float D)
 {
     return Poly6Kernel * pow(RadiusSqr - D, 3);
 }
 
-float Spiky(float L)
+float GetSpiky(float L)
 {
     return SpikyKernel * pow(Radius - L, 2);
 }
 
-float Visosity(float L)
+float GetViscosity(float L)
 {
     return ViscosityKernel * (Radius - L);
 }
 
-float Isotropic(float D)
+float GetIsotropic(float D)
 {
     return 1 - pow(D / RadiusSqr, 3);
 }
+
+#define BEGIN_FOREACH_PARTICLES     \
+int3 Base = floor(GRIDS_PER_DIAMETER / 2.0 * (Px.Position.xyz / Radius - 1)); \
+for (uint3 Offset = 0; Offset.x < (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1); Offset += uint3(1, GRIDS_PER_DIAMETER + 1, (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1))) {    \
+    uint H = CalculateHash(Base + int3(Offset / ((GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1)) % (GRIDS_PER_DIAMETER + 1)));     \
+    uint2 Range = HashRangeBuffer[H];       \
+    while (Range.x < Range.y) {             \    
+        Particle Py = Sorted[Range.x];      \
+        float3 Delta = Px.Position.xyz - Py.Position.xyz;   \
+        float D = dot(Delta, Delta);        \
+
+#define END_FOREACH_PARTICLES }}
 
 [numthreads(THREADS, 1, 1)]
 void MoveParticles(uint3 id : SV_DispatchThreadID)
@@ -154,41 +166,242 @@ void DebugHash(uint3 id : SV_DispatchThreadID)
             InterlockedMax(HashDebug[1], GlobalHashCounter[id.x]);
         }
     }
-    // ...
+    if (id.x < NumParticles)
+    {
+        Particle Px = Particles[id.x];
+
+        uint TotalAccessCount = 0;
+        uint NeighborCount = 0;
+
+        BEGIN_FOREACH_PARTICLES
+            TotalAccessCount++;
+            if (D < RadiusSqr)
+            {
+                NeighborCount++;
+            }
+        END_FOREACH_PARTICLES
+
+        InterlockedAdd(HashDebug[2], TotalAccessCount);
+        InterlockedAdd(HashDebug[3], NeighborCount);
+
+        int3 Normed = floor(GRIDS_PER_DIAMETER / 2.0 * (Particles[id.x].Position.xyz / Radius));
+        HashValueDebug[id.x] = Normed;
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void Sort(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumParticles)
+    {
+        uint SortedIndex = 0;
+        uint H = Hashes[id.x];
+        if (H > 0)
+        {
+            SortedIndex += GlobalHashCounter[H - 1];
+        }
+        SortedIndex += LocalIndices[id.x];
+        Sorted[SortedIndex] = Particles[id.x];
+        InverseIndices[SortedIndex] = id.x;
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void CalcHashRange(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumHash)
+    {
+        uint Begin = id.x ? GlobalHashCounter[id.x - 1] : 0;
+        uint End = GlobalHashCounter[id.x];
+        HashRangeBuffer[id.x] = uint2(Begin, End);
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void CalcPressure(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumParticles)
+    {
+        Particle Px = Sorted[id.x];
+
+        float Density = 0;
+        float4 AvgPressure = 0;
+
+        BEGIN_FOREACH_PARTICLES
+            [branch]
+            if (D < RadiusSqr)
+            {
+                Density += GetPoly6(D);
+                AvgPressure += GetIsotropic(D) * float4(Py.Position.xyz, 1);
+            }
+        END_FOREACH_PARTICLES
+
+        Density *= Mass;
+        AvgPressure.xyz /= AvgPressure.w;
+        Mean[id.x] = AvgPressure;
+
+        Sorted[id.x].Position.w = Density;
+        Sorted[id.x].Velocity.w = max(GasConstant * (Density - RestDensity), 0);
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void CalcForces(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumParticles)
+    {
+        Particle Px = Sorted[id.x];
+
+        float3 Force = 0;
+
+        float4 AvgPressure = Mean[id.x];
+        float3 Cov1 = 0, Cov2 = 0;
+        uint Cnt = 0;
+
+        BEGIN_FOREACH_PARTICLES
+            [branch]
+            if (D < RadiusSqr)
+            {
+                float L = sqrt(D);
+                if (D > 0)
+                {
+                    Force += (Px.Velocity.w + Py.Velocity.w) / (2 * Py.Position.w * L) * GetSpiky(L) * Delta;
+                    Force += GetViscosity(L) / Py.Position.w * (Py.Velocity - Px.Velocity);
+                }
+                float W = GetIsotropic(D);
+                float3 Centered = Py.Position.xyz - AvgPressure.xyz;
+                Cov1 += W * Centered * Centered;
+                Cov2 += W * Centered.xyz * Centered.yzx;
+                Cnt++;
+            }
+        END_FOREACH_PARTICLES
+
+        Force += Gravity * float3(0, -1, 0);
+        Force *= Mass;
+
+        Forces[id.x].xyz = Force;
+
+        Cov1 /= AvgPressure.w;
+        Cov2 /= AvgPressure.w;
+        Cov1 = max(Cov1, 0.01);
+
+        Mean[id.x].w = Cnt;
+        CovBuffer[id.x * 2 + 0] = Cov1;
+        CovBuffer[id.x * 2 + 1] = Cov2;
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void CalcPCA(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    float4 Avg = Mean[id.x];
+    float3 Cov1 = CovBuffer[id.x * 2 + 0];
+    float3 Cov2 = CovBuffer[id.x * 2 + 1];
+    float NeighbourCount = Avg.w;
+
+    if (NeighbourCount >= 6)
+    {
+        float P1 = dot(Cov2, Cov2);
+        float Q = dot(Cov1, float3(1, 1, 1)) / 3;
+        float P2 = dot(Cov1 - Q, Cov1 - Q) + 2 * P1;
+        float P = sqrt(P2 / 6);
+
+        float3x3 A = {
+            Cov1.x, Cov2.x, Cov2.z,
+            Cov2.x, Cov1.y, Cov2.y,
+            Cov2.z, Cov2.y, Cov1.z
+        };
+        
+        float3x3 B = A;
+        B._11_22_33 -= Q;
+        B /= P;
+        // 计算行列式
+        float R = determinant(B) / 2;
+        float Phi = acos(clamp(R, -1, 1)) / 3;
+
+        float3 Eig;
+        Eig.x = Q + 2 * P * cos(Phi);
+        Eig.z = Q + 2 * P * cos(Phi + 2 * PI / 3);
+        Eig.y = 3 * Q - Eig.x - Eig.z;
+
+        float3x3 A1 = A;
+        A1._11_22_33 -= Eig.x;
+        float3x3 A2 = A;
+        A2._11_22_33 -= Eig.y;
+        float3x3 A3 = A;
+        A3._11_22_33 -= Eig.z;
+
+        // Normalize
+        A /= Eig.x;
+        PrincipleBuffer[id.x * 4 + 3] = Avg.xyz;
+        
+        float3 Va = normalize(mul(A2, A3._11_21_31));
+        float3 Vb = normalize(mul(A1, A3._11_21_31));
+
+        float3x3 M = float3x3(
+            Va,
+            Eig.y / Eig.x * Vb,
+            Eig.z / Eig.x * cross(Va, Vb));
+
+        // Transpose M
+        PrincipleBuffer[id.x * 4 + 0] = M._11_21_31;
+        PrincipleBuffer[id.x * 4 + 1] = M._12_22_32;
+        PrincipleBuffer[id.x * 4 + 2] = M._13_23_33;
+    }
+    else
+    {
+        const float DropletScale = 0.33;
+        PrincipleBuffer[id.x * 4 + 0] = float3(1, 0, 0) * DropletScale;
+        PrincipleBuffer[id.x * 4 + 1] = float3(0, 1, 0) * DropletScale;
+        PrincipleBuffer[id.x * 4 + 2] = float3(0, 0, 1) * DropletScale;
+        PrincipleBuffer[id.x * 4 + 3] = Avg.xyz;
+    }
+}
+
+void Boundary(float4 Plane, inout float Position, inout float Velocity)
+{
+    const float Eps = 0.001;
+    const float Damping = 1;
+
+    float3 PlanePoint;
+    if (Plane.x != 0)       { PlanePoint = float3(-Plane.w / Plane.x, 0, 0); }
+    else if (Plane.y != 0)  { PlanePoint = float3(0, -Plane.w / Plane.y, 0); }
+    else                    { PlanePoint = float3(0, 0, -Plane.w / Plane.z); }
+
+    float3 PlaneNormal = Plane.xyz;
+    float3 PointToParticle = Position - PlanePoint;
+    float D = dot(PointToParticle, PlaneNormal);
+
+    if (D < 0)
+    {
+        Position -= (D - Eps) * PlaneNormal;
+        if (dot(Velocity, PlaneNormal) < 0)
+        {
+            Velocity -= dot(Velocity, PlaneNormal) * PlaneNormal * Damping;
+        }
+    }
 }
 
 [numthreads(THREADS, 1, 1)]
 void Update(uint3 id : SV_DispatchThreadID)
 {
-    // ...
+    if (id.x < NumParticles)
+    {
+        Particle Px = Sorted[id.x];
+
+        float3 CurrentAcc = Forces[id.x].xyz / Mass;
+
+        [unroll]
+        for (uint i = 0; i < 7; i++)
+        {
+            if (dot(Planes[i], 1) != 0)
+            {
+                Boundary(Planes[i], Px.Position.xyz, Px.Velocity.xyz);
+            }
+        }
+        Px.Velocity.xyz += CurrentAcc * DeltaTime;
+        Px.Position.xyz += Px.Velocity.xyz * DeltaTime;
+
+        Particles[id.x] = Px;
+    }
 }
