@@ -358,7 +358,7 @@ void CalcPCA(uint3 id : SV_DispatchThreadID)
     }
 }
 
-void Boundary(float4 Plane, inout float Position, inout float Velocity)
+void Boundary(float4 Plane, inout float3 Position, inout float3 Velocity)
 {
     const float Eps = 0.001;
     const float Damping = 1;

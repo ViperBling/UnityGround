@@ -298,7 +298,7 @@ public class Solver : MonoBehaviour
             for (int iter = 0; iter < 1; iter++)
             {
                 solverShader.Dispatch(solverShader.FindKernel("CalcPressure"), Mathf.CeilToInt((float)numParticles / 128), 1, 1);
-                solverShader.Dispatch(solverShader.FindKernel("CalcForce"), Mathf.CeilToInt((float)numParticles / 128), 1, 1);
+                solverShader.Dispatch(solverShader.FindKernel("CalcForces"), Mathf.CeilToInt((float)numParticles / 128), 1, 1);
                 solverShader.Dispatch(solverShader.FindKernel("CalcPCA"), Mathf.CeilToInt((float)numParticles / numThreads), 1, 1);
                 solverShader.Dispatch(solverShader.FindKernel("Update"), Mathf.CeilToInt((float)numParticles / numThreads), 1, 1);
             }

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.50937635, g: 0.5351189, b: 0.5508484, a: 1}
+  m_IndirectSpecularColor: {r: 0.18784636, g: 0.2162345, b: 0.24836841, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -405,7 +405,7 @@ MonoBehaviour:
   maxBounds: {x: 50, y: 100, z: 50}
   solverShader: {fileID: 7200000, guid: 9d4c0f6f20c248358f380a897f183d6d, type: 3}
   renderShader: {fileID: 4800000, guid: cecc78e098de40bfa5ce1b7fbc100a6a, type: 3}
-  renderMat: {fileID: 0}
+  renderMat: {fileID: 2100000, guid: 399dfc14a4b80ba42ac59325f9fa3bc8, type: 2}
   particleMesh: {fileID: -5495902117074765545, guid: 5568ca15084539f4e92e21d29060eff6,
     type: 3}
   particleRenderSize: 0.5
