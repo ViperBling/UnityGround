@@ -252,6 +252,7 @@ GameObject:
   - component: {fileID: 930840005}
   - component: {fileID: 930840004}
   - component: {fileID: 930840003}
+  - component: {fileID: 930840008}
   - component: {fileID: 930840006}
   - component: {fileID: 930840007}
   m_Layer: 0
@@ -391,7 +392,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d69c11c452d8ee24fac9890247de58ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  numParticles: 1048576
+  numParticles: 10
   initSize: 37
   radius: 1
   gasConstant: 10
@@ -404,16 +405,28 @@ MonoBehaviour:
   minBounds: {x: -50, y: 0, z: -50}
   maxBounds: {x: 50, y: 100, z: 50}
   solverShader: {fileID: 7200000, guid: 9d4c0f6f20c248358f380a897f183d6d, type: 3}
-  renderShader: {fileID: 4800000, guid: cecc78e098de40bfa5ce1b7fbc100a6a, type: 3}
   renderMat: {fileID: 2100000, guid: 399dfc14a4b80ba42ac59325f9fa3bc8, type: 2}
+  testMat: {fileID: 10302, guid: 0000000000000000f000000000000000, type: 0}
   particleMesh: {fileID: -5495902117074765545, guid: 5568ca15084539f4e92e21d29060eff6,
     type: 3}
-  particleRenderSize: 0.5
+  particleRenderSize: 100
   sphereMesh: {fileID: 289301614986012343, guid: d4e9dec40053734418c8e58e101f42a8,
     type: 3}
   primaryColor: {r: 0, g: 0.64705884, b: 0.9215687, a: 1}
   secondaryColor: {r: 0.043137256, g: 0.227451, b: 0.50980395, a: 1}
   moveParticles: 10
+--- !u!114 &930840008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 930840002}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a90f7514a874230bdfb8447d2a9ac87, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1588349431
 GameObject:
   m_ObjectHideFlags: 0

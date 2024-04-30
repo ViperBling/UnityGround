@@ -338,7 +338,7 @@ public class Solver : MonoBehaviour
         };
         _commandBuffer.GetTemporaryRT(worldPosBufferIDs[0], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
         _commandBuffer.GetTemporaryRT(worldPosBufferIDs[1], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
-
+        
         int depthID = Shader.PropertyToID("DepthBuffer");
         _commandBuffer.GetTemporaryRT(depthID,  Screen.width, Screen.height, 32, FilterMode.Point, RenderTextureFormat.Depth);
         _commandBuffer.SetRenderTarget((RenderTargetIdentifier)worldPosBufferIDs[0], (RenderTargetIdentifier)depthID);
@@ -419,8 +419,9 @@ public class Solver : MonoBehaviour
 
     public ComputeShader solverShader;
 
-    public Shader renderShader;
+    // public Shader renderShader;
     public Material renderMat;
+    public Material testMat;
 
     public Mesh particleMesh;
     public float particleRenderSize = 0.5f;

@@ -14,6 +14,7 @@ Shader "Custom/Particle/Sphere"
     {
         Tags {"RenderType"="Opaque"}
         
+        // Pass 0
         Pass
         {
             HLSLPROGRAM
@@ -69,6 +70,7 @@ Shader "Custom/Particle/Sphere"
             ENDHLSL
         }
 
+        // Pass 1
         Pass
         {
             ZTest Always
@@ -122,6 +124,7 @@ Shader "Custom/Particle/Sphere"
             ENDHLSL
         }
 
+        // Pass 2
         Pass
         {
             ZTest Less
@@ -263,6 +266,7 @@ Shader "Custom/Particle/Sphere"
             ENDHLSL
         }
 
+        // Pass 3
         Pass
         {
             HLSLPROGRAM
