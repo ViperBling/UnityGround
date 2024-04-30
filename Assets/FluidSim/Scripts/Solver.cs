@@ -23,12 +23,15 @@ public class Solver : MonoBehaviour
         Vector4[] currPlanes;
         switch (_boundState)
         {
-            case 0 : currPlanes = _boxPlanes;
-                break;
-            case 1 : currPlanes = _wavePlanes;
-                break;
-            default: currPlanes = _groundPlanes;
-                break;
+        case 0 : 
+            currPlanes = _boxPlanes;
+            break;
+        case 1 : 
+            currPlanes = _wavePlanes;
+            break;
+        default: 
+            currPlanes = _groundPlanes;
+            break;
         }
 
         if (currPlanes == _wavePlanes)
@@ -45,7 +48,7 @@ public class Solver : MonoBehaviour
 
         _wavePlanes[0] = GetPlaneEq(new Vector3(0, 0, 0), Vector3.up);
         _wavePlanes[1] = GetPlaneEq(new Vector3(0, 100, 0), Vector3.down);
-        _wavePlanes[2] = GetPlaneEq(new Vector3(-50 + Mathf.Pow(Mathf.Sin(_waveTime*0.2f),8) * 25f, 0, 0), Vector3.right);
+        _wavePlanes[2] = GetPlaneEq(new Vector3(-50 + Mathf.Pow(Mathf.Sin(_waveTime * 0.2f),8) * 25f, 0, 0), Vector3.right);
         _wavePlanes[3] = GetPlaneEq(new Vector3(50, 0, 0), Vector3.left);
         _wavePlanes[4] = GetPlaneEq(new Vector3(0, 0, -50), Vector3.forward);
         _wavePlanes[5] = GetPlaneEq(new Vector3(0, 0, 50), Vector3.back);
@@ -107,7 +110,9 @@ public class Solver : MonoBehaviour
 
         _hashesBuffer = new ComputeBuffer(numParticles, 4);
         _globalHashCounterBuffer = new ComputeBuffer(numHashes, 4);
+        
         _localIndicesBuffer = new ComputeBuffer(numParticles, 4);
+        _inverseIndicesBuffer = new ComputeBuffer(numParticles, 4);
 
         _particlesBuffer = new ComputeBuffer(numParticles, 4 * 8);
         _particlesBuffer.SetData(particles);
@@ -167,14 +172,14 @@ public class Solver : MonoBehaviour
         _sphereInstancedArgsBuffer.SetData(args2);
 
         _screenQuadMesh = new Mesh();
-        _screenQuadMesh.vertices = new Vector3[]
+        _screenQuadMesh.vertices = new Vector3[4]
         {
             new Vector3( 1.0f , 1.0f,  0.0f),
             new Vector3(-1.0f , 1.0f,  0.0f),
             new Vector3(-1.0f ,-1.0f,  0.0f),
             new Vector3( 1.0f ,-1.0f,  0.0f),
         };
-        _screenQuadMesh.uv = new Vector2[]
+        _screenQuadMesh.uv = new Vector2[4]
         {
             new Vector2(1, 0),
             new Vector2(0, 0),
@@ -246,7 +251,7 @@ public class Solver : MonoBehaviour
             
             solverShader.Dispatch(solverShader.FindKernel("DebugHash"), Mathf.CeilToInt((float)numHashes / numThreads), 1, 1);
 
-            _hashDebugBuffer.SetData(debugResult);
+            _hashDebugBuffer.GetData(debugResult);
             
             uint usedHashBuckets = debugResult[0];
             uint maxSameHash = debugResult[1];
@@ -314,9 +319,8 @@ public class Solver : MonoBehaviour
             {
                 Debug.Log($"Avg frame time at #{_solverFrame}: {_totalFrameTime / (_solverFrame - 1) * 1000}ms.");
             }
-
-            _lastFrameTimestamp = Time.realtimeSinceStartupAsDouble;
         }
+        _lastFrameTimestamp = Time.realtimeSinceStartupAsDouble;
     }
 
     void UpdateCommandBuffer()
@@ -331,7 +335,7 @@ public class Solver : MonoBehaviour
         _commandBuffer.GetTemporaryRT(worldPosBufferIDs[0], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
         _commandBuffer.GetTemporaryRT(worldPosBufferIDs[1], Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBFloat);
 
-        int depthID0 = Shader.PropertyToID("DepthBuffer0");
+        int depthID0 = Shader.PropertyToID("DepthBuffer");
         _commandBuffer.GetTemporaryRT(depthID0,  Screen.width, Screen.height, 32, FilterMode.Point, RenderTextureFormat.Depth);
         _commandBuffer.SetRenderTarget((RenderTargetIdentifier)worldPosBufferIDs[0], (RenderTargetIdentifier)depthID0);
         _commandBuffer.ClearRenderTarget(true, true, Color.clear);
