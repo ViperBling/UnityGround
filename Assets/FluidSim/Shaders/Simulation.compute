@@ -16,7 +16,7 @@
 
 #define GRIDS_PER_DIAMETER 2
 
-uint NumHash;
+uint NumHashes;
 
 struct Particle
 {
@@ -58,11 +58,14 @@ RWStructuredBuffer<float4> Forces;
 RWStructuredBuffer<float4> Mean;
 RWStructuredBuffer<float3> CovBuffer;
 RWStructuredBuffer<float3> PrincipleBuffer;
+
 RWStructuredBuffer<uint2> HashRangeBuffer;
 RWStructuredBuffer<uint> HashDebug;
 RWStructuredBuffer<int3> HashValueDebug;
 
-#include "PrefixSum.cginc"
+// #define PREFIX_SUM_ARRAY_NAME GlobalHashCounter
+
+#include "PrefixSum.hlsl"
 
 uint3 Murmur32Scramble(uint3 K)
 {
@@ -106,14 +109,15 @@ for (uint3 Offset = 0; Offset.x < (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER
     while (Range.x < Range.y) {             \    
         Particle Py = Sorted[Range.x];      \
         float3 Delta = Px.Position.xyz - Py.Position.xyz;   \
-        float D = dot(Delta, Delta);        \
+        float Dist = dot(Delta, Delta);        \
+        Range.x++;                          \
 
 #define END_FOREACH_PARTICLES }}
 
 [numthreads(THREADS, 1, 1)]
 void MoveParticles(uint3 id : SV_DispatchThreadID)
 {
-    uint TotalParticleToMove = MoveSize * MoveSize;
+    // uint TotalParticleToMove = MoveSize * MoveSize;
 
     const float MoveAreaSize = 5.0;
 
@@ -133,7 +137,7 @@ void MoveParticles(uint3 id : SV_DispatchThreadID)
 [numthreads(THREADS, 1, 1)]
 void ResetCounter(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < NumHash)
+    if (id.x < NumHashes)
     {
         GlobalHashCounter[id.x] = 0;
     }
@@ -158,7 +162,7 @@ void InsertToBucket(uint3 id : SV_DispatchThreadID)
 [numthreads(THREADS, 1, 1)]
 void DebugHash(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < NumHash)
+    if (id.x < NumHashes)
     {
         if (GlobalHashCounter[id.x] > 0)
         {
@@ -175,7 +179,7 @@ void DebugHash(uint3 id : SV_DispatchThreadID)
 
         BEGIN_FOREACH_PARTICLES
             TotalAccessCount++;
-            if (D < RadiusSqr)
+            if (Dist < RadiusSqr)
             {
                 NeighborCount++;
             }
@@ -209,7 +213,7 @@ void Sort(uint3 id : SV_DispatchThreadID)
 [numthreads(THREADS, 1, 1)]
 void CalcHashRange(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x < NumHash)
+    if (id.x < NumHashes)
     {
         uint Begin = id.x ? GlobalHashCounter[id.x - 1] : 0;
         uint End = GlobalHashCounter[id.x];
@@ -225,20 +229,20 @@ void CalcPressure(uint3 id : SV_DispatchThreadID)
         Particle Px = Sorted[id.x];
 
         float Density = 0;
-        float4 AvgPressure = 0;
+        float4 Avg = 0;
 
         BEGIN_FOREACH_PARTICLES
             [branch]
-            if (D < RadiusSqr)
+            if (Dist < RadiusSqr)
             {
-                Density += GetPoly6(D);
-                AvgPressure += GetIsotropic(D) * float4(Py.Position.xyz, 1);
+                Density += GetPoly6(Dist);
+                Avg += GetIsotropic(Dist) * float4(Py.Position.xyz, 1);
             }
         END_FOREACH_PARTICLES
 
         Density *= Mass;
-        AvgPressure.xyz /= AvgPressure.w;
-        Mean[id.x] = AvgPressure;
+        Avg.xyz /= Avg.w;
+        Mean[id.x] = Avg;
 
         Sorted[id.x].Position.w = Density;
         Sorted[id.x].Velocity.w = max(GasConstant * (Density - RestDensity), 0);
@@ -254,22 +258,24 @@ void CalcForces(uint3 id : SV_DispatchThreadID)
 
         float3 Force = 0;
 
-        float4 AvgPressure = Mean[id.x];
+        float4 Avg = Mean[id.x];
         float3 Cov1 = 0, Cov2 = 0;
         uint Cnt = 0;
 
         BEGIN_FOREACH_PARTICLES
             [branch]
-            if (D < RadiusSqr)
+            if (Dist < RadiusSqr)
             {
-                float L = sqrt(D);
-                if (D > 0)
+                float L = sqrt(Dist);
+                if (Dist > 0)
                 {
+                    // Pressure
                     Force += (Px.Velocity.w + Py.Velocity.w) / (2 * Py.Position.w * L) * GetSpiky(L) * Delta;
+                    // Viscosity
                     Force += GetViscosity(L) / Py.Position.w * (Py.Velocity - Px.Velocity);
                 }
-                float W = GetIsotropic(D);
-                float3 Centered = Py.Position.xyz - AvgPressure.xyz;
+                float W = GetIsotropic(Dist);
+                float3 Centered = Py.Position.xyz - Avg.xyz;
                 Cov1 += W * Centered * Centered;
                 Cov2 += W * Centered.xyz * Centered.yzx;
                 Cnt++;
@@ -281,8 +287,8 @@ void CalcForces(uint3 id : SV_DispatchThreadID)
 
         Forces[id.x].xyz = Force;
 
-        Cov1 /= AvgPressure.w;
-        Cov2 /= AvgPressure.w;
+        Cov1 /= Avg.w;
+        Cov2 /= Avg.w;
         Cov1 = max(Cov1, 0.01);
 
         Mean[id.x].w = Cnt;
@@ -341,7 +347,8 @@ void CalcPCA(uint3 id : SV_DispatchThreadID)
         float3x3 M = float3x3(
             Va,
             Eig.y / Eig.x * Vb,
-            Eig.z / Eig.x * cross(Va, Vb));
+            Eig.z / Eig.x * cross(Va, Vb)
+        );
 
         // Transpose M
         PrincipleBuffer[id.x * 4 + 0] = M._11_21_31;

@@ -1,0 +1,5 @@
+﻿#pragma kernel PrefixSum1
+#pragma kernel PrefixSum2
+#pragma kernel PrefixSum3
+
+#include "PrefixSum.hlsl"

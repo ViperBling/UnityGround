@@ -80,9 +80,8 @@ Shader "Custom/Particle/Sphere"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            #include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
 
-            sampler2D DepthBuffer;
+            TEXTURE2D(_CameraDepthTexture);         SamplerState sampler_CameraDepthTexture;
 
             struct VertexInput
             {
@@ -108,13 +107,12 @@ Shader "Custom/Particle/Sphere"
                 return vsOut;
             }
 
-            float4 ShaderFragment(PixelInput psIn, out float depth : SV_Depth) : SV_Target
+            float4 ShaderFragment(PixelInput psIn) : SV_Target
             {
-                float d = tex2D(DepthBuffer, psIn.uv);
-                depth = d;
-
+                float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, psIn.uv);
+                
                 float3 viewSpaceRayDir = normalize(mul(InverseProjMat, float4(psIn.uv * 2 - 1, 0, 1)).xyz);
-                float viewSpaceDistance = LinearEyeDepth(d) / dot(viewSpaceRayDir, float3(0, 0, -1));
+                float viewSpaceDistance = LinearEyeDepth(depth, _ZBufferParams) / dot(viewSpaceRayDir, float3(0, 0, -1));
 
                 float3 viewSpacePos = viewSpaceRayDir * viewSpaceDistance;
                 float3 worldSpacePos = mul(InverseViewMat, float4(viewSpacePos, 1)).xyz;
@@ -273,8 +271,10 @@ Shader "Custom/Particle/Sphere"
             #pragma fragment ShaderFragment
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-            sampler2D DepthBuffer;
+            TEXTURE2D(_CameraDepthTexture);     SamplerState sampler_CameraDepthTexture;
+            
             sampler2D WorldPosBuffer;
             sampler2D NormalBuffer;
             sampler2D ColorBuffer;
@@ -304,21 +304,21 @@ Shader "Custom/Particle/Sphere"
                 return vsOut;
             }
 
-            float4 ShaderFragment(PixelInput psIn, out float depth : SV_Depth) : SV_Target
+            float4 ShaderFragment(PixelInput psIn) : SV_Target
             {
-                float d = tex2D(DepthBuffer, psIn.uv);
+                float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, psIn.uv);
+                
                 float3 worldPos = tex2D(WorldPosBuffer, psIn.uv).xyz;
                 float4 normal = tex2D(NormalBuffer, psIn.uv);
                 float2 densitySpeed = tex2D(ColorBuffer, psIn.uv);
 
-                if (d == 0) discard;
+                if (depth == 0) discard;
 
                 if (normal.w > 0)
                 {
                     normal.xyz = normalize(normal.xyz);
                     densitySpeed /= normal.w;
                 }
-                depth = d;
 
                 float3 diffuse = lerp(_PrimaryColor, _SecondaryColor, densitySpeed.x);
                 diffuse = lerp(diffuse, _FoamColor, densitySpeed.y);

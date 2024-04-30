@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f9f21daada9442538f7e5941d79388f6, type: 3}
   m_Name: PRTReLight
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -70,9 +70,9 @@ MonoBehaviour:
     failOperation: 0
     zFailOperation: 0
   m_ShadowTransparentReceive: 1
-  m_RenderingMode: 1
+  m_RenderingMode: 0
   m_DepthPrimingMode: 0
-  m_CopyDepthMode: 0
+  m_CopyDepthMode: 2
   m_AccurateGbufferNormals: 0
   m_IntermediateTextureMode: 1
 --- !u!114 &5861980774345849382
@@ -87,5 +87,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e3481beaba94a4cbcd21254fc0f7692, type: 3}
   m_Name: PRTComposite
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   CompositeMaterial: {fileID: 2100000, guid: fad5b7e246bf240408ba0c5dc270b93a, type: 2}
