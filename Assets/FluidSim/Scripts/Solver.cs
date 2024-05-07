@@ -196,7 +196,10 @@ public class Solver : MonoBehaviour
         _commandBuffer.name = "FluidRender";
         
         UpdateCommandBuffer();
-        Camera.main.AddCommandBuffer(CameraEvent.AfterDepthTexture, _commandBuffer);
+        if (_mainCamera != null)
+        {
+            _mainCamera.AddCommandBuffer(CameraEvent.BeforeSkybox, _commandBuffer);
+        }
     }
 
     // Update is called once per frame
@@ -351,10 +354,10 @@ public class Solver : MonoBehaviour
         _commandBuffer.ClearRenderTarget(true, true, Color.clear);
         _commandBuffer.SetGlobalTexture("DepthBuffer", depthID);
         _commandBuffer.DrawMesh(_screenQuadMesh, Matrix4x4.identity, renderMat, 0, 1);
-
+        
         int normalBufferID = Shader.PropertyToID("NormalBuffer");
         _commandBuffer.GetTemporaryRT(normalBufferID,  Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
-
+        
         int colorBufferID = Shader.PropertyToID("ColorBuffer");
         _commandBuffer.GetTemporaryRT(colorBufferID,  Screen.width, Screen.height, 0, FilterMode.Point, RenderTextureFormat.RGHalf);
         
@@ -373,10 +376,10 @@ public class Solver : MonoBehaviour
 
     void LateUpdate()
     {
-        Matrix4x4 view = Camera.main.worldToCameraMatrix;
+        Matrix4x4 view = _mainCamera.worldToCameraMatrix;
 
         Shader.SetGlobalMatrix("InverseViewMat", view.inverse);
-        Shader.SetGlobalMatrix("InverseProjMat", Camera.main.projectionMatrix.inverse);
+        Shader.SetGlobalMatrix("InverseProjMat", _mainCamera.projectionMatrix.inverse);
     }
 
     void OnDisable()
