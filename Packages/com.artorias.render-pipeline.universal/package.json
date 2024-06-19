@@ -1,0 +1,13 @@
+{
+  "name": "com.artorias.render-pipelines.universal",
+  "description": "Custom pipeline based on the Universal Render Pipeline.",
+  "version": "14.0.11",
+  "unity": "2022.3",
+  "displayName": "Artorias RP Library",
+  "dependencies": {
+    "com.unity.ugui": "1.0.0",
+    "com.unity.modules.physics": "1.0.0",
+    "com.unity.modules.terrain": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0"
+  }
+}
