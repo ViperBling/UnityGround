@@ -75,10 +75,10 @@ public class FluidSolver : MonoBehaviour
     private ComputeBuffer hashesBuffer;
     private ComputeBuffer globalHashCountBuffer;
     
-    private int solverFrame = 0;
+    // private int solverFrame = 0;
     // private int moveParticleBeginIndex = 0;
-    private double lastFrameTimeStamp = 0;
-    private double totalFrameTime = 0;
+    // private double lastFrameTimeStamp = 0;
+    // private double totalFrameTime = 0;
     
     
     struct Particle

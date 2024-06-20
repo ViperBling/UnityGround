@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.artorias.render-pipelines.universal": {
+    "com.artorias.render-pipeline.universal": {
       "version": "file:com.artorias.render-pipeline.universal",
       "depth": 0,
       "source": "embedded",
