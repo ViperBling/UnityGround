@@ -1,0 +1,46 @@
+#pragma kernel CSMain
+
+#define THREADS 1024
+
+RWStructuredBuffer<float> ConstantBufferCS;
+RWStructuredBuffer<float> OffsetBufferCS;
+RWStructuredBuffer<float3> PositionBufferCS;
+RWStructuredBuffer<float3> ColorBufferCS;
+
+float3 Wave(float3 pos, int idx, uint3 id)
+{
+    pos.x = cos(ConstantBufferCS[0] + id.x);
+    pos.y = sin(ConstantBufferCS[0] + id.y);
+    pos.z = sin(ConstantBufferCS[0] + OffsetBufferCS[idx]);
+
+    return pos;
+}
+
+float3 SetColor(uint3 id)
+{
+    float3 color;
+    color.x = abs(sin(ConstantBufferCS[0] + id.x));
+    color.y = abs(cos(ConstantBufferCS[0] + id.y));
+    color.z = abs(cos(ConstantBufferCS[0] + id.x + id.y));
+    return color;
+}
+
+[numthreads(THREADS, 1, 1)]
+void CSMain(uint3 dispatchID : SV_DispatchThreadID)
+{
+    uint idx = dispatchID.x;
+    
+    // 从一个idx中获取16 * 16 * 16大小立方体的位置
+    uint3 id3 = uint3(0, 0, 0);
+    id3.x = (idx % (16 * 16)) % 16;
+    id3.y = idx / (16 * 16);
+    id3.z = (idx % (16 * 16)) / 16;
+    float spacing = 0.1;
+
+    float3 pos = float3(0, 1, 0) + float3(id3.x * spacing, id3.y * spacing, id3.z * spacing);
+    // pos = Wave(pos, idx, id);
+
+    // ColorBufferCS[idx] = SetColor(dispatchID);
+    PositionBufferCS[idx] = pos;
+    // GroupMemoryBarrierWithGroupSync();
+}
