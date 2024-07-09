@@ -32,7 +32,8 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: -779294796961639187}
   - {fileID: 5861980774345849382}
-  m_RendererFeatureMap: ed94cad382632ff526ba0dc774f05951
+  - {fileID: 8808187989216482763}
+  m_RendererFeatureMap: ed94cad382632ff526ba0dc774f05951cb551cf44ef83c7a
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -89,3 +90,38 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 0
   CompositeMaterial: {fileID: 2100000, guid: fad5b7e246bf240408ba0c5dc270b93a, type: 2}
+--- !u!114 &8808187989216482763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c6b10fed01f46bdbcb55a55f578b4fe, type: 3}
+  m_Name: RenderParticle
+  m_EditorClassIdentifier: 
+  m_Active: 0
+  m_Settings:
+    m_PassTag: RenderParticle
+    m_RenderPassEvent: 300
+    m_FilterSettings:
+      RenderQueueType: 0
+      LayerMask:
+        serializedVersion: 2
+        m_Bits: 0
+      PassNames: []
+    m_OverrideMaterial: {fileID: 2100000, guid: a0c93512727b0cf4aae9e7e95d7f2549,
+      type: 2}
+    m_OverrideMaterialPassIndex: 1
+    m_OverrideDepthState: 0
+    m_DepthCompareFunction: 4
+    m_EnableWrite: 1
+    m_StencilSettings:
+      overrideStencilState: 0
+      stencilReference: 0
+      stencilCompareFunction: 8
+      passOperation: 0
+      failOperation: 0
+      zFailOperation: 0
