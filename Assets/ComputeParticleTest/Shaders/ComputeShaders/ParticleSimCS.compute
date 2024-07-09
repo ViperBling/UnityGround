@@ -1,6 +1,7 @@
 #pragma kernel CSMain
 
-#define THREADS 1024
+#define THREADS_X 4
+#define THREADS_Y 4
 
 RWStructuredBuffer<float> ConstantBufferCS;
 RWStructuredBuffer<float> OffsetBufferCS;
@@ -25,22 +26,25 @@ float3 SetColor(uint3 id)
     return color;
 }
 
-[numthreads(THREADS, 1, 1)]
+[numthreads(32, 32, 1)]
 void CSMain(uint3 dispatchID : SV_DispatchThreadID)
 {
-    uint idx = dispatchID.x;
+    uint idx = dispatchID.x + dispatchID.y * 32;
     
     // 从一个idx中获取16 * 16 * 16大小立方体的位置
     uint3 id3 = uint3(0, 0, 0);
-    id3.x = (idx % (16 * 16)) % 16;
-    id3.y = idx / (16 * 16);
-    id3.z = (idx % (16 * 16)) / 16;
-    float spacing = 0.1;
+    uint hx = idx % (32 * 32);
+    uint hy = idx / (32 * 32);
+    id3.x = hx % 32;
+    id3.y = hx / 32;
+    id3.z = hy;
+    float spacing = 0.05;
 
     float3 pos = float3(0, 1, 0) + float3(id3.x * spacing, id3.y * spacing, id3.z * spacing);
     // pos = Wave(pos, idx, id);
 
-    // ColorBufferCS[idx] = SetColor(dispatchID);
+    // ColorBufferCS[idx] = 1.0;
+    ColorBufferCS[idx] = SetColor(id3);
     PositionBufferCS[idx] = pos;
     // GroupMemoryBarrierWithGroupSync();
 }

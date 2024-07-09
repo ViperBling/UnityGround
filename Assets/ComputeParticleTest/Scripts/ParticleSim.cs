@@ -9,7 +9,7 @@ public class ParticleSim : MonoBehaviour
 {
     public Shader m_Shader;
     public ComputeShader m_ComputeShader;
-    public const int m_NumParticles = 16 * 16 * 16;        // 64 * 64 * 4 * 4 (Group * ThreadsPerGroup)
+    public const int m_NumParticles = 32 * 32 * 32;        // 64 * 64 * 4 * 4 (Group * ThreadsPerGroup)
 
     private ComputeBuffer m_OffsetBuffer;
     private ComputeBuffer m_PositionBuffer;
@@ -84,6 +84,7 @@ public class ParticleSim : MonoBehaviour
         m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
         m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
         m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
-        m_ComputeShader.Dispatch(m_Kernel, 1, 1, 1);
+        // 确保ThreadGroup和ThreadPerGroup能够Cover住所有的Particle
+        m_ComputeShader.Dispatch(m_Kernel, 64, 64, 1);
     }
 }

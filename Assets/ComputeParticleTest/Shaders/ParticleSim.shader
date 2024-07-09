@@ -58,7 +58,7 @@ Shader "ParticleSim/ParticlShader"
 
             float4 FragmentPass(Varyings fsIn) : SV_Target
             {
-                return float4(fsIn.vertexColor, 0.8);
+                return float4(fsIn.vertexColor, 1.0);
             }
             
             ENDHLSL
