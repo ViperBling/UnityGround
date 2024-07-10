@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ParticleSimTest
 {
@@ -26,8 +27,16 @@ namespace ParticleSimTest
             CreateMaterial();
             m_Kernel = m_ComputeShader.FindKernel("CSMain");
         }
-    
-        
+
+        private void Update()
+        {
+            Dispatch();
+
+            m_Material.SetPass(0);
+            m_Material.SetBuffer("PositionBuffer", m_PositionBuffer);
+            m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
+        }
+
         private void OnDisable()
         {
             ReleaseBuffers();
@@ -42,6 +51,11 @@ namespace ParticleSimTest
             m_Material.SetBuffer("PositionBuffer", m_PositionBuffer);
             m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
             Graphics.DrawProceduralNow(MeshTopology.Points, m_NumParticles);
+        }
+
+        void UpdateCommandBuffer(CommandBuffer cmdBuffer)
+        {
+            // cmdBuffer.DrawMeshInstancedIndirect();
         }
     
         void CreateBuffers()
