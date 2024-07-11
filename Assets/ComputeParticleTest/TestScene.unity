@@ -513,6 +513,7 @@ MonoBehaviour:
     type: 3}
   m_Material: {fileID: 2100000, guid: da0a8a7d66177da46be05b380f38d77f, type: 2}
   m_ComputeShader: {fileID: 7200000, guid: 1432e94d97b643509cf1a48316368dfd, type: 3}
+  m_NumParticles: 32768
 --- !u!1001 &6891634800476552513
 PrefabInstance:
   m_ObjectHideFlags: 0

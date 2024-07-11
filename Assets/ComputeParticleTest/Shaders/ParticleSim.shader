@@ -16,7 +16,7 @@ Shader "ParticleSim/ParticlShader"
         }
         
         Cull Off
-        Blend SrcAlpha One
+        Blend One OneMinusSrcAlpha
         
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"

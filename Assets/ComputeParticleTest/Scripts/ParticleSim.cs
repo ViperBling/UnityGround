@@ -11,9 +11,8 @@ namespace ParticleSimTest
     {
         public Mesh m_ParticleMesh;
         public Material m_Material;
-        // public Shader m_Shader;
         public ComputeShader m_ComputeShader;
-        public const int m_NumParticles = 32 * 32 * 32;        // 64 * 64 * 4 * 4 (Group * ThreadsPerGroup)
+        public int m_NumParticles = 32 * 32 * 32;
     
         private ComputeBuffer m_OffsetBuffer;
         private ComputeBuffer m_PositionBuffer;
@@ -23,27 +22,24 @@ namespace ParticleSimTest
         private uint[] m_Args = new uint[5] { 0, 0, 0, 0, 0 };
         private int m_Kernel;
         // private Material m_Material;
-    
-        // void Start()
-        // {
-        //     CreateBuffers();
-        //     CreateMaterial();
-        //     m_Kernel = m_ComputeShader.FindKernel("CSMain");
-        // }
-
+        
         private void OnEnable()
         {
             m_IndirectArgsBuffer = new ComputeBuffer(1, m_Args.Length * sizeof(uint), ComputeBufferType.IndirectArguments);
             CreateBuffers();
         }
 
-        // private void Update()
-        // {
-        //     Dispatch();
-        // }
-
-        private void LateUpdate()
+        private void Update()
         {
+            m_ConstantBuffer.SetData(new[] { Time.time });
+            
+            m_ComputeShader.SetBuffer(m_Kernel, "ConstantBufferCS", m_ConstantBuffer);
+            m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
+            m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
+            m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
+            // 通过ComputeShader来Dispatch的话，会在Camera.Render外执行
+            // m_ComputeShader.Dispatch(m_Kernel, 64, 64, 1);
+            
             m_Material.SetPass(0);
             m_Material.SetBuffer("PositionBuffer", m_PositionBuffer);
             m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
@@ -53,26 +49,9 @@ namespace ParticleSimTest
         {
             ReleaseBuffers();
         }
-        
-        // private void OnRenderObject()
-        // {
-        //     Dispatch();
-        //
-        //     m_Material.SetPass(0);
-        //     m_Material.SetBuffer("PositionBuffer", m_PositionBuffer);
-        //     m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
-        //     Graphics.DrawProceduralNow(MeshTopology.Points, m_NumParticles);
-        // }
 
         public void UpdateCommandBuffer(CommandBuffer cmdBuffer)
         {
-            m_ConstantBuffer.SetData(new[] { Time.time });
-            
-            m_ComputeShader.SetBuffer(m_Kernel, "ConstantBufferCS", m_ConstantBuffer);
-            m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
-            m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
-            m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
-            // 确保ThreadGroup和ThreadPerGroup能够Cover住所有的Particle
             cmdBuffer.DispatchCompute(m_ComputeShader, m_Kernel, 64, 64, 1);
             cmdBuffer.DrawMeshInstancedIndirect(m_ParticleMesh, 0, m_Material, 0, m_IndirectArgsBuffer);
         }
@@ -132,18 +111,6 @@ namespace ParticleSimTest
             }
             m_IndirectArgsBuffer = null;
         }
-    
-        // void Dispatch()
-        // {
-        //     m_ConstantBuffer.SetData(new[] { Time.time });
-        //     
-        //     m_ComputeShader.SetBuffer(m_Kernel, "ConstantBufferCS", m_ConstantBuffer);
-        //     m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
-        //     m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
-        //     m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
-        //     // 确保ThreadGroup和ThreadPerGroup能够Cover住所有的Particle
-        //     m_ComputeShader.Dispatch(m_Kernel, 8, 8, 1);
-        // }
     }
 }
 

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ParticleSimRenderFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  m_RenderQueueType: 0
+  m_RenderQueueType: 1
   m_LayerMask:
     serializedVersion: 2
     m_Bits: 0
