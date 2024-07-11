@@ -509,7 +509,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f58d8ebc094d498685ac562b300450aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ParticleMesh: {fileID: -1480277468573727519, guid: 3626c16d27349d240b0bfd82f6fb5dd5,
+  m_ParticleMesh: {fileID: 289301614986012343, guid: d4e9dec40053734418c8e58e101f42a8,
     type: 3}
   m_Material: {fileID: 2100000, guid: da0a8a7d66177da46be05b380f38d77f, type: 2}
   m_ComputeShader: {fileID: 7200000, guid: 1432e94d97b643509cf1a48316368dfd, type: 3}

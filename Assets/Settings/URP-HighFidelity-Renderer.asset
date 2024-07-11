@@ -49,8 +49,8 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: -779294796961639187}
   - {fileID: 5861980774345849382}
-  - {fileID: -6510991306336550011}
-  m_RendererFeatureMap: ed94cad382632ff526ba0dc774f0595185432752e74fa4a5
+  - {fileID: 1946234488988076239}
+  m_RendererFeatureMap: ed94cad382632ff526ba0dc774f05951cf88bfc5f469021b
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -93,6 +93,23 @@ MonoBehaviour:
   m_CopyDepthMode: 2
   m_AccurateGbufferNormals: 1
   m_IntermediateTextureMode: 1
+--- !u!114 &1946234488988076239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c6b10fed01f46bdbcb55a55f578b4fe, type: 3}
+  m_Name: ParticleSimRenderFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_RenderQueueType: 1
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &5861980774345849382
 MonoBehaviour:
   m_ObjectHideFlags: 0

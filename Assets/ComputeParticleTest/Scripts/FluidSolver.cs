@@ -6,87 +6,66 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using Random = UnityEngine.Random;
 
-
 public class FluidSolver : MonoBehaviour
 {
-    Vector4 GetPlaneEq(Vector3 p, Vector3 n)
-    {
-        return new Vector4(n.x, n.y, n.z, -Vector3.Dot(p, n));
-    }
+    public int      m_NumParticles = 1024;
+    public float    m_InitSize = 10;
+    // public float    m_SmoothRadius = 1;
+    public float    m_DeltaTime = 0.001f;
+    
+    public Vector3 m_MinBounds = new Vector3(-10, -10, -10);
+    public Vector3 m_MaxBounds = new Vector3( 10,  10,  10);
+    
+    public ComputeShader m_SolverCS;
+    public Material m_ParticleMaterial;
+    
+    public Mesh m_ParticleMesh;
+    public float m_ParticleSizeScale = 1.0f;
+    
+    public Color m_PrimaryColor;
+    
+    
+    private ComputeBuffer m_ParticleBuffer;
+    private ComputeBuffer m_ParticleMeshIndirectBuffer;
+    private int m_CSKernel;
+    
+    private double m_LastFrameTimestamp;
+    private double m_TotalFrameTime;
 
-    void Start()
-    {
-        mainCamera = Camera.main;
+    private Vector4[] m_BoxPlanes = new Vector4[7];
 
-        Particle[] particles = new Particle[NumParticles];
-
-        Vector3 StartPos1 = new Vector3(
-            Mathf.Lerp(MinBounds.x, MaxBounds.x, 0.25f),
-            MinBounds.y + InitPoolSize * 0.5f,
-            Mathf.Lerp(MinBounds.z, MaxBounds.z, 0.25f)
-        );
-        Vector3 StartPos2 = new Vector3(
-            Mathf.Lerp(MinBounds.x, MaxBounds.x, 0.75f),
-            MinBounds.y + InitPoolSize * 0.5f,
-            Mathf.Lerp(MinBounds.z, MaxBounds.z, 0.75f)
-        );
-
-        for (int i = 0; i < NumParticles; i++)
-        {
-            Vector3 pos = new Vector3(
-                Random.Range(0.0f, 1.0f) * InitPoolSize - InitPoolSize * 0.5f,
-                Random.Range(0.0f, 1.0f) * InitPoolSize - InitPoolSize * 0.5f,
-                Random.Range(0.0f, 1.0f) * InitPoolSize - InitPoolSize * 0.5f
-            );
-            pos += (i % 2 == 0) ? StartPos1 : StartPos2;
-            particles[i].Position = pos;
-        }
-
-        SolverShader.SetInt("NumHashes", numHashes);
-        SolverShader.SetInt("NumParticles", NumParticles);
-        SolverShader.SetFloat("Radius", Radius);
-        SolverShader.SetFloat("Radius2", Radius * Radius);
-        
-        hashesBuffer = new ComputeBuffer(NumParticles, 4);
-        globalHashCountBuffer = new ComputeBuffer(numHashes, 4);
-    }
-    
-    public int NumParticles = 1024;
-    public float InitPoolSize = 10;
-    public float Radius = 0.5f;
-    
-    public Vector3 MinBounds = new Vector3(-10, -10, -10);
-    public Vector3 MaxBounds = new Vector3(10, 10, 10);
-    
-    public ComputeShader SolverShader;
-    
-    public Material ParticleMaterial;
-    
-    public Mesh ParticleMesh;
-    public float ParticleRenderSize = 0.5f;
-    
-    public Color PrimaryColor = Color.white;
-    
-    private Camera mainCamera;
-    
-    private const int numHashes = 1 << 20;
-    private const int numThreads = 1 << 10;
-
-    private ComputeBuffer hashesBuffer;
-    private ComputeBuffer globalHashCountBuffer;
-    
-    // private int solverFrame = 0;
-    // private int moveParticleBeginIndex = 0;
-    // private double lastFrameTimeStamp = 0;
-    // private double totalFrameTime = 0;
-    
-    
     struct Particle
     {
         public Vector4 Position;
         public Vector4 Velocity;
     }
-    
-    private CommandBuffer commandBuffer;
-    private Mesh screenQuadMesh;
+
+    private CommandBuffer m_CommandBuffer;
+    private Mesh m_ScreenQuadMesh;
+
+    private void OnEnable()
+    {
+        m_ParticleMeshIndirectBuffer = new ComputeBuffer(1, 4 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        UpdateBuffers();
+    }
+
+    private void Update()
+    {
+        
+    }
+
+    private void OnDisable()
+    {
+        
+    }
+
+    public void UpdateCommandBuffer(CommandBuffer cmdBuffer)
+    {
+        
+    }
+
+    void UpdateBuffers()
+    {
+        
+    }
 }
