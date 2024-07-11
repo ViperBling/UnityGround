@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering.Universal;
+using Unity.VisualScripting;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Experimental.Rendering.Universal;
+
 
 namespace ParticleSimTest
 {
-    class ParticleSimRenderPass : ScriptableRenderPass
+    public class ParticleSimRenderPass : ScriptableRenderPass
     {
         // private List<ShaderTagId> m_ShaderTagIdList = new List<ShaderTagId>();
         private static readonly ShaderTagId m_MeshPassTag = new ShaderTagId("ParticleMeshPass");
@@ -37,16 +39,20 @@ namespace ParticleSimTest
         {
             var cmdBuffer = CommandBufferPool.Get();
             var shaderTagId = m_MeshPassTag;
-            
-            // ParticleSim particleSimObj = FindObjectByType<ParticleSim>();
+
+            ParticleSim particleSimObj = Object.FindObjectOfType<ParticleSim>();
+            if (particleSimObj != null)
+            {
+                particleSimObj.UpdateCommandBuffer(cmdBuffer);
+            }
             
             context.ExecuteCommandBuffer(cmdBuffer);
             cmdBuffer.Clear();
 
-            var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
-            var drawSettings = RenderingUtils.CreateDrawingSettings(shaderTagId, ref renderingData, sortFlags);
+            // var sortFlags = renderingData.cameraData.defaultOpaqueSortFlags;
+            // var drawSettings = RenderingUtils.CreateDrawingSettings(shaderTagId, ref renderingData, sortFlags);
             
-            context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref m_FilterSettings);
+            // context.DrawRenderers(renderingData.cullResults, ref drawSettings, ref m_FilterSettings);
             
             CommandBufferPool.Release(cmdBuffer);
         }

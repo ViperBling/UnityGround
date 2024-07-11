@@ -506,13 +506,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 997849756}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1e91effb3b148acb0ef53ddf09c4e6e, type: 3}
+  m_Script: {fileID: 11500000, guid: f58d8ebc094d498685ac562b300450aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_InstanceCount: 1000000
-  m_InstanceMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
-  m_InstanceMaterial: {fileID: 2100000, guid: cb4f6ed373d89e2438134dcb27b389c5, type: 2}
-  m_SubMeshIndex: 0
+  m_ParticleMesh: {fileID: -1480277468573727519, guid: 3626c16d27349d240b0bfd82f6fb5dd5,
+    type: 3}
+  m_Material: {fileID: 2100000, guid: da0a8a7d66177da46be05b380f38d77f, type: 2}
+  m_ComputeShader: {fileID: 7200000, guid: 1432e94d97b643509cf1a48316368dfd, type: 3}
 --- !u!1001 &6891634800476552513
 PrefabInstance:
   m_ObjectHideFlags: 0

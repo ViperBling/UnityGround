@@ -36,7 +36,8 @@ Shader "ParticleSim/ParticlShader"
             
             struct Attributes
             {
-                uint vertexID : SV_VertexID;
+                float4 positionOS : POSITION;
+                uint instanceID : SV_InstanceID;
             };
             
             struct Varyings
@@ -49,9 +50,10 @@ Shader "ParticleSim/ParticlShader"
             {
                 Varyings vsOut = (Varyings)0;
 
-                float3 positionWS = PositionBuffer[vsIn.vertexID];
+                // 计算顶点相对位置
+                float3 positionWS = PositionBuffer[vsIn.instanceID] + vsIn.positionOS.xyz;
                 vsOut.positionCS = TransformWorldToHClip(positionWS);
-                vsOut.vertexColor = ColorBuffer[vsIn.vertexID];
+                vsOut.vertexColor = ColorBuffer[vsIn.instanceID];
 
                 return vsOut;
             }
