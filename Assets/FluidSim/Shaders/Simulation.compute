@@ -137,6 +137,7 @@ void MoveParticles(uint3 id : SV_DispatchThreadID)
 [numthreads(THREADS, 1, 1)]
 void ResetCounter(uint3 id : SV_DispatchThreadID)
 {
+    // NumHashes = 1024 * 1024
     if (id.x < NumHashes)
     {
         GlobalHashCounter[id.x] = 0;
@@ -148,13 +149,18 @@ void InsertToBucket(uint3 id : SV_DispatchThreadID)
 {
     if (id.x < NumParticles)
     {
+        // Radius是SPH中的SmoothRadius
+        // 附近范围的粒子计算Hash结果相同，也就归到了同一网格下
         int3 Normed = floor(GRIDS_PER_DIAMETER / 2.0 * (Particles[id.x].Position.xyz / Radius));
         uint H = CalculateHash(Normed);
+        // 计算每个粒子的Hash，这个H的取值范围是0~1024 * 1024
         Hashes[id.x] = H;
 
+        // 根据Hash累加当前位置粒子的数量，GlobalHashCounter的实际长度是小于等于粒子数量的
         uint LocalIndex;
         InterlockedAdd(GlobalHashCounter[H], 1, LocalIndex);
 
+        // 同时输出粒子索引，通过LocalIndices拿到当前网格下粒子的索引
         LocalIndices[id.x] = LocalIndex;
     }
 }

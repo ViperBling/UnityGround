@@ -247,6 +247,7 @@ public class Solver : MonoBehaviour
         double solverStart = Time.realtimeSinceStartupAsDouble;
         
         solverShader.Dispatch(solverShader.FindKernel("ResetCounter"), Mathf.CeilToInt((float)NumHashes / NumThreads), 1, 1);
+        // 根据粒子的位置，将粒子划分到对应的Hash值，然后用这个Hash值作为索引，表示当前范围有多少个粒子，这个数值存储在GlobalHashCounter中，LocalIndices存储的是当前Hash下的粒子索引
         solverShader.Dispatch(solverShader.FindKernel("InsertToBucket"), Mathf.CeilToInt((float)numParticles / NumThreads), 1, 1);
         
         // Debug
@@ -267,6 +268,7 @@ public class Solver : MonoBehaviour
             Debug.Log($"Avg hash collision: {(float)numParticles / usedHashBuckets}, Max hash collision: {maxSameHash}");
         }
         
+        // Thread Group X : 1024
         solverShader.Dispatch(solverShader.FindKernel("PrefixSum1"), Mathf.CeilToInt((float)NumHashes / NumThreads), 1, 1);
         
         // @Important: Because of the way prefix sum algorithm implemented,

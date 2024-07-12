@@ -19,9 +19,11 @@ void PrefixSum1(uint3 id : SV_DispatchThreadID)
     uint length, stride;
     PREFIX_SUM_ARRAY_NAME.GetDimensions(length, stride);
 
+    // id.x从0-1024*1024，和1023按位与后，会得到0-1023的值，也就是所有大于1023的值都会被忽略
     uint localIndex = id.x & (THREADS - 1);
     if (id.x < length)
     {
+        // 从粒子的hash表中取出每个Hash对应的粒子数量
         Temp[localIndex] = PREFIX_SUM_ARRAY_NAME[id.x];
     }
     // 同步点，确保之前的Temp写入完成
