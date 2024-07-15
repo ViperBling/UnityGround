@@ -8,7 +8,7 @@ RWStructuredBuffer<uint> PREFIX_SUM_ARRAY_NAME;
 RWStructuredBuffer<uint> GroupArray;
 
 // Make it power of two.
-#define THREADS 1024
+#define THREADS 8
 
 // Double buffered
 groupshared uint Temp[THREADS * 2];

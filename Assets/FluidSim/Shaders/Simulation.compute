@@ -105,12 +105,12 @@ float GetIsotropic(float D)
 int3 Base = floor(GRIDS_PER_DIAMETER / 2.0 * (Px.Position.xyz / Radius - 1)); \
 for (uint3 Offset = 0; Offset.x < (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1); Offset += uint3(1, GRIDS_PER_DIAMETER + 1, (GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1))) {    \
     uint H = CalculateHash(Base + int3(Offset / ((GRIDS_PER_DIAMETER + 1) * (GRIDS_PER_DIAMETER + 1)) % (GRIDS_PER_DIAMETER + 1)));     \
-    uint2 Range = HashRangeBuffer[H];       \
-    while (Range.x < Range.y) {             \    
-        Particle Py = Sorted[Range.x];      \
+    uint2 Range = HashRangeBuffer[H];                       \
+    while (Range.x < Range.y) {                             \
+        Particle Py = Sorted[Range.x];                      \
         float3 Delta = Px.Position.xyz - Py.Position.xyz;   \
-        float Dist = dot(Delta, Delta);        \
-        Range.x++;                          \
+        float Dist = dot(Delta, Delta);                     \
+        Range.x++;                                          \
 
 #define END_FOREACH_PARTICLES }}
 
@@ -278,7 +278,7 @@ void CalcForces(uint3 id : SV_DispatchThreadID)
                     // Pressure
                     Force += (Px.Velocity.w + Py.Velocity.w) / (2 * Py.Position.w * L) * GetSpiky(L) * Delta;
                     // Viscosity
-                    Force += GetViscosity(L) / Py.Position.w * (Py.Velocity - Px.Velocity);
+                    Force += GetViscosity(L) / Py.Position.w * (Py.Velocity.xyz - Px.Velocity.xyz);
                 }
                 float W = GetIsotropic(Dist);
                 float3 Centered = Py.Position.xyz - Avg.xyz;

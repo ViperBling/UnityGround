@@ -5,19 +5,24 @@ using UnityEngine;
 
 public class PrefixSumTest : MonoBehaviour
 {
-    private void Start()
+    public ComputeShader computeShader;
+
+    private const int m_Threads = 8;
+    
+    private void Update()
     {
-        int[] testArray = new int[1024 * 1024];
+        int[] testArray = new int[m_Threads * m_Threads];
         for (int i = 0; i < testArray.Length; i++)
         {
-            testArray[i] = UnityEngine.Random.Range(0, 1024);
+            // testArray[i] = UnityEngine.Random.Range(0, m_Threads);
+            testArray[i] = 1;
         }
         
         ComputeBuffer buffer = new ComputeBuffer(testArray.Length, 4);
         buffer.SetData(testArray);
 
-        ComputeBuffer groupBuffer = new ComputeBuffer(testArray.Length / 1024, 4);
-        groupBuffer.SetData(new int[testArray.Length / 1024]);
+        ComputeBuffer groupBuffer = new ComputeBuffer(testArray.Length / m_Threads, 4);
+        groupBuffer.SetData(new int[testArray.Length / m_Threads]);
 
         for (int i = 0; i < 3; i++)
         {
@@ -45,9 +50,9 @@ public class PrefixSumTest : MonoBehaviour
         // GPU
         startTime = Time.realtimeSinceStartupAsDouble;
         
-        computeShader.Dispatch(0, 1024, 1, 1);
+        computeShader.Dispatch(0, m_Threads, 1, 1);
         computeShader.Dispatch(1, 1, 1, 1);
-        computeShader.Dispatch(2, 1024, 1, 1);
+        computeShader.Dispatch(2, m_Threads, 1, 1);
         
         buffer.GetData(groupResult);
         
@@ -67,6 +72,4 @@ public class PrefixSumTest : MonoBehaviour
         buffer.Dispose();
         groupBuffer.Dispose();
     }
-
-    public ComputeShader computeShader;
 }
