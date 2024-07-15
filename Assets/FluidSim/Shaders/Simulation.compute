@@ -65,7 +65,7 @@ RWStructuredBuffer<int3> HashValueDebug;
 
 // #define PREFIX_SUM_ARRAY_NAME GlobalHashCounter
 
-#include "PrefixSum.hlsl"
+#include "Assets/CommonResource/Shaders/Common/PrefixSum.hlsl"
 
 uint3 Murmur32Scramble(uint3 K)
 {

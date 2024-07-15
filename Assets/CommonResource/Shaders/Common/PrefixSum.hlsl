@@ -4,7 +4,7 @@
 // Make its length round to THREADS.
 RWStructuredBuffer<uint> PREFIX_SUM_ARRAY_NAME;
 
-// Temp array with the length of ceil(length(arr) / THREADS).
+// Temp array with the length of ceil(length(GlobalHashCounter) / THREADS).
 RWStructuredBuffer<uint> GroupArray;
 
 // Make it power of two.
