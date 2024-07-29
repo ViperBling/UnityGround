@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,21 +7,19 @@ using UnityEngine.Rendering;
 namespace ParticleSimTest
 {
     [ExecuteAlways]
-    public class ParticleSim : MonoBehaviour
+    public class ParticlePrefixSum : MonoBehaviour
     {
         public Mesh m_ParticleMesh;
         public Material m_Material;
         public ComputeShader m_ComputeShader;
         public int m_NumParticles = 32 * 32 * 32;
-    
+        
         private ComputeBuffer m_OffsetBuffer;
         private ComputeBuffer m_PositionBuffer;
-        private ComputeBuffer m_ConstantBuffer;
         private ComputeBuffer m_ColorBuffer;
         private ComputeBuffer m_IndirectArgsBuffer;
         private uint[] m_Args = new uint[5] { 0, 0, 0, 0, 0 };
         private int m_Kernel;
-        // private Material m_Material;
         
         private void OnEnable()
         {
@@ -32,9 +30,6 @@ namespace ParticleSimTest
 
         private void Update()
         {
-            m_ConstantBuffer.SetData(new[] { Time.time });
-            
-            m_ComputeShader.SetBuffer(m_Kernel, "ConstantBufferCS", m_ConstantBuffer);
             m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
             m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
             m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
@@ -71,7 +66,6 @@ namespace ParticleSimTest
             }
             m_OffsetBuffer.SetData(values);
     
-            m_ConstantBuffer = new ComputeBuffer(1, 4);
             // float3
             m_ColorBuffer = new ComputeBuffer(m_NumParticles, 12);
             m_PositionBuffer = new ComputeBuffer(m_NumParticles, 12);
@@ -97,11 +91,6 @@ namespace ParticleSimTest
                 m_OffsetBuffer.Release();
             }
             m_OffsetBuffer = null;
-            if (m_ConstantBuffer != null)
-            {
-                m_ConstantBuffer.Release();
-            }
-            m_ConstantBuffer = null;
             if (m_PositionBuffer != null)
             {
                 m_PositionBuffer.Release();
@@ -115,4 +104,3 @@ namespace ParticleSimTest
         }
     }
 }
-

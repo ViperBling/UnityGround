@@ -17,7 +17,7 @@ namespace ParticleSimTest
             m_ParticleSimRenderPass = new ParticleSimRenderPass(m_RenderQueueType, m_LayerMask);
 
             // Configures where the render pass should be injected.
-            m_ParticleSimRenderPass.renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
+            m_ParticleSimRenderPass.renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
         }
 
         // Here you can inject one or multiple render passes in the renderer.

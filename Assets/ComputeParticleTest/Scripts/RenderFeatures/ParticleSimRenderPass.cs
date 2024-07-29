@@ -10,6 +10,10 @@ namespace ParticleSimTest
 {
     public class ParticleSimRenderPass : ScriptableRenderPass
     {
+        public delegate void UpdateCommandBuffer(ScriptableRenderContext context, CommandBuffer cmdBuffer);
+        
+        public static event UpdateCommandBuffer OnUpdateCommandBuffer;
+        
         // private List<ShaderTagId> m_ShaderTagIdList = new List<ShaderTagId>();
         private static readonly ShaderTagId m_MeshPassTag = new ShaderTagId("ParticleMeshPass");
         private FilteringSettings m_FilterSettings;
@@ -40,11 +44,13 @@ namespace ParticleSimTest
             var cmdBuffer = CommandBufferPool.Get();
             var shaderTagId = m_MeshPassTag;
 
-            ParticleSim particleSimObj = Object.FindObjectOfType<ParticleSim>();
-            if (particleSimObj != null)
-            {
-                particleSimObj.UpdateCommandBuffer(cmdBuffer);
-            }
+            // ParticleSim particleSimObj = Object.FindObjectOfType<ParticleSim>();
+            // if (particleSimObj != null)
+            // {
+            //     particleSimObj.UpdateCommandBuffer(cmdBuffer);
+            // }
+            
+            OnUpdateCommandBuffer?.Invoke(context, cmdBuffer);
             
             context.ExecuteCommandBuffer(cmdBuffer);
             cmdBuffer.Clear();
