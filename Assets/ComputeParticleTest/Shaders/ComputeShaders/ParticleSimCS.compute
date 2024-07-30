@@ -3,10 +3,16 @@
 #define THREADS_X 4
 #define THREADS_Y 4
 
+struct Particle
+{
+    float3 Position;
+    float3 Color;
+};
+
 RWStructuredBuffer<float> ConstantBufferCS;
 RWStructuredBuffer<float> OffsetBufferCS;
-RWStructuredBuffer<float3> PositionBufferCS;
-RWStructuredBuffer<float3> ColorBufferCS;
+RWStructuredBuffer<Particle> ParticleBufferCS;
+// RWStructuredBuffer<float3> ColorBufferCS;
 
 float3 Wave(float3 pos, int idx, uint3 id)
 {
@@ -44,7 +50,7 @@ void CSMain(uint3 dispatchID : SV_DispatchThreadID)
     // pos = Wave(pos, idx, id);
 
     // ColorBufferCS[idx] = 1.0;
-    ColorBufferCS[idx] = SetColor(id3);
-    PositionBufferCS[idx] = pos;
+    ParticleBufferCS[idx].Position = pos;
+    ParticleBufferCS[idx].Color = SetColor(id3);
     // GroupMemoryBarrierWithGroupSync();
 }

@@ -31,8 +31,14 @@ Shader "ParticleSim/ParticlShader"
             #pragma vertex VertexPass
             #pragma fragment FragmentPass
 
-            StructuredBuffer<float3> PositionBuffer;
-            StructuredBuffer<float3> ColorBuffer;
+            struct Particle
+            {
+                float3 Position;
+                float3 Color;
+            };
+
+            StructuredBuffer<Particle> ParticleBuffer;
+            // StructuredBuffer<float3> ColorBuffer;
             
             struct Attributes
             {
@@ -51,9 +57,9 @@ Shader "ParticleSim/ParticlShader"
                 Varyings vsOut = (Varyings)0;
 
                 // 计算顶点相对位置
-                float3 positionWS = PositionBuffer[vsIn.instanceID] + vsIn.positionOS.xyz;
+                float3 positionWS = ParticleBuffer[vsIn.instanceID].Position + vsIn.positionOS.xyz;
                 vsOut.positionCS = TransformWorldToHClip(positionWS);
-                vsOut.vertexColor = ColorBuffer[vsIn.instanceID];
+                vsOut.vertexColor = ParticleBuffer[vsIn.instanceID].Color;
 
                 return vsOut;
             }

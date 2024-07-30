@@ -15,13 +15,18 @@ namespace ParticleSimTest
         public int m_NumParticles = 32 * 32 * 32;
     
         private ComputeBuffer m_OffsetBuffer;
-        private ComputeBuffer m_PositionBuffer;
+        private ComputeBuffer m_ParticleBuffer;
         private ComputeBuffer m_ConstantBuffer;
         private ComputeBuffer m_ColorBuffer;
         private ComputeBuffer m_IndirectArgsBuffer;
         private uint[] m_Args = new uint[5] { 0, 0, 0, 0, 0 };
         private int m_Kernel;
-        // private Material m_Material;
+
+        struct Particle
+        {
+            public Vector4 Position;
+            public Vector4 Color;
+        }
         
         private void OnEnable()
         {
@@ -36,14 +41,14 @@ namespace ParticleSimTest
             
             m_ComputeShader.SetBuffer(m_Kernel, "ConstantBufferCS", m_ConstantBuffer);
             m_ComputeShader.SetBuffer(m_Kernel, "OffsetBufferCS", m_OffsetBuffer);
-            m_ComputeShader.SetBuffer(m_Kernel, "PositionBufferCS", m_PositionBuffer);
-            m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
+            m_ComputeShader.SetBuffer(m_Kernel, "ParticleBufferCS", m_ParticleBuffer);
+            // m_ComputeShader.SetBuffer(m_Kernel, "ColorBufferCS", m_ColorBuffer);
             // 通过ComputeShader来Dispatch的话，会在Camera.Render外执行
             // m_ComputeShader.Dispatch(m_Kernel, 64, 64, 1);
             
             m_Material.SetPass(0);
-            m_Material.SetBuffer("PositionBuffer", m_PositionBuffer);
-            m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
+            m_Material.SetBuffer("ParticleBuffer", m_ParticleBuffer);
+            // m_Material.SetBuffer("ColorBuffer", m_ColorBuffer);
         }
 
         private void OnDisable()
@@ -73,8 +78,8 @@ namespace ParticleSimTest
     
             m_ConstantBuffer = new ComputeBuffer(1, 4);
             // float3
-            m_ColorBuffer = new ComputeBuffer(m_NumParticles, 12);
-            m_PositionBuffer = new ComputeBuffer(m_NumParticles, 12);
+            // m_ColorBuffer = new ComputeBuffer(m_NumParticles, 12);
+            m_ParticleBuffer = new ComputeBuffer(m_NumParticles, 3 * 4 * 2);
 
             if (m_ParticleMesh != null)
             {
@@ -102,11 +107,11 @@ namespace ParticleSimTest
                 m_ConstantBuffer.Release();
             }
             m_ConstantBuffer = null;
-            if (m_PositionBuffer != null)
+            if (m_ParticleBuffer != null)
             {
-                m_PositionBuffer.Release();
+                m_ParticleBuffer.Release();
             }
-            m_PositionBuffer = null;
+            m_ParticleBuffer = null;
             if (m_IndirectArgsBuffer != null)
             {
                 m_IndirectArgsBuffer.Release();
