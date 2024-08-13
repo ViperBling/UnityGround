@@ -10,18 +10,18 @@ struct Particle
 };
 
 RWStructuredBuffer<float> ConstantBufferCS;
-RWStructuredBuffer<float> OffsetBufferCS;
+// RWStructuredBuffer<float> OffsetBufferCS;
 RWStructuredBuffer<Particle> ParticleBufferCS;
 // RWStructuredBuffer<float3> ColorBufferCS;
 
-float3 Wave(float3 pos, int idx, uint3 id)
-{
-    pos.x = cos(ConstantBufferCS[0] + id.x);
-    pos.y = sin(ConstantBufferCS[0] + id.y);
-    pos.z = sin(ConstantBufferCS[0] + OffsetBufferCS[idx]);
-
-    return pos;
-}
+// float3 Wave(float3 pos, int idx, uint3 id)
+// {
+//     pos.x = cos(ConstantBufferCS[0] + id.x);
+//     pos.y = sin(ConstantBufferCS[0] + id.y);
+//     pos.z = sin(ConstantBufferCS[0] + OffsetBufferCS[idx]);
+//
+//     return pos;
+// }
 
 float3 SetColor(uint3 id)
 {
