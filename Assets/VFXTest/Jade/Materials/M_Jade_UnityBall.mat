@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_Jade_Sphere
+  m_Name: M_Jade_UnityBall
   m_Shader: {fileID: 4800000, guid: 8176d184175fd00439d2af1e796509bf, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _GeoMap:
-        m_Texture: {fileID: 2800000, guid: 6c82dffbb04059346800e9b7c2bf4a09, type: 3}
+        m_Texture: {fileID: 2800000, guid: 470318728f18327428dc7c7534c31aff, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -32,20 +32,20 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalMap:
-        m_Texture: {fileID: 2800000, guid: b7501daa1a18d7b4ca4e316b04f45a24, type: 3}
+        m_Texture: {fileID: 2800000, guid: a4a0e2b1dd453d7479a464d8d7b58198, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackPower: 2.72
-    - _BackScale: 0.85
-    - _Distort: 0.237
-    - _Roughness: 0.25
-    - _Shininess: 50
+    - _BackPower: 2.2
+    - _BackScale: 0.99
+    - _Distort: 0.55
+    - _Roughness: 0.21
+    - _Shininess: 31.5
     m_Colors:
-    - _BackLightColor: {r: 0.5990566, g: 1, b: 0.99603194, a: 1}
-    - _MainColor: {r: 0.3820755, g: 1, b: 0.9660481, a: 1}
-    - _ScatterAmount: {r: 0.3465646, g: 0.6226415, b: 0.5902526, a: 1}
+    - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
+    - _MainColor: {r: 0.7216981, g: 1, b: 0.98475057, a: 1}
+    - _ScatterAmount: {r: 0.53730863, g: 0.8113208, b: 0.72479063, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
-    - _SpecularColor: {r: 0.73672664, g: 1, b: 0.6462264, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
