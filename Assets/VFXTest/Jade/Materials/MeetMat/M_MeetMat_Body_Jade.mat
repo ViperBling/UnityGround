@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_MeetMat_Body_Jade
+  m_Shader: {fileID: 4800000, guid: 8176d184175fd00439d2af1e796509bf, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _GeoMap:
+        m_Texture: {fileID: 2800000, guid: c8a76278ef6f8cf4997db651deba4042, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 2761b17a8bea8d143b99ad2fce971591, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: 849dd628dd3f72346838a56770686206, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 2800000, guid: eee2dc023305af94c9a628044e87b47c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ReflectCube:
+        m_Texture: {fileID: 8900000, guid: b0d49cabe0375114bb09d2e3a04d1185, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BackDistortion: 0.27
+    - _BackPower: 3.28
+    - _BackScale: 1.98
+    - _Distort: 0.78
+    - _FresnelPow: 1.19
+    - _ReflectCubeIntensity: 0.3
+    - _RefractionScale: 1.42
+    - _Roughness: 0.073
+    - _Shininess: 31.5
+    - _ThicknessPower: 1
+    - _ThicknessScale: 1.15
+    - _WrapValue: 0.46
+    m_Colors:
+    - _BackLightColor: {r: 0.5453453, g: 0.8962264, b: 0.7612241, a: 1}
+    - _MainColor: {r: 0.1966892, g: 0.49056602, b: 0.45049188, a: 1}
+    - _ScatterAmount: {r: 0.03594868, g: 0.692377, b: 0.7056604, a: 1}
+    - _ScatterColor: {r: 0.16037738, g: 2, b: 1.4371418, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
