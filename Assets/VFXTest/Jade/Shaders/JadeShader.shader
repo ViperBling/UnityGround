@@ -2,10 +2,11 @@ Shader "VFXTest/JadeShader"
 {
     Properties
     {
-        _MainColor ("Main Color", Color) = (1, 1, 1, 1)
-        _MainTex ("Main Textuer", 2D) = "white" {}
+        [HDR]_MainColor ("Main Color", Color) = (1, 1, 1, 1)
+        _MainTex ("Main Texture", 2D) = "white" {}
         _NormalMap ("Normal Texture", 2D) = "bump" {}
         _GeoMap ("Geometry Map", 2D) = "white" {}
+        _ParallaxMap ("Parallax Map", 2D) = "white" {}
         
         [Space]
         [Header(SSS)]
@@ -13,27 +14,33 @@ Shader "VFXTest/JadeShader"
         
         [Space]
         [Header(Lighting)]
-        _SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
+        [HDR]_SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
         _Shininess ("_Shininess", Range(0.01, 100)) = 1
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
+        _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
+        _FresnelPow ("Fresnel Power", Float) = 1
+        _ReflectCubeIntensity ("Reflect Cube Intensity", Float) = 1.0
         
         [Space]
         [Header(BackLighting)]
-        _BackLightColor ("BackLight Color", Color) = (1, 1, 1, 1)
-        _Distort ("Distort", Range(0.0, 1)) = 0.5
-        _BackPower ("BackPower", Float) = 1
-        _BackScale ("BackScale", Float) = 1
+        [HDR]_BackLightColor ("BackLight Color", Color) = (1, 1, 1, 1)
+        _BackDistortion ("Back Distortion", Range(0.0, 2)) = 0.5
+        _BackPower ("Back Power", Float) = 1
+        _BackScale ("Back Scale", Float) = 1
+        _ThicknessScale ("ThicknessPower", Float) = 1
     }
     SubShader
     {
         Tags
         {
-            "RenderType"="Opaque"
+            "RenderType" = "Opaque"
+            "Queue" = "Geometry"
         }
         
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
         #include "Assets/VFXTest/Jade/Shaders/SG.hlsl"
         ENDHLSL
 
@@ -46,6 +53,7 @@ Shader "VFXTest/JadeShader"
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             TEXTURE2D(_NormalMap);      SAMPLER(sampler_NormalMap);
             TEXTURE2D(_GeoMap);         SAMPLER(sampler_GeoMap);
+            // TEXTURE2D(_CameraOpaqueTexture);       SAMPLER(sampler_CameraOpaqueTexture);
 
             CBUFFER_START(UnityPerMaterial)
             half4 _MainColor;
@@ -53,10 +61,14 @@ Shader "VFXTest/JadeShader"
             half4 _SpecularColor;
             half _Shininess;
             half _Roughness;
+            half _WrapValue;
+            half _FresnelPow;
+            half _ReflectCubeIntensity;
             half4 _BackLightColor;
-            half _Distort;
+            half _BackDistortion;
             half _BackPower;
             half _BackScale;
+            half _ThicknessScale;
             CBUFFER_END
             
             struct Attributes
@@ -94,12 +106,6 @@ Shader "VFXTest/JadeShader"
             half CalcSpecular(half roughness, half NoH, half HoL)
             {
             	return (roughness * 0.25 + 0.25) * GGXMobile(roughness, NoH);
-
-                float d = NoH * NoH * (roughness * roughness - 1.0) + 1.000001f;
-                float HoL2 = HoL * HoL;
-                half specularTerm = roughness * roughness / ((d * d) * max(0.1, HoL2) * (roughness * 4.0 + 2.0));
-
-                return specularTerm;
             }
 
             Varyings VertexPass (Attributes vsIn)
@@ -125,6 +131,7 @@ Shader "VFXTest/JadeShader"
                 half3 lightDir = normalize(mainLight.direction);
                 half3 lightColor = mainLight.color;
                 half shadowAtten = mainLight.shadowAttenuation;
+                half distanceAtten = mainLight.distanceAttenuation;
                 
                 float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
                 half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
@@ -134,9 +141,9 @@ Shader "VFXTest/JadeShader"
                 half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
                 half4 geoTex = SAMPLE_TEXTURE2D(_GeoMap, sampler_GeoMap, fsIn.texCoord);
                 half ao = geoTex.r;
-                half thickness = geoTex.g;
+                half thickness = (1 - geoTex.g) * _ThicknessScale;
 
-                half3 normalTS = UnpackNormalScale(normalTex, 2.0);
+                half3 normalTS = UnpackNormalScale(normalTex, 1.0);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);
 
                 half3 halfDir = normalize(lightDir + viewDir);
@@ -145,27 +152,35 @@ Shader "VFXTest/JadeShader"
                 half NoV = saturate(dot(normalWS, viewDir));
                 half HoL = saturate(dot(halfDir, lightDir));
 
-                // ============= Diffuse
+                // ============= SSS
                 half3 scatter = _ScatterAmount.xyz;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
 
-                half3 diffuse = shadowAtten * sg * _MainColor.rgb;
+                // ============= BackLight
+                half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);
+                half VoL = saturate(dot(viewDir, backLightDir));
+                half backLightTerm = pow(VoL, _BackPower) * _BackScale;
+                half3 backColor = backLightTerm * thickness * _BackLightColor.rgb;
 
+                // ============= Diffuse
+                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
+                // half3 diffuse = _MainColor.rgb * wrapDiffuse * _MainLightColor.rgb;
+                half3 diffuse = distanceAtten * sg * _MainColor.rgb * mainTex.rgb;
+                
                 // ============= Specular
                 // half3 specular = lightColor * _SpecularColor.rgb * pow(NoH, _Shininess);
-                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor;
-
-                // ============= TransLight
-                half3 backLightDir = -normalize(lightDir + normalWS * _Distort);
-                half VoL = max(0.0, dot(viewDir, backLightDir));
-                half backLightTerm = max(0.0, pow(VoL, _BackPower)) * _BackScale;
-                half thickVal = 1.0 - thickness;
-                half3 backColor = backLightTerm * thickVal * _BackLightColor.rgb;
+                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor * mainTex.rgb;
                 
-                half3 finalColor = backColor + diffuse + specular;
-                // half3 finalColor = NoH;
+                // ============= EnvLight
+                half3 reflectDir = normalize(reflect(-viewDir, normalWS));
+                half3 indirectDiffuse = SampleSH(normalWS) * mainTex.rgb * _MainColor.rgb;
+                half3 indirectSpecular = GlossyEnvironmentReflection(reflectDir, _Roughness, ao) * _SpecularColor.rgb * _ReflectCubeIntensity;
+                half3 GIData = indirectDiffuse + indirectSpecular;
 
-                // finalColor = lerp(finalColor, _MainColor.rgb, 1 - NoV);
+                // ============= Final Tune
+                half3 finalColor = backColor + diffuse + specular + GIData;
+                half fresnelTrem = pow(1 - NoV, _FresnelPow);
+                finalColor = lerp(finalColor, _MainColor.rgb, fresnelTrem);
                 
                 return half4(finalColor, 1.0);
             }
