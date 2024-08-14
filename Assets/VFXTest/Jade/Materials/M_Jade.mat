@@ -45,16 +45,17 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.5
-    - _BackPower: 4.13
-    - _BackScale: 3.22
+    - _BackDistortion: 0.27
+    - _BackPower: 3.28
+    - _BackScale: 1.98
     - _Distort: 0.78
-    - _FresnelPow: 2.79
-    - _ReflectCubeIntensity: 0.2
+    - _FresnelPow: 2.99
+    - _ReflectCubeIntensity: 0.3
+    - _RefractionScale: 1.42
     - _Roughness: 0.073
     - _Shininess: 31.5
     - _ThicknessPower: 1
-    - _ThicknessScale: 1
+    - _ThicknessScale: 1.15
     - _WrapValue: 0.46
     m_Colors:
     - _BackLightColor: {r: 0.5453453, g: 0.8962264, b: 0.7612241, a: 1}

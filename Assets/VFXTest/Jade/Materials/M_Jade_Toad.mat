@@ -35,24 +35,30 @@ Material:
         m_Texture: {fileID: 2800000, guid: fc7f8b07b7f7d1a47bd802ac45ba40d8, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackPower: 7.05
-    - _BackScale: 2.09
+    - _BackDistortion: 0.23
+    - _BackPower: 8.02
+    - _BackScale: 3.08
     - _Distort: 0.41
     - _FresnelPow: 3.7
     - _ReflectCubeIntensity: 0.17
+    - _RefractionScale: 3.81
     - _Roughness: 0.193
     - _Shininess: 0.01
-    - _ThicknessScale: 0.76
+    - _ThicknessScale: 1.01
     - _WrapValue: 0.44
     m_Colors:
-    - _BackLightColor: {r: 0.6933073, g: 1.54717, b: 1.0929025, a: 1}
-    - _MainColor: {r: 0.44255075, g: 0.6132076, b: 0.49224898, a: 1}
+    - _BackLightColor: {r: 0.33564556, g: 0.7490196, b: 0.5290986, a: 1}
+    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
     - _ScatterAmount: {r: 0.11921501, g: 0.4433962, b: 0.12666747, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
