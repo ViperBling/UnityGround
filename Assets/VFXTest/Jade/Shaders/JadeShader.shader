@@ -6,8 +6,11 @@ Shader "VFXTest/JadeShader"
         _MainTex ("Main Texture", 2D) = "white" {}
         _NormalMap ("Normal Texture", 2D) = "bump" {}
         _GeoMap ("Geometry Map", 2D) = "white" {}
+        _DistortionMap ("Distortion Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
         [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
+        _RefractPower ("Refract Power", Float) = 1
+        _RefractIntensity ("Refract Intensity", Float) = 1
         _InnerDepth ("Inner Depth", Float) = 10
         
         [Space]
@@ -57,14 +60,18 @@ Shader "VFXTest/JadeShader"
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             TEXTURE2D(_NormalMap);      SAMPLER(sampler_NormalMap);
             TEXTURE2D(_GeoMap);         SAMPLER(sampler_GeoMap);
+            TEXTURE2D(_DistortionMap);     SAMPLER(sampler_DistortionMap);
             TEXTURE2D(_ParallaxMap);    SAMPLER(sampler_ParallaxMap);
             // TEXTURE2D(_CameraOpaqueTexture);       SAMPLER(sampler_CameraOpaqueTexture);
 
             CBUFFER_START(UnityPerMaterial)
             half4 _MainColor;
             float4 _MainTex_ST;
+            float4 _DistortionMap_ST;
             float4 _ParallaxMap_ST;
             half4 _InnerColor;
+            half _RefractPower;
+            half _RefractIntensity;
             half _InnerDepth;
             half4 _ScatterAmount;
             half4 _EdgeColor;
@@ -176,8 +183,10 @@ Shader "VFXTest/JadeShader"
                 half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
                 float depth = _InnerDepth / abs(reflectDirTS.z);
                 float2 uvOffset = reflectDirTS.xy * depth / 1024;
-                float2 refractUV = fsIn.texCoord * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + uvOffset;
+                half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw).rg;
+                float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + uvOffset;
                 half3 refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).rgb;
+                refractColor = pow(refractColor, _RefractPower) * _RefractIntensity;
 
                 // ============= SSS & Diffuse
                 half3 scatter = _ScatterAmount.rgb;
@@ -203,7 +212,7 @@ Shader "VFXTest/JadeShader"
                 half3 GIData = indirectDiffuse + indirectSpecular;
 
                 // ============= Final Tune
-                half3 finalColor = backColor + baseColor * (diffuse + refractColor * _InnerColor.rgb + specular + GIData);
+                half3 finalColor = backColor + baseColor * (diffuse + specular + GIData) + refractColor * _InnerColor.rgb;
                 half3 fresnelTrem = pow(1 - NoV, _FresnelPow);
                 finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
                 // finalColor += fresnelTrem * _EdgeColor.rgb;
