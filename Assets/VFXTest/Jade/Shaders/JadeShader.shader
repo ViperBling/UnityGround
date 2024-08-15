@@ -7,6 +7,8 @@ Shader "VFXTest/JadeShader"
         _NormalMap ("Normal Texture", 2D) = "bump" {}
         _GeoMap ("Geometry Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
+        [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
+        _InnerDepth ("Inner Depth", Float) = 10
         
         [Space]
         [Header(SSS)]
@@ -16,7 +18,7 @@ Shader "VFXTest/JadeShader"
         [Header(Lighting)]
         [HDR]_EdgeColor ("Edge Color", Color) = (1, 1, 1, 1)
         [HDR]_SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
-        _Shininess ("_Shininess", Range(0.01, 100)) = 1
+        // _Shininess ("_Shininess", Range(0.01, 100)) = 1
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
         // _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
         _FresnelPow ("Fresnel Power", Float) = 1
@@ -28,7 +30,8 @@ Shader "VFXTest/JadeShader"
         _BackDistortion ("Back Distortion", Range(0.0, 2)) = 0.5
         _BackPower ("Back Power", Float) = 1
         _BackScale ("Back Scale", Float) = 1
-        _ThicknessScale ("ThicknessPower", Float) = 1
+        _ThicknessScale ("ThicknessScale", Float) = 1
+        _ThicknessPower ("ThicknessPower", Float) = 1
     }
     SubShader
     {
@@ -59,7 +62,10 @@ Shader "VFXTest/JadeShader"
 
             CBUFFER_START(UnityPerMaterial)
             half4 _MainColor;
+            float4 _MainTex_ST;
             float4 _ParallaxMap_ST;
+            half4 _InnerColor;
+            half _InnerDepth;
             half4 _ScatterAmount;
             half4 _EdgeColor;
             half4 _SpecularColor;
@@ -73,6 +79,7 @@ Shader "VFXTest/JadeShader"
             half _BackPower;
             half _BackScale;
             half _ThicknessScale;
+            half _ThicknessPower;
             CBUFFER_END
             
             struct Attributes
@@ -89,6 +96,8 @@ Shader "VFXTest/JadeShader"
                 float4 tSpace0    : TEXCOORD1;
                 float4 tSpace1    : TEXCOORD2;
                 float4 tSpace2    : TEXCOORD3;
+                half3  viewDirWS  : TEXCOORD4;
+                half3  viewDirTS  : TEXCOORD5;
             };
 
             float3 WorldNormal(float3 tSpace0, float3 tSpace1, float3 tSpace2, float3 normal)
@@ -117,7 +126,7 @@ Shader "VFXTest/JadeShader"
                 Varyings vsOut = (Varyings)0;
                 
                 vsOut.positionCS = TransformObjectToHClip(vsIn.positionOS.xyz);
-                vsOut.texCoord = TRANSFORM_TEX(vsIn.texCoord, _ParallaxMap);
+                vsOut.texCoord = TRANSFORM_TEX(vsIn.texCoord, _MainTex);
                 // vsOut.texCoord = vsIn.texCoord;
                 float3 positionWS = TransformObjectToWorld(vsIn.positionOS);
 
@@ -125,6 +134,11 @@ Shader "VFXTest/JadeShader"
                 vsOut.tSpace0 = float4(normalInputs.tangentWS.x, normalInputs.bitangentWS.x, normalInputs.normalWS.x, positionWS.x);
                 vsOut.tSpace1 = float4(normalInputs.tangentWS.y, normalInputs.bitangentWS.y, normalInputs.normalWS.y, positionWS.y);
                 vsOut.tSpace2 = float4(normalInputs.tangentWS.z, normalInputs.bitangentWS.z, normalInputs.normalWS.z, positionWS.z);
+
+                float3x3 TBN = float3x3(normalInputs.tangentWS.xyz, normalInputs.bitangentWS.xyz, normalInputs.normalWS.xyz);
+
+                vsOut.viewDirWS = normalize(_WorldSpaceCameraPos - positionWS);
+                vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS)); 
                 
                 return vsOut;
             }
@@ -139,55 +153,60 @@ Shader "VFXTest/JadeShader"
                 
                 float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
                 half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
-                half3 viewDir = -normalize(positionWS - _WorldSpaceCameraPos);
+                half3 viewDirWS = fsIn.viewDirWS;
+                half3 viewDirTS = fsIn.viewDirTS;
 
                 half4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord);
                 half3 baseColor = mainTex.rgb * _MainColor.rgb;
-                half4 parallaxTex = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, fsIn.texCoord);
                 half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
                 half4 geoTex = SAMPLE_TEXTURE2D(_GeoMap, sampler_GeoMap, fsIn.texCoord);
                 half ao = geoTex.r;
-                half thickness = (1 - geoTex.g) * _ThicknessScale;
+                half thickness = saturate(pow(1 - geoTex.g, _ThicknessPower)) * _ThicknessScale;
 
                 half3 normalTS = UnpackNormalScale(normalTex, 1.0);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);
 
-                half3 halfDir = normalize(lightDir + viewDir);
+                half3 halfDir = normalize(lightDir + viewDirWS);
                 half NoH = saturate(dot(normalWS, halfDir));
                 half NoL = saturate(dot(normalWS, lightDir));
-                half NoV = saturate(dot(normalWS, viewDir));
+                half NoV = saturate(dot(normalWS, viewDirWS));
                 half HoL = saturate(dot(halfDir, lightDir));
 
-                // ============= SSS
-                half3 scatter = (1 - parallaxTex.r) * baseColor;
+                // ============= Inner Albedo
+                half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
+                float depth = _InnerDepth / abs(reflectDirTS.z);
+                float2 uvOffset = reflectDirTS.xy * depth / 1024;
+                float2 refractUV = fsIn.texCoord * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + uvOffset;
+                half3 refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).rgb;
+
+                // ============= SSS & Diffuse
+                half3 scatter = _ScatterAmount.rgb;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
+                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
+                // half3 diffuse = _MainColor.rgb * wrapDiffuse * _MainLightColor.rgb;
+                half3 diffuse = distanceAtten * sg;
+
+                // ============= Specular
+                // half3 specular = lightColor * _SpecularColor.rgb * pow(NoH, _Shininess);
+                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor;
 
                 // ============= BackLight
                 half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);
-                half VoL = saturate(dot(viewDir, backLightDir));
+                half VoL = saturate(dot(viewDirWS, backLightDir));
                 half backLightTerm = pow(VoL, _BackPower) * _BackScale;
-                half3 backColor = backLightTerm * thickness * _BackLightColor.rgb;
-
-                // ============= Diffuse
-                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
-                // half3 diffuse = _MainColor.rgb * wrapDiffuse * _MainLightColor.rgb;
-                half3 diffuse = distanceAtten * sg * baseColor;
-                
-                // ============= Specular
-                // half3 specular = lightColor * _SpecularColor.rgb * pow(NoH, _Shininess);
-                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor * mainTex.rgb;
+                half3 backColor = backLightTerm * thickness * _BackLightColor.rgb * refractColor;
                 
                 // ============= EnvLight
-                half3 reflectDir = normalize(reflect(-viewDir, normalWS));
-                half3 indirectDiffuse = SampleSH(normalWS) * mainTex.rgb * _MainColor.rgb;
+                half3 reflectDir = normalize(reflect(-viewDirWS, normalWS));
+                half3 indirectDiffuse = SampleSH(normalWS);
                 half3 indirectSpecular = GlossyEnvironmentReflection(reflectDir, _Roughness, ao) * _SpecularColor.rgb * _ReflectCubeIntensity;
                 half3 GIData = indirectDiffuse + indirectSpecular;
 
                 // ============= Final Tune
-                half3 finalColor = backColor + diffuse + specular + GIData;
+                half3 finalColor = backColor + baseColor * (diffuse + refractColor * _InnerColor.rgb + specular + GIData);
                 half3 fresnelTrem = pow(1 - NoV, _FresnelPow);
-                // finalColor = lerp(finalColor, _MainColor.rgb, fresnelTrem);
-                finalColor += fresnelTrem * _EdgeColor.rgb;
+                finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
+                // finalColor += fresnelTrem * _EdgeColor.rgb;
                 
                 return half4(finalColor, 1.0);
             }

@@ -24,7 +24,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _GeoMap:
-        m_Texture: {fileID: 2800000, guid: 6c82dffbb04059346800e9b7c2bf4a09, type: 3}
+        m_Texture: {fileID: 2800000, guid: c25c6be81ad797a4c95475e50812f920, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
@@ -36,8 +36,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: eee2dc023305af94c9a628044e87b47c, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: 4efa97b19561f4e42a6d396dc58b9127, type: 3}
+        m_Scale: {x: 4, y: 4}
         m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 8900000, guid: b0d49cabe0375114bb09d2e3a04d1185, type: 3}
@@ -45,23 +45,25 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 1.09
-    - _BackPower: 2.84
-    - _BackScale: 1.2
+    - _BackDistortion: 0.73
+    - _BackPower: 1.71
+    - _BackScale: 2.43
     - _Distort: 0.79
-    - _FresnelPow: 4.42
-    - _ReflectCubeIntensity: 0.1
+    - _FresnelPow: 3.49
+    - _InnerDepth: 200
+    - _ReflectCubeIntensity: 1.1
     - _RefractionScale: 4.1
-    - _Roughness: 0.14
+    - _Roughness: 0.155
     - _Shininess: 0.01
-    - _ThicknessPower: 1
-    - _ThicknessScale: 3.86
+    - _ThicknessPower: 4.22
+    - _ThicknessScale: 1.32
     - _WrapValue: 0.72
     m_Colors:
     - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EdgeColor: {r: 1, g: 1, b: 1, a: 1}
-    - _MainColor: {r: 1, g: 1, b: 1, a: 1}
-    - _ScatterAmount: {r: 0.0211249, g: 0.4867924, b: 0.061230242, a: 1}
+    - _InnerColor: {r: 0.119917564, g: 2.9370155, b: 8.474191, a: 1}
+    - _MainColor: {r: 0, g: 0.5230247, b: 0.6792453, a: 1}
+    - _ScatterAmount: {r: 0.040583827, g: 0.4270648, b: 0.4528302, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
