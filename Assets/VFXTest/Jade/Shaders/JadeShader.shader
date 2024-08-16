@@ -207,7 +207,7 @@ Shader "VFXTest/JadeShader"
                 
                 // ============= EnvLight
                 half3 reflectDir = normalize(reflect(-viewDirWS, normalWS));
-                half3 indirectDiffuse = SampleSH(normalWS);
+                half3 indirectDiffuse = SampleSH(normalWS) * ao;
                 half3 indirectSpecular = GlossyEnvironmentReflection(reflectDir, _Roughness, ao) * _SpecularColor.rgb * _ReflectCubeIntensity;
                 half3 GIData = indirectDiffuse + indirectSpecular;
 
@@ -216,6 +216,9 @@ Shader "VFXTest/JadeShader"
                 half3 fresnelTrem = pow(1 - NoV, _FresnelPow);
                 finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
                 // finalColor += fresnelTrem * _EdgeColor.rgb;
+
+                // Fast ToneMap
+                finalColor = saturate((finalColor * (2.51 * finalColor + 0.03)) / (finalColor * (2.43 * finalColor + 0.59) + 0.14));
                 
                 return half4(finalColor, 1.0);
             }

@@ -49,9 +49,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.66
-    - _BackPower: 9.31
-    - _BackScale: 2.03
+    - _BackDistortion: 0.46
+    - _BackPower: 9.14
+    - _BackScale: 5.54
     - _Distort: 0.41
     - _FresnelPow: 6.89
     - _InnerDepth: 1

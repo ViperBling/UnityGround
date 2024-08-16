@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-[ExecuteInEditMode]
+// [ExecuteInEditMode]
 public class AutoRotation : MonoBehaviour
 {
     [Tooltip("Angular velocity in degrees per seconds")]
