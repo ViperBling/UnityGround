@@ -152,14 +152,16 @@ Shader "VFXTest/JadeShader_Baked_SH"
 
                 vsOut.viewDirWS = normalize(_WorldSpaceCameraPos - positionWS);
                 vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS));
-                half3 viewDirOS = TransformWorldToObjectDir(-vsOut.viewDirWS);
-                
-                float Y0 = 1.0 / 2.0 * sqrt(1 / PI);
-                float Y1 = -sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.z;
-                float Y2 = -sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.y;
-                float Y3 = -sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.x;
-                float dist = vsIn.texCoord2.x * Y0 + vsIn.texCoord2.y * Y1 + vsIn.texCoord3.x * Y2 + vsIn.texCoord3.y * Y3;
-                vsOut.thickness = exp(-dist * dist * _Sharpness);
+
+                float4 coff = float4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
+                // coff = coff * 2.0 - 1.0;
+                float Y0 = 1.0 / 2.0 * sqrt(1.0 / PI);
+                float Y1 = sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.z;
+                float Y2 = sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.y;
+                float Y3 = sqrt(3.0 / (4.0 * PI)) * vsOut.viewDirWS.x;
+                float dist = coff.x * Y0 + coff.y * Y1 + coff.z * Y2 + coff.w * Y3;
+                // vsOut.thickness = exp(dist * dist * _Sharpness);
+                vsOut.thickness = coff.y;
                 
                 return vsOut;
             }
