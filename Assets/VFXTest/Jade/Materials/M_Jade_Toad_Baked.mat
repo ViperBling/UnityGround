@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: M_Jade_Toad_Baked
+  m_Shader: {fileID: 4800000, guid: 067297628e0b2b74e86798f34440b376, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _DistortionMap:
+        m_Texture: {fileID: 2800000, guid: ece33663dbca1d94bbd2674c40bdd51d, type: 3}
+        m_Scale: {x: 0.38, y: 0.25}
+        m_Offset: {x: 0, y: 0}
+    - _GeoMap:
+        m_Texture: {fileID: 2800000, guid: 79744632ee3d7014b9b6b24db0c65ad4, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: d0aed98302589f04e8dc6a26c69c63e1, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 2800000, guid: fc7f8b07b7f7d1a47bd802ac45ba40d8, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _ParallaxMap:
+        m_Texture: {fileID: 2800000, guid: 7043635adf3a0d041ac11e63e8883012, type: 3}
+        m_Scale: {x: 0.54, y: 0.65}
+        m_Offset: {x: 0, y: 0}
+    - _ReflectCube:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BackDistortion: 0.46
+    - _BackPower: 9.14
+    - _BackScale: 5.54
+    - _Distort: 0.41
+    - _FresnelPow: 6.89
+    - _InnerDepth: 1
+    - _ReflectCubeIntensity: 0.93
+    - _RefractIntensity: 0.48
+    - _RefractPower: 3.77
+    - _RefractionScale: 3.81
+    - _Roughness: 0.177
+    - _Sharpness: 1.33
+    - _Shininess: 0.01
+    - _ThicknessPower: 2.48
+    - _ThicknessScale: 0.76
+    - _WrapValue: 0.44
+    m_Colors:
+    - _BackLightColor: {r: 3.031433, g: 3.031433, b: 3.031433, a: 1}
+    - _EdgeColor: {r: 0.6863207, g: 0.8232754, b: 0.9150943, a: 1}
+    - _InnerColor: {r: 0, g: 0.6436435, b: 1.1307244, a: 1}
+    - _MainColor: {r: 0.27374965, g: 0.18060283, b: 0.60774285, a: 1}
+    - _ScatterAmount: {r: 0.11974902, g: 0.12229136, b: 0.3679245, a: 1}
+    - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []

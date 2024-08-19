@@ -67,7 +67,7 @@ Material:
     m_Colors:
     - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
     - _EdgeColor: {r: 0.6863207, g: 0.8232754, b: 0.9150943, a: 1}
-    - _InnerColor: {r: 0, g: 1.2259203, b: 1.6031266, a: 1}
+    - _InnerColor: {r: 0, g: 0.6436435, b: 1.1307244, a: 1}
     - _MainColor: {r: 0.27374965, g: 0.18060283, b: 0.60774285, a: 1}
     - _ScatterAmount: {r: 0.11974902, g: 0.12229136, b: 0.3679245, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
