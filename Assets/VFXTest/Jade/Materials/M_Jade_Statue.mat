@@ -51,7 +51,7 @@ Material:
     m_Floats:
     - _BackDistortion: 0.38
     - _BackPower: 6.77
-    - _BackScale: 1
+    - _BackScale: 3.21
     - _Distort: 0.78
     - _FresnelPow: 1.88
     - _InnerDepth: 1
@@ -61,8 +61,8 @@ Material:
     - _RefractionScale: 1.42
     - _Roughness: 0.096
     - _Shininess: 31.5
-    - _ThicknessPower: 1
-    - _ThicknessScale: 1
+    - _ThicknessPower: 8.51
+    - _ThicknessScale: 0.95
     - _WrapValue: 0.46
     m_Colors:
     - _BackLightColor: {r: 1.2474022, g: 2.340259, b: 1.9152592, a: 1}

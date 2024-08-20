@@ -53,17 +53,17 @@ Material:
     - _BackPower: 6.77
     - _BackScale: 1.96
     - _Distort: 0.78
-    - _FresnelPow: 4.04
+    - _FresnelPow: 6.19
     - _InnerDepth: 1
     - _ReflectCubeIntensity: 1.33
     - _RefractIntensity: 1.74
     - _RefractPower: 2.38
     - _RefractionScale: 1.42
     - _Roughness: 0.096
-    - _Sharpness: 1.18
+    - _Sharpness: 1.56
     - _Shininess: 31.5
-    - _ThicknessPower: 1.53
-    - _ThicknessScale: 1
+    - _ThicknessPower: 1.46
+    - _ThicknessScale: 2.37
     - _WrapValue: 0.46
     m_Colors:
     - _BackLightColor: {r: 1.2474022, g: 2.340259, b: 1.9152592, a: 1}

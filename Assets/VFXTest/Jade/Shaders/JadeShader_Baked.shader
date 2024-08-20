@@ -156,7 +156,8 @@ Shader "VFXTest/JadeShader_Baked"
                 float4 meanRayAndReverseDist = float4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
                 float3 meanRay = meanRayAndReverseDist.xyz * 2.0 - 1.0;
                 meanRay = TransformObjectToWorldDir(meanRay);
-                float meanDist = 1.0 / meanRayAndReverseDist.w;
+                // float meanDist = 1.0 / meanRayAndReverseDist.w;
+                float meanDist = meanRayAndReverseDist.w;
                 half MoV = dot(vsOut.viewDirWS, meanRay);
                 vsOut.thickness = exp(_Sharpness * (MoV - 1.0)) * meanDist - 0.5;
                 // vsOut.thickness = pow(MoV * 0.5 + 0.5, _Sharpness) * meanDist - 0.5;
@@ -172,8 +173,6 @@ Shader "VFXTest/JadeShader_Baked"
                 half shadowAtten = mainLight.shadowAttenuation;
                 half distanceAtten = mainLight.distanceAttenuation;
                 
-                float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
-                half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
                 half3 viewDirWS = fsIn.viewDirWS;
                 half3 viewDirTS = fsIn.viewDirTS;
 
@@ -183,7 +182,7 @@ Shader "VFXTest/JadeShader_Baked"
                 half4 geoTex = SAMPLE_TEXTURE2D(_GeoMap, sampler_GeoMap, fsIn.texCoord);
                 half ao = geoTex.r;
                 // half thickness = saturate(pow(1 - geoTex.g, _ThicknessPower)) * _ThicknessScale;
-                half thickness = saturate(pow(saturate(fsIn.thickness), _ThicknessPower)) * _ThicknessScale;
+                half thickness = saturate(pow(fsIn.thickness, _ThicknessPower) * _ThicknessScale);
 
                 half3 normalTS = UnpackNormalScale(normalTex, 1.0);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);

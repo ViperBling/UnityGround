@@ -51,7 +51,7 @@ Material:
     m_Floats:
     - _BackDistortion: 0.73
     - _BackPower: 1.71
-    - _BackScale: 2.43
+    - _BackScale: 3.73
     - _Distort: 0.79
     - _FresnelPow: 3.49
     - _InnerDepth: 10
