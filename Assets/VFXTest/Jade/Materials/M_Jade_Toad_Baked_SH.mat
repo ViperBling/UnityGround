@@ -53,7 +53,7 @@ Material:
     - _BackPower: 9.14
     - _BackScale: 5.54
     - _Distort: 0.41
-    - _FresnelPow: 6.89
+    - _FresnelPow: 11.47
     - _InnerDepth: 1
     - _ReflectCubeIntensity: 0.93
     - _RefractIntensity: 0.48

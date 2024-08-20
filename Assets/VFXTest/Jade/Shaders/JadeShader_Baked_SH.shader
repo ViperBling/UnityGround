@@ -22,7 +22,7 @@ Shader "VFXTest/JadeShader_Baked_SH"
         [HDR]_SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
         // _Shininess ("_Shininess", Range(0.01, 100)) = 1
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
-        // _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
+        _WrapValue ("Wrap Value", Float) = 0.5
         _FresnelPow ("Fresnel Power", Float) = 1
         _ReflectCubeIntensity ("Reflect Cube Intensity", Float) = 1.0
         
@@ -54,7 +54,6 @@ Shader "VFXTest/JadeShader_Baked_SH"
         Pass
         {
             HLSLPROGRAM
-            #pragma enable_d3d11_debug_symbols
             #pragma vertex VertexPass
             #pragma fragment FragmentPass
 
@@ -64,29 +63,29 @@ Shader "VFXTest/JadeShader_Baked_SH"
             TEXTURE2D(_ParallaxMap);    SAMPLER(sampler_ParallaxMap);
 
             CBUFFER_START(UnityPerMaterial)
-            half4 _MainColor;
-            float4 _MainTex_ST;
-            float4 _DistortionMap_ST;
-            float4 _ParallaxMap_ST;
-            half4 _InnerColor;
-            half _RefractPower;
-            half _RefractIntensity;
-            half _InnerDepth;
-            half4 _ScatterAmount;
-            half _Sharpness;
-            half4 _EdgeColor;
-            half4 _SpecularColor;
-            half _Shininess;
-            half _Roughness;
-            half _WrapValue;
-            half _FresnelPow;
-            half _ReflectCubeIntensity;
-            half4 _BackLightColor;
-            half _BackDistortion;
-            half _BackPower;
-            half _BackScale;
-            half _ThicknessScale;
-            half _ThicknessPower;
+                half4   _MainColor;
+                float4  _MainTex_ST;
+                float4  _DistortionMap_ST;
+                float4  _ParallaxMap_ST;
+                half4   _InnerColor;
+                half    _RefractPower;
+                half    _RefractIntensity;
+                half    _InnerDepth;
+                half4   _ScatterAmount;
+                half    _Sharpness;
+                half4   _EdgeColor;
+                half4   _SpecularColor;
+                half    _Shininess;
+                half    _Roughness;
+                half    _WrapValue;
+                half    _FresnelPow;
+                half    _ReflectCubeIntensity;
+                half4   _BackLightColor;
+                half    _BackDistortion;
+                half    _BackPower;
+                half    _BackScale;
+                half    _ThicknessScale;
+                half    _ThicknessPower;
             CBUFFER_END
             
             struct Attributes
@@ -128,7 +127,7 @@ Shader "VFXTest/JadeShader_Baked_SH"
 	            return min(d, 2048.0);
             }
 
-            half CalcSpecular(half roughness, half NoH, half HoL)
+            half CalcSpecular(half roughness, half NoH)
             {
             	return (roughness * 0.25 + 0.25) * GGXMobile(roughness, NoH);
             }
@@ -152,7 +151,7 @@ Shader "VFXTest/JadeShader_Baked_SH"
                 vsOut.viewDirWS = normalize(_WorldSpaceCameraPos - positionWS);
                 vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS));
 
-                half3 lightDir = GetMainLight().direction;
+                // half3 lightDir = GetMainLight().direction;
 
                 half4 coff = half4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
                 half sphereCoff = sqrt(3.0 / (4.0 * PI));
@@ -163,11 +162,11 @@ Shader "VFXTest/JadeShader_Baked_SH"
                 half dist = coff.x * Y0 + coff.y * Y1 + coff.z * Y2 + coff.w * Y3;
                 vsOut.thickness = exp(-dist * dist * _Sharpness * 0.1);
 
-                half Y1LS =  sphereCoff * lightDir.z;
-                half Y2LS =  sphereCoff * lightDir.y;
-                half Y3LS = -sphereCoff * lightDir.x;
-                half distLS = coff.x * Y0 + coff.y * Y1LS + coff.z * Y2LS + coff.w * Y3LS;
-                vsOut.thicknessLS = exp(-distLS * distLS * _Sharpness * 0.1);
+                // half Y1LS =  sphereCoff * lightDir.z;
+                // half Y2LS =  sphereCoff * lightDir.y;
+                // half Y3LS = -sphereCoff * lightDir.x;
+                // half distLS = coff.x * Y0 + coff.y * Y1LS + coff.z * Y2LS + coff.w * Y3LS;
+                // vsOut.thicknessLS = exp(-distLS * distLS * _Sharpness * 0.1);
                 
                 return vsOut;
             }
@@ -180,8 +179,8 @@ Shader "VFXTest/JadeShader_Baked_SH"
                 half shadowAtten = mainLight.shadowAttenuation;
                 half distanceAtten = mainLight.distanceAttenuation;
                 
-                float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
-                half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
+                // float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
+                // half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
                 half3 viewDirWS = fsIn.viewDirWS;
                 half3 viewDirTS = fsIn.viewDirTS;
 
@@ -199,7 +198,6 @@ Shader "VFXTest/JadeShader_Baked_SH"
                 half NoH = saturate(dot(normalWS, halfDir));
                 half NoL = saturate(dot(normalWS, lightDir));
                 half NoV = saturate(dot(normalWS, viewDirWS));
-                half HoL = saturate(dot(halfDir, lightDir));
 
                 // ============= Inner Albedo
                 half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
@@ -211,15 +209,15 @@ Shader "VFXTest/JadeShader_Baked_SH"
                 refractColor = pow(refractColor, _RefractPower) * _RefractIntensity;
 
                 // ============= SSS & Diffuse
-                half3 scatter = _ScatterAmount.rgb * fsIn.thicknessLS;
+                half3 scatter = _ScatterAmount.rgb;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
-                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
-                // half3 diffuse = _MainColor.rgb * wrapDiffuse * _MainLightColor.rgb;
+                half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
+                // half3 diffuse = wrapDiffuse * baseColor;
                 half3 diffuse = distanceAtten * sg;
 
                 // ============= Specular
                 // half3 specular = lightColor * _SpecularColor.rgb * pow(NoH, _Shininess);
-                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor;
+                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH) * NoL * lightColor;
 
                 // ============= BackLight
                 half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);

@@ -25,7 +25,7 @@ Material:
     m_TexEnvs:
     - _DistortionMap:
         m_Texture: {fileID: 2800000, guid: fb8d4509c32eaac49a548d59241d7d9e, type: 3}
-        m_Scale: {x: 0.8, y: 0.58}
+        m_Scale: {x: 0.46, y: 0.58}
         m_Offset: {x: 0, y: 0}
     - _GeoMap:
         m_Texture: {fileID: 2800000, guid: 470318728f18327428dc7c7534c31aff, type: 3}
@@ -53,18 +53,18 @@ Material:
     - _BackPower: 6.77
     - _BackScale: 1.96
     - _Distort: 0.78
-    - _FresnelPow: 6.3
+    - _FresnelPow: 9.45
     - _InnerDepth: 1
     - _ReflectCubeIntensity: 1.33
-    - _RefractIntensity: 1.74
-    - _RefractPower: 2.38
+    - _RefractIntensity: 2.14
+    - _RefractPower: 1.64
     - _RefractionScale: 1.42
     - _Roughness: 0.096
     - _Sharpness: 0.01
     - _Shininess: 31.5
     - _ThicknessPower: 1.03
     - _ThicknessScale: 1.33
-    - _WrapValue: 0.46
+    - _WrapValue: 0.22
     m_Colors:
     - _BackLightColor: {r: 2.5942795, g: 4.867144, b: 3.9832523, a: 1}
     - _EdgeColor: {r: 1.114631, g: 2.5408795, b: 1.8322976, a: 1}
