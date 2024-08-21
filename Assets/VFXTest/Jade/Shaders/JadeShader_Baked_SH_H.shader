@@ -224,7 +224,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);
                 half VoL = saturate(dot(viewDirWS, backLightDir));
                 half backLightTerm = pow(VoL, _BackPower) * _BackScale;
-                half3 backColor = backLightTerm * thickness * _BackLightColor.rgb * refractColor;
+                half3 backColor = backLightTerm * thickness * _BackLightColor.rgb * 1;
                 
                 // ============= EnvLight
                 half3 reflectDir = normalize(reflect(-viewDirWS, normalWS));
@@ -239,6 +239,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 // finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
                 finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor + refractColor * _InnerColor.rgb;
                 // finalColor += fresnelTrem;
+                finalColor += backColor;
 
                 // Fast ToneMap
                 finalColor = saturate((finalColor * (2.51 * finalColor + 0.03)) / (finalColor * (2.43 * finalColor + 0.59) + 0.14));

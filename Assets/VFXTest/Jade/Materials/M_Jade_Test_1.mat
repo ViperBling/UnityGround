@@ -24,52 +24,52 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _DistortionMap:
-        m_Texture: {fileID: 2800000, guid: ece33663dbca1d94bbd2674c40bdd51d, type: 3}
-        m_Scale: {x: 0.38, y: 0.25}
+        m_Texture: {fileID: 2800000, guid: fb8d4509c32eaac49a548d59241d7d9e, type: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _GeoMap:
         m_Texture: {fileID: 2800000, guid: 79744632ee3d7014b9b6b24db0c65ad4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 070d48a093949294b919ed86c8974bc2, type: 3}
+        m_Texture: {fileID: 2800000, guid: bd9590549494f86449dac76aef140fd4, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalMap:
-        m_Texture: {fileID: 2800000, guid: 1b5cf15953c517b42bc375829471038d, type: 3}
+        m_Texture: {fileID: 2800000, guid: cbe8e3ceed5752d458975d1d8a66639d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 60b6322daaa05064a863e1477b855878, type: 3}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: -0.42, y: 0.78}
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 0.02, y: 0.05}
+        m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.46
-    - _BackPower: 9.14
-    - _BackScale: 5.54
+    - _BackDistortion: 1.136
+    - _BackPower: 2.36
+    - _BackScale: 1.33
     - _Distort: 0.41
     - _FresnelPow: 6.89
-    - _InnerDepth: 1
-    - _ReflectCubeIntensity: 0.8
+    - _InnerDepth: 10
+    - _ReflectCubeIntensity: 0.68
     - _RefractIntensity: 0
-    - _RefractPower: 7.94
+    - _RefractPower: 0.61
     - _RefractionScale: 3.81
-    - _Roughness: 0.216
-    - _Sharpness: 0.03
+    - _Roughness: 0.121
+    - _Sharpness: 1.71
     - _Shininess: 0.01
-    - _ThicknessPower: 1.88
-    - _ThicknessScale: 0.69
-    - _WrapValue: 0.44
+    - _ThicknessPower: 1
+    - _ThicknessScale: 1
+    - _WrapValue: 3.73
     m_Colors:
-    - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _EdgeColor: {r: 1.4980394, g: 1.4980394, b: 1.4980394, a: 1}
-    - _InnerColor: {r: 0, g: 0.72542757, b: 0.8867924, a: 1}
-    - _MainColor: {r: 0, g: 0.3679245, b: 0.20535323, a: 1}
+    - _BackLightColor: {r: 0.50746167, g: 0.9924528, b: 0.9646217, a: 1}
+    - _EdgeColor: {r: 0, g: 0.7490196, b: 0.5965364, a: 1}
+    - _InnerColor: {r: 0.1907879, g: 0.647446, b: 0.74901956, a: 1}
+    - _MainColor: {r: 0.07432537, g: 0.25779757, b: 0.2754717, a: 1}
     - _ScatterAmount: {r: 0, g: 0.6852036, b: 0.8490566, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
