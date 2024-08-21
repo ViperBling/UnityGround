@@ -60,10 +60,10 @@ Material:
     - _RefractPower: 2.72
     - _RefractionScale: 4.1
     - _Roughness: 0.155
-    - _Sharpness: 16.21
+    - _Sharpness: 20
     - _Shininess: 0.01
-    - _ThicknessPower: 0.71
-    - _ThicknessScale: 0.15
+    - _ThicknessPower: 1.36
+    - _ThicknessScale: 0.7
     - _WrapValue: 0.72
     m_Colors:
     - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}

@@ -59,15 +59,15 @@ Material:
     - _RefractIntensity: 1.74
     - _RefractPower: 2.38
     - _RefractionScale: 1.42
-    - _Roughness: 0.096
+    - _Roughness: 0.109
     - _Sharpness: 0.01
     - _Shininess: 31.5
-    - _ThicknessPower: 2.07
-    - _ThicknessScale: 0.53
+    - _ThicknessPower: 2.76
+    - _ThicknessScale: 0.65
     - _WrapValue: 0.22
     m_Colors:
     - _BackLightColor: {r: 1.0536046, g: 1.9766743, b: 1.6177027, a: 1}
-    - _EdgeColor: {r: 0.31426558, g: 0.9312217, b: 1.2113509, a: 1}
+    - _EdgeColor: {r: 0, g: 1.4746387, b: 2.143547, a: 1}
     - _InnerColor: {r: 0.17243683, g: 0.20758097, b: 0.23584908, a: 1}
     - _MainColor: {r: 0, g: 0.24528301, b: 0.208822, a: 1}
     - _ScatterAmount: {r: 0.03594868, g: 0.692377, b: 0.7056604, a: 1}

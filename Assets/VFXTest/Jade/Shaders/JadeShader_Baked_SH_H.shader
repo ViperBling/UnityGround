@@ -233,11 +233,11 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 GIData = indirectDiffuse + indirectSpecular;
 
                 // ============= Final Tune
-                half3 finalColor = backColor + baseColor * (diffuse + specular + GIData) + refractColor * _InnerColor.rgb;
-                // half3 finalColor = backColor + baseColor * (diffuse + specular + GIData);
+                // half3 finalColor = backColor + baseColor * (diffuse + specular + GIData) + refractColor * _InnerColor.rgb;
+                half3 finalColor = diffuse + specular + GIData;
                 half fresnelTrem = pow(1 - NoV, _FresnelPow);
                 // finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
-                finalColor = lerp(finalColor, _EdgeColor.rgb, thickness);
+                finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor + refractColor * _InnerColor.rgb;
                 // finalColor += fresnelTrem;
 
                 // Fast ToneMap

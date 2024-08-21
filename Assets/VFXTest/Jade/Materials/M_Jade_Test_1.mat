@@ -32,16 +32,16 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 50dd7ab5cfe35eb4e823bfb5f82f15e2, type: 3}
+        m_Texture: {fileID: 2800000, guid: 070d48a093949294b919ed86c8974bc2, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _NormalMap:
-        m_Texture: {fileID: 2800000, guid: 75a8b632eaab5f942b57944edbe4b213, type: 3}
+        m_Texture: {fileID: 2800000, guid: 1b5cf15953c517b42bc375829471038d, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 37874db90364bdf44ba16b837097b3cf, type: 3}
-        m_Scale: {x: 2, y: 2}
+        m_Texture: {fileID: 2800000, guid: 60b6322daaa05064a863e1477b855878, type: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: -0.42, y: 0.78}
     - _ReflectCube:
         m_Texture: {fileID: 0}
@@ -55,22 +55,22 @@ Material:
     - _Distort: 0.41
     - _FresnelPow: 6.89
     - _InnerDepth: 1
-    - _ReflectCubeIntensity: 0.3
+    - _ReflectCubeIntensity: 0.8
     - _RefractIntensity: 0
     - _RefractPower: 7.94
     - _RefractionScale: 3.81
-    - _Roughness: 0.17
-    - _Sharpness: 0.15
+    - _Roughness: 0.216
+    - _Sharpness: 0.03
     - _Shininess: 0.01
-    - _ThicknessPower: 0.65
-    - _ThicknessScale: 0.24
+    - _ThicknessPower: 1.88
+    - _ThicknessScale: 0.69
     - _WrapValue: 0.44
     m_Colors:
     - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _EdgeColor: {r: 0, g: 1.4717232, b: 1.8365054, a: 1}
-    - _InnerColor: {r: 0, g: 0.20411706, b: 0.5, a: 1}
-    - _MainColor: {r: 0, g: 0.5943396, b: 0.32817638, a: 1}
-    - _ScatterAmount: {r: 0, g: 0.5422282, b: 0.6698113, a: 1}
+    - _EdgeColor: {r: 1.4980394, g: 1.4980394, b: 1.4980394, a: 1}
+    - _InnerColor: {r: 0, g: 0.72542757, b: 0.8867924, a: 1}
+    - _MainColor: {r: 0, g: 0.3679245, b: 0.20535323, a: 1}
+    - _ScatterAmount: {r: 0, g: 0.6852036, b: 0.8490566, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
