@@ -1,11 +1,10 @@
-Shader "VFXTest/JadeShader_Baked"
+Shader "VFXTest/JadeShader_Baked_SH_H"
 {
     Properties
     {
         [HDR]_MainColor ("Main Color", Color) = (1, 1, 1, 1)
         _MainTex ("Main Texture", 2D) = "white" {}
         _NormalMap ("Normal Texture", 2D) = "bump" {}
-        // _GeoMap ("Geometry Map", 2D) = "white" {}
         _DistortionMap ("Distortion Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
         [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
@@ -23,7 +22,7 @@ Shader "VFXTest/JadeShader_Baked"
         [HDR]_SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
         // _Shininess ("_Shininess", Range(0.01, 100)) = 1
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
-        // _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
+        _WrapValue ("Wrap Value", Float) = 0.5
         _FresnelPow ("Fresnel Power", Float) = 1
         _ReflectCubeIntensity ("Reflect Cube Intensity", Float) = 1.0
         
@@ -60,34 +59,33 @@ Shader "VFXTest/JadeShader_Baked"
 
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             TEXTURE2D(_NormalMap);      SAMPLER(sampler_NormalMap);
-            // TEXTURE2D(_GeoMap);         SAMPLER(sampler_GeoMap);
-            TEXTURE2D(_DistortionMap);     SAMPLER(sampler_DistortionMap);
+            TEXTURE2D(_DistortionMap);  SAMPLER(sampler_DistortionMap);
             TEXTURE2D(_ParallaxMap);    SAMPLER(sampler_ParallaxMap);
 
             CBUFFER_START(UnityPerMaterial)
-            half4 _MainColor;
-            float4 _MainTex_ST;
-            float4 _DistortionMap_ST;
-            float4 _ParallaxMap_ST;
-            half4 _InnerColor;
-            half _RefractPower;
-            half _RefractIntensity;
-            half _InnerDepth;
-            half4 _ScatterAmount;
-            half _Sharpness;
-            half4 _EdgeColor;
-            half4 _SpecularColor;
-            half _Shininess;
-            half _Roughness;
-            half _WrapValue;
-            half _FresnelPow;
-            half _ReflectCubeIntensity;
-            half4 _BackLightColor;
-            half _BackDistortion;
-            half _BackPower;
-            half _BackScale;
-            half _ThicknessScale;
-            half _ThicknessPower;
+                half4   _MainColor;
+                float4  _MainTex_ST;
+                float4  _DistortionMap_ST;
+                float4  _ParallaxMap_ST;
+                half4   _InnerColor;
+                half    _RefractPower;
+                half    _RefractIntensity;
+                half    _InnerDepth;
+                half4   _ScatterAmount;
+                half    _Sharpness;
+                half4   _EdgeColor;
+                half4   _SpecularColor;
+                half    _Shininess;
+                half    _Roughness;
+                half    _WrapValue;
+                half    _FresnelPow;
+                half    _ReflectCubeIntensity;
+                half4   _BackLightColor;
+                half    _BackDistortion;
+                half    _BackPower;
+                half    _BackScale;
+                half    _ThicknessScale;
+                half    _ThicknessPower;
             CBUFFER_END
             
             struct Attributes
@@ -110,6 +108,7 @@ Shader "VFXTest/JadeShader_Baked"
                 half3  viewDirWS  : TEXCOORD4;
                 half3  viewDirTS  : TEXCOORD5;
                 half   thickness  : TEXCOORD6;
+                half thicknessLS  : TEXCOORD7;
             };
 
             float3 WorldNormal(float3 tSpace0, float3 tSpace1, float3 tSpace2, float3 normal)
@@ -128,7 +127,7 @@ Shader "VFXTest/JadeShader_Baked"
 	            return min(d, 2048.0);
             }
 
-            half CalcSpecular(half roughness, half NoH, half HoL)
+            half CalcSpecular(half roughness, half NoH)
             {
             	return (roughness * 0.25 + 0.25) * GGXMobile(roughness, NoH);
             }
@@ -151,15 +150,24 @@ Shader "VFXTest/JadeShader_Baked"
 
                 vsOut.viewDirWS = normalize(_WorldSpaceCameraPos - positionWS);
                 vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS));
-                
-                float4 meanRayAndReverseDist = float4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
-                float3 meanRay = meanRayAndReverseDist.xyz * 2.0 - 1.0;
-                meanRay = TransformObjectToWorldDir(meanRay);
-                // float meanDist = 1.0 / meanRayAndReverseDist.w;
-                float meanDist = meanRayAndReverseDist.w;
-                half MoV = dot(vsOut.viewDirWS, meanRay);
-                vsOut.thickness = exp(_Sharpness * (MoV - 1.0)) * meanDist - 0.5;
-                // vsOut.thickness = pow(MoV * 0.5 + 0.5, _Sharpness) * meanDist - 0.5;
+                half3 viewDirOS = -TransformWorldToObjectDir(vsOut.viewDirWS);
+
+                // half3 lightDir = GetMainLight().direction;
+
+                half4 coff = half4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
+                half sphereCoff = sqrt(3.0 / (4.0 * PI));
+                half Y0 = 1.0 / 2.0 * sqrt(1.0 / PI);
+                half Y1 = sphereCoff * viewDirOS.z;
+                half Y2 = sphereCoff * viewDirOS.y;
+                half Y3 = sphereCoff * viewDirOS.x;
+                half dist = coff.x * Y0 + coff.y * Y1 + coff.z * Y2 + coff.w * Y3;
+                vsOut.thickness = exp(-dist * dist * _Sharpness * 0.1);
+
+                // half Y1LS =  sphereCoff * lightDir.z;
+                // half Y2LS =  sphereCoff * lightDir.y;
+                // half Y3LS = -sphereCoff * lightDir.x;
+                // half distLS = coff.x * Y0 + coff.y * Y1LS + coff.z * Y2LS + coff.w * Y3LS;
+                // vsOut.thicknessLS = exp(-distLS * distLS * _Sharpness * 0.1);
                 
                 return vsOut;
             }
@@ -172,6 +180,8 @@ Shader "VFXTest/JadeShader_Baked"
                 half shadowAtten = mainLight.shadowAttenuation;
                 half distanceAtten = mainLight.distanceAttenuation;
                 
+                // float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
+                // half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
                 half3 viewDirWS = fsIn.viewDirWS;
                 half3 viewDirTS = fsIn.viewDirTS;
 
@@ -180,7 +190,7 @@ Shader "VFXTest/JadeShader_Baked"
                 half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
                 half ao = normalTex.a;
                 // half thickness = saturate(pow(1 - geoTex.g, _ThicknessPower)) * _ThicknessScale;
-                half thickness = saturate(pow(fsIn.thickness, _ThicknessPower) * _ThicknessScale);
+                half thickness = saturate(pow(saturate(fsIn.thickness), _ThicknessPower)) * _ThicknessScale;
 
                 half3 normalTS = UnpackNormalRGB(normalTex, 1.0);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);
@@ -189,27 +199,26 @@ Shader "VFXTest/JadeShader_Baked"
                 half NoH = saturate(dot(normalWS, halfDir));
                 half NoL = saturate(dot(normalWS, lightDir));
                 half NoV = saturate(dot(normalWS, viewDirWS));
-                half HoL = saturate(dot(halfDir, lightDir));
 
                 // ============= Inner Albedo
                 half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
                 float depth = _InnerDepth / abs(reflectDirTS.z);
                 float2 uvOffset = reflectDirTS.xy * depth / 1024;
-                half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw).rg;
-                float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + uvOffset;
-                half3 refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).rgb;
+                // half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw).rg;
+                float2 refractUV = fsIn.texCoord * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + uvOffset;
+                half refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).r;
                 refractColor = pow(refractColor, _RefractPower) * _RefractIntensity;
 
                 // ============= SSS & Diffuse
                 half3 scatter = _ScatterAmount.rgb;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
                 // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
-                // half3 diffuse = _MainColor.rgb * wrapDiffuse * _MainLightColor.rgb;
+                // half3 diffuse = wrapDiffuse * baseColor;
                 half3 diffuse = distanceAtten * sg;
 
                 // ============= Specular
                 // half3 specular = lightColor * _SpecularColor.rgb * pow(NoH, _Shininess);
-                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH, HoL) * NoL * lightColor;
+                half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH) * NoL * lightColor;
 
                 // ============= BackLight
                 half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);
@@ -225,9 +234,11 @@ Shader "VFXTest/JadeShader_Baked"
 
                 // ============= Final Tune
                 half3 finalColor = backColor + baseColor * (diffuse + specular + GIData) + refractColor * _InnerColor.rgb;
+                // half3 finalColor = backColor + baseColor * (diffuse + specular + GIData);
                 half fresnelTrem = pow(1 - NoV, _FresnelPow);
-                finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
-                // finalColor += fresnelTrem * _EdgeColor.rgb;
+                // finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
+                finalColor = lerp(finalColor, _EdgeColor.rgb, thickness);
+                // finalColor += fresnelTrem;
 
                 // Fast ToneMap
                 finalColor = saturate((finalColor * (2.51 * finalColor + 0.03)) / (finalColor * (2.43 * finalColor + 0.59) + 0.14));

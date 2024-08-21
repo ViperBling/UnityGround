@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_Jade_Statue_Baked_SH
-  m_Shader: {fileID: 4800000, guid: f6b083396fd55da43b2b891e3a8d17d5, type: 3}
+  m_Name: M_Jade_Statue_Baked_SH_H
+  m_Shader: {fileID: 4800000, guid: d20531ac3e0044f7b4b50ed012d54c47, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -40,8 +40,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 7043635adf3a0d041ac11e63e8883012, type: 3}
-        m_Scale: {x: 0.23, y: 0.56}
+        m_Texture: {fileID: 2800000, guid: 7151b27537641354c99a44f3d4bf2714, type: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 8900000, guid: b0d49cabe0375114bb09d2e3a04d1185, type: 3}
@@ -49,9 +49,9 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.39
-    - _BackPower: 6.77
-    - _BackScale: 4.07
+    - _BackDistortion: 0.45
+    - _BackPower: 5.32
+    - _BackScale: 4.12
     - _Distort: 0.78
     - _FresnelPow: 9.16
     - _InnerDepth: 10
@@ -62,14 +62,14 @@ Material:
     - _Roughness: 0.096
     - _Sharpness: 0.01
     - _Shininess: 31.5
-    - _ThicknessPower: 1.55
-    - _ThicknessScale: 0.86
+    - _ThicknessPower: 2.07
+    - _ThicknessScale: 0.53
     - _WrapValue: 0.22
     m_Colors:
-    - _BackLightColor: {r: 2.5942795, g: 4.867144, b: 3.9832523, a: 1}
+    - _BackLightColor: {r: 1.0536046, g: 1.9766743, b: 1.6177027, a: 1}
     - _EdgeColor: {r: 0.31426558, g: 0.9312217, b: 1.2113509, a: 1}
-    - _InnerColor: {r: 0.34901962, g: 0.34901962, b: 0.34901962, a: 1}
-    - _MainColor: {r: 0.023529412, g: 0.24705882, b: 0.21568628, a: 1}
+    - _InnerColor: {r: 0.17243683, g: 0.20758097, b: 0.23584908, a: 1}
+    - _MainColor: {r: 0, g: 0.24528301, b: 0.208822, a: 1}
     - _ScatterAmount: {r: 0.03594868, g: 0.692377, b: 0.7056604, a: 1}
     - _ScatterColor: {r: 0.16037738, g: 2, b: 1.4371418, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
