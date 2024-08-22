@@ -45,6 +45,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         {
             "RenderType" = "Opaque"
             "Queue" = "Geometry"
+            "RenderPipeline" = "UniversalPipeline"
         }
         
         HLSLINCLUDE
@@ -56,6 +57,11 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
 
         Pass
         {
+            Tags
+            {
+                "LightMode" = "UniversalForward"
+            }
+            
             HLSLPROGRAM
             #pragma vertex VertexPass
             #pragma fragment FragmentPass
@@ -111,7 +117,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3  viewDirWS  : TEXCOORD4;
                 half3  viewDirTS  : TEXCOORD5;
                 half   thickness  : TEXCOORD6;
-                half thicknessLS  : TEXCOORD7;
+                // half thicknessLS  : TEXCOORD7;
             };
 
             float3 WorldNormal(float3 tSpace0, float3 tSpace1, float3 tSpace2, float3 normal)
@@ -190,7 +196,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 viewDirTS = fsIn.viewDirTS;
 
                 half4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord);
-                half3 baseColor = mainTex.rgb * _MainColor.rgb;
+                // half3 baseColor = mainTex.rgb * _MainColor.rgb;
                 half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
                 half ao = normalTex.a;
                 half thickness = saturate(pow(saturate(fsIn.thickness), _ThicknessPower) * _ThicknessScale);
@@ -201,7 +207,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 halfDir = normalize(lightDir + viewDirWS);
                 half NoH = saturate(dot(normalWS, halfDir));
                 half NoL = saturate(dot(normalWS, lightDir));
-                half NoV = saturate(dot(normalWS, viewDirWS));
+                // half NoV = saturate(dot(normalWS, viewDirWS));
 
                 // ============= Inner Albedo
                 half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
@@ -238,7 +244,6 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 finalColor = diffuse + specular + GIData;
                 // half fresnelTrem = pow(1 - NoV, _FresnelPow);
                 finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor + refractColor * _InnerColor.rgb;
-
                 finalColor = lerp(finalColor, specular, _Roughness);
 
                 // Fast ToneMap

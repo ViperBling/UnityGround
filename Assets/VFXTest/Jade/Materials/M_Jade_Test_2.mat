@@ -61,7 +61,7 @@ Material:
     - _FresnelPow: 1.74
     - _InnerDepth: 1
     - _ReflectCubeIntensity: 1.17
-    - _RefractIntensity: 1.24
+    - _RefractIntensity: 1.01
     - _RefractPower: 2.94
     - _RefractionScale: 3.81
     - _Roughness: 0.197

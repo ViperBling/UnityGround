@@ -53,30 +53,30 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.45
-    - _BackPower: 5.32
-    - _BackScale: 4.12
+    - _BackDistortion: 0.83
+    - _BackPower: 5.45
+    - _BackScale: 2.51
     - _BumpScale: 1
     - _Distort: 0.78
     - _FresnelPow: 9.16
     - _InnerDepth: 10
     - _ReflectCubeIntensity: 1.33
-    - _RefractIntensity: 1.29
+    - _RefractIntensity: 2.12
     - _RefractPower: 2.38
     - _RefractionScale: 1.42
     - _Roughness: 0.172
     - _Sharpness: 0.01
     - _Shininess: 31.5
-    - _ThicknessPower: 2.76
-    - _ThicknessScale: 0.65
-    - _ThicknessSharpness: 0.01
+    - _ThicknessPower: 0.92
+    - _ThicknessScale: 0.79
+    - _ThicknessSharpness: 0.005
     - _WrapValue: 0.22
     m_Colors:
-    - _BackLightColor: {r: 1.0536046, g: 1.9766743, b: 1.6177027, a: 1}
-    - _EdgeColor: {r: 0.17574273, g: 1.6198891, b: 1.4442174, a: 1}
+    - _BackLightColor: {r: 0.798483, g: 1.4980391, b: 1.2259895, a: 1}
+    - _EdgeColor: {r: 0.64302623, g: 1.2803134, b: 1.4980392, a: 1}
     - _InnerColor: {r: 0.31412423, g: 0.35540125, b: 0.3679245, a: 1}
-    - _MainColor: {r: 0.102127105, g: 0.37547508, b: 0.4811321, a: 1}
-    - _ScatterAmount: {r: 0.03594868, g: 0.692377, b: 0.7056604, a: 1}
+    - _MainColor: {r: 0.040628344, g: 0.3826737, b: 0.7830189, a: 1}
+    - _ScatterAmount: {r: 0, g: 0.9824562, b: 1, a: 1}
     - _ScatterColor: {r: 0.16037738, g: 2, b: 1.4371418, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

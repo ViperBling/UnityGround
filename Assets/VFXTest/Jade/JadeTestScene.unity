@@ -36,7 +36,7 @@ RenderSettings:
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 1
-  m_CustomReflection: {fileID: 0}
+  m_CustomReflection: {fileID: 8900000, guid: 62c1ed63651fb1949a4ad4c9aeca5297, type: 3}
   m_Sun: {fileID: 591824125}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
@@ -769,13 +769,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 591824124}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.25000006, y: -0.24999997, z: 0.066987306, w: 0.9330127}
+  m_LocalRotation: {x: 0.084186025, y: -0.25783414, z: 0.022557573, w: 0.9622502}
   m_LocalPosition: {x: 0, y: 4.28, z: -4.39}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 30, y: -30, z: 0}
+  m_LocalEulerAnglesHint: {x: 10, y: -30, z: 0}
 --- !u!114 &591824127
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -812,7 +812,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_DegPerSec: 30
-  m_RotAxis: {x: 0, y: 0.70710677, z: -0.70710677}
+  m_RotAxis: {x: 0, y: 0.99503714, z: -0.09950372}
 --- !u!1 &619494056 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1891686611943085429, guid: c59b6576974fecc44b8e33004a7c5d36,
@@ -1628,17 +1628,17 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -8.374
+      value: -2.3
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.035
+      value: 2.231
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -5.975
+      value: -9.63
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
