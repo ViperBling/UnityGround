@@ -23,9 +23,13 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _CubeMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _DistortionMap:
         m_Texture: {fileID: 2800000, guid: 60b6322daaa05064a863e1477b855878, type: 3}
-        m_Scale: {x: 0.28, y: 0.34}
+        m_Scale: {x: 0.28, y: 0.16}
         m_Offset: {x: 0, y: 0}
     - _GeoMap:
         m_Texture: {fileID: 2800000, guid: c25c6be81ad797a4c95475e50812f920, type: 3}
@@ -40,8 +44,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 60b6322daaa05064a863e1477b855878, type: 3}
-        m_Scale: {x: 1, y: 1}
+        m_Texture: {fileID: 2800000, guid: 7043635adf3a0d041ac11e63e8883012, type: 3}
+        m_Scale: {x: 0.55, y: 0.4}
         m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 8900000, guid: b0d49cabe0375114bb09d2e3a04d1185, type: 3}
@@ -52,9 +56,10 @@ Material:
     - _BackDistortion: 0.73
     - _BackPower: 1.71
     - _BackScale: 2.43
+    - _BumpScale: 1
     - _Distort: 0.79
     - _FresnelPow: 14.98
-    - _InnerDepth: 50
+    - _InnerDepth: 10
     - _ReflectCubeIntensity: 1.1
     - _RefractIntensity: 1.56
     - _RefractPower: 2.72
@@ -64,10 +69,11 @@ Material:
     - _Shininess: 0.01
     - _ThicknessPower: 1.36
     - _ThicknessScale: 0.7
+    - _ThicknessSharpness: 21.24
     - _WrapValue: 0.72
     m_Colors:
     - _BackLightColor: {r: 1, g: 1, b: 1, a: 1}
-    - _EdgeColor: {r: 0, g: 1.2570662, b: 0.20265412, a: 1}
+    - _EdgeColor: {r: 0, g: 1.282461, b: 0.535034, a: 1}
     - _InnerColor: {r: 0.033799276, g: 0.24708433, b: 0.123133354, a: 1}
     - _MainColor: {r: 0.11129227, g: 0.18071084, b: 0.2905661, a: 1}
     - _ScatterAmount: {r: 0.14448555, g: 0.3433962, b: 0.2733476, a: 1}
