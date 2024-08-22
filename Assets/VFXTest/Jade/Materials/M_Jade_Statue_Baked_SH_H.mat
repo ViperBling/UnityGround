@@ -44,8 +44,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 7043635adf3a0d041ac11e63e8883012, type: 3}
-        m_Scale: {x: 0.64, y: 0.79}
+        m_Texture: {fileID: 2800000, guid: 79763c7af4fd39b4bb56ad6923181e6d, type: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 8900000, guid: b0d49cabe0375114bb09d2e3a04d1185, type: 3}
@@ -59,10 +59,10 @@ Material:
     - _BumpScale: 1
     - _Distort: 0.78
     - _FresnelPow: 9.16
-    - _InnerDepth: 10
+    - _InnerDepth: 100
     - _ReflectCubeIntensity: 1.33
-    - _RefractIntensity: 2.12
-    - _RefractPower: 2.38
+    - _RefractIntensity: 1
+    - _RefractPower: 1
     - _RefractionScale: 1.42
     - _Roughness: 0.172
     - _Sharpness: 0.01

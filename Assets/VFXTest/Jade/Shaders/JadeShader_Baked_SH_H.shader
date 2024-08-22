@@ -110,7 +110,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
-                float2 texCoord   : TEXCOORD0;
+                float4 texCoord   : TEXCOORD0;
                 float4 tSpace0    : TEXCOORD1;
                 float4 tSpace1    : TEXCOORD2;
                 float4 tSpace2    : TEXCOORD3;
@@ -146,7 +146,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 Varyings vsOut = (Varyings)0;
                 
                 vsOut.positionCS = TransformObjectToHClip(vsIn.positionOS.xyz);
-                vsOut.texCoord = TRANSFORM_TEX(vsIn.texCoord, _MainTex);
+                vsOut.texCoord.xy = TRANSFORM_TEX(vsIn.texCoord, _MainTex);
                 // vsOut.texCoord = vsIn.texCoord;
                 float3 positionWS = TransformObjectToWorld(vsIn.positionOS);
 
@@ -171,6 +171,12 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half Y3 = sphereCoff * viewDirOS.x;
                 half dist = coff.x * Y0 + coff.y * Y1 + coff.z * Y2 + coff.w * Y3;
                 vsOut.thickness = exp(-dist * dist * _ThicknessSharpness * 0.1);
+
+                half3 leftDirectionOS = TransformWorldToObjectDir(half3(1, 0, 0));
+                half3 upDirectionOS = TransformWorldToObjectDir(half3(0, 1, 0));
+                float u = dot(vsIn.positionOS.xyz, leftDirectionOS);
+                float v = dot(vsIn.positionOS.xyz, upDirectionOS);
+                vsOut.texCoord.zw = float2(u, v);
 
                 // Light space thickness for better diffuse.
                 // half Y1LS =  sphereCoff * lightDir.z;
@@ -203,6 +209,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
 
                 half3 normalTS = UnpackNormalRGB(normalTex, _BumpScale);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);
+                half3 normalVS = TransformWorldToViewDir(normalWS);
 
                 half3 halfDir = normalize(lightDir + viewDirWS);
                 half NoH = saturate(dot(normalWS, halfDir));
@@ -214,7 +221,8 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 float depth = _InnerDepth / abs(reflectDirTS.z);
                 float2 uvOffset = reflectDirTS.xy * depth / 1024;
                 half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw + uvOffset).rg;
-                float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
+                // float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
+                float2 refractUV = fsIn.texCoord.zw * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + normalVS.xy * 0.01 + uvOffset;
                 half refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).r;
                 refractColor = pow(refractColor, _RefractPower) * _RefractIntensity;
 
