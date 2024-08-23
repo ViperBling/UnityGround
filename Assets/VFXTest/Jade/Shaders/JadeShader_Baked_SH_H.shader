@@ -28,7 +28,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
         _BumpScale ("Bump Scale", Float) = 1
         // _WrapValue ("Wrap Value", Float) = 0.5
-        _FresnelPow ("Fresnel Power", Float) = 1
+        // _FresnelPow ("Fresnel Power", Float) = 1
         _ReflectCubeIntensity ("Reflect Cube Intensity", Float) = 1.0
         
         [Space]
@@ -87,7 +87,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half    _Shininess;
                 half    _Roughness;
                 half    _BumpScale;
-                half    _FresnelPow;
+                // half    _FresnelPow;
                 half    _ReflectCubeIntensity;
                 half4   _BackLightColor;
                 half    _BackDistortion;
