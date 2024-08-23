@@ -6,7 +6,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         [HDR]_MainColor ("Main Color", Color) = (1, 1, 1, 1)
         _MainTex ("Main Texture", 2D) = "white" {}
         _NormalMap ("Normal Texture", 2D) = "bump" {}
-        _DistortionMap ("Distortion Map", 2D) = "white" {}
+        // _DistortionMap ("Distortion Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
         [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
         _RefractPower ("Refract Power", Float) = 1
@@ -68,7 +68,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
 
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             TEXTURE2D(_NormalMap);      SAMPLER(sampler_NormalMap);
-            TEXTURE2D(_DistortionMap);  SAMPLER(sampler_DistortionMap);
+            // TEXTURE2D(_DistortionMap);  SAMPLER(sampler_DistortionMap);
             TEXTURE2D(_ParallaxMap);    SAMPLER(sampler_ParallaxMap);
 
             CBUFFER_START(UnityPerMaterial)
@@ -220,7 +220,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 reflectDirTS = reflect(-viewDirTS, half3(0, 0, 1));
                 float depth = _InnerDepth / abs(reflectDirTS.z);
                 float2 uvOffset = reflectDirTS.xy * depth / 1024;
-                half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw + uvOffset).rg;
+                // half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw + uvOffset).rg;
                 // float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
                 float2 refractUV = fsIn.texCoord.zw * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + normalVS.xy * 0.01 + uvOffset;
                 half refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).r;

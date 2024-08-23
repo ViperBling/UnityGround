@@ -61,8 +61,8 @@ Material:
     - _FresnelPow: 9.16
     - _InnerDepth: 100
     - _ReflectCubeIntensity: 1.33
-    - _RefractIntensity: 1
-    - _RefractPower: 1
+    - _RefractIntensity: 1.49
+    - _RefractPower: 0.9
     - _RefractionScale: 1.42
     - _Roughness: 0.172
     - _Sharpness: 0.01
@@ -74,7 +74,7 @@ Material:
     m_Colors:
     - _BackLightColor: {r: 0.798483, g: 1.4980391, b: 1.2259895, a: 1}
     - _EdgeColor: {r: 0.64302623, g: 1.2803134, b: 1.4980392, a: 1}
-    - _InnerColor: {r: 0.31412423, g: 0.35540125, b: 0.3679245, a: 1}
+    - _InnerColor: {r: 0, g: 2.0735126, b: 2.6390157, a: 1}
     - _MainColor: {r: 0.040628344, g: 0.3826737, b: 0.7830189, a: 1}
     - _ScatterAmount: {r: 0, g: 0.9824562, b: 1, a: 1}
     - _ScatterColor: {r: 0.16037738, g: 2, b: 1.4371418, a: 1}
