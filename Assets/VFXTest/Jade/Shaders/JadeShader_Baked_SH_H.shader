@@ -27,7 +27,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         // _Shininess ("_Shininess", Range(0.01, 100)) = 1
         _Roughness ("Roughness", Range(0.01, 1)) = 0.5
         _BumpScale ("Bump Scale", Float) = 1
-        // _WrapValue ("Wrap Value", Float) = 0.5
+        _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
         // _FresnelPow ("Fresnel Power", Float) = 1
         _ReflectCubeIntensity ("Reflect Cube Intensity", Float) = 1.0
         
@@ -87,7 +87,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half    _Shininess;
                 half    _Roughness;
                 half    _BumpScale;
-                // half    _FresnelPow;
+                half    _WrapValue;
                 half    _ReflectCubeIntensity;
                 half4   _BackLightColor;
                 half    _BackDistortion;
@@ -148,7 +148,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 vsOut.positionCS = TransformObjectToHClip(vsIn.positionOS.xyz);
                 vsOut.texCoord.xy = TRANSFORM_TEX(vsIn.texCoord, _MainTex);
                 // vsOut.texCoord = vsIn.texCoord;
-                float3 positionWS = TransformObjectToWorld(vsIn.positionOS);
+                float3 positionWS = TransformObjectToWorld(vsIn.positionOS.xyz);
 
                 VertexNormalInputs normalInputs = GetVertexNormalInputs(vsIn.normalOS);
                 vsOut.tSpace0 = float4(normalInputs.tangentWS.x, normalInputs.bitangentWS.x, normalInputs.normalWS.x, positionWS.x);
@@ -201,9 +201,9 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half3 viewDirWS = fsIn.viewDirWS;
                 half3 viewDirTS = fsIn.viewDirTS;
 
-                half4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord);
-                // half3 baseColor = mainTex.rgb * _MainColor.rgb;
-                half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
+                half4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord.xy);
+                half3 baseColor = mainTex.rgb * _MainColor.rgb;
+                half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord.xy);
                 half ao = normalTex.a;
                 half thickness = saturate(pow(saturate(fsIn.thickness), _ThicknessPower) * _ThicknessScale);
 
@@ -229,9 +229,9 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 // ============= SSS & Diffuse
                 half3 scatter = _ScatterAmount.rgb;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
-                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
-                // half3 diffuse = wrapDiffuse * baseColor;
-                half3 diffuse = shadowAtten * distanceAtten * sg;
+                half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
+                half3 diffuse = wrapDiffuse * baseColor;
+                // half3 diffuse = shadowAtten * distanceAtten * sg;
 
                 // ============= Specular
                 half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH) * lightColor * NoL;
@@ -250,14 +250,13 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
 
                 // ============= Final Tune
                 half3 finalColor = diffuse + specular + GIData;
-                // half fresnelTrem = pow(1 - NoV, _FresnelPow);
                 finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor + refractColor * _InnerColor.rgb;
                 finalColor = lerp(finalColor, specular, _Roughness);
 
                 // Fast ToneMap
                 finalColor = saturate((finalColor * (2.51 * finalColor + 0.03)) / (finalColor * (2.43 * finalColor + 0.59) + 0.14));
                 
-                return half4(finalColor, 1.0);
+                return half4(thickness.xxx, 1.0);
             }
             ENDHLSL
         }
