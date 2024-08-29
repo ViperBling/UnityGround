@@ -11,7 +11,8 @@ Material:
   m_Shader: {fileID: 4800000, guid: d20531ac3e0044f7b4b50ed012d54c47, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - USE_COMPUTE_UV
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -44,8 +45,8 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: 79763c7af4fd39b4bb56ad6923181e6d, type: 3}
-        m_Scale: {x: 10, y: 10}
+        m_Texture: {fileID: 2800000, guid: ece33663dbca1d94bbd2674c40bdd51d, type: 3}
+        m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ReflectCube:
         m_Texture: {fileID: 0}
@@ -53,29 +54,30 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BackDistortion: 0.42
-    - _BackPower: 1.4
-    - _BackScale: 1.53
-    - _BumpScale: 1
+    - _BackDistortion: 0.63
+    - _BackPower: 1.86
+    - _BackScale: 0.97
+    - _BumpScale: 0.22
     - _Distort: 0.41
     - _FresnelPow: 6.89
     - _InnerDepth: 10
     - _ReflectCubeIntensity: 0.75
-    - _RefractIntensity: 0
-    - _RefractPower: 1.7
+    - _RefractIntensity: 1.43
+    - _RefractPower: 1.62
     - _RefractionScale: 3.81
-    - _Roughness: 0.16
+    - _Roughness: 0.121
     - _Sharpness: 1.71
     - _Shininess: 0.01
-    - _ThicknessPower: 0.83
-    - _ThicknessScale: 0.73
-    - _ThicknessSharpness: 0.35
+    - _ThicknessPower: 0.95
+    - _ThicknessScale: 0.7
+    - _ThicknessSharpness: 0.56
+    - _UseComputeUV: 1
     - _WrapValue: 0.5
     m_Colors:
     - _BackLightColor: {r: 0.21150766, g: 0.77859163, b: 0.9150943, a: 1}
-    - _EdgeColor: {r: 0, g: 0.8389838, b: 1.1868347, a: 1}
-    - _InnerColor: {r: 0.1907879, g: 0.647446, b: 0.74901956, a: 1}
-    - _MainColor: {r: 0.10453009, g: 0.12641098, b: 0.2735849, a: 1}
+    - _EdgeColor: {r: 0, g: 0.52948844, b: 0.74901956, a: 1}
+    - _InnerColor: {r: 0.46226418, g: 0.46226418, b: 0.46226418, a: 1}
+    - _MainColor: {r: 0.007787468, g: 0.12050265, b: 0.3301887, a: 1}
     - _ScatterAmount: {r: 0, g: 0.8074074, b: 1, a: 1}
     - _ScatterColor: {r: 0.2237896, g: 0.4433962, b: 0.10666606, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}

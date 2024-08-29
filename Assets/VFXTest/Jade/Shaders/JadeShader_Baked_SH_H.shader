@@ -8,6 +8,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         _NormalMap ("Normal Texture", 2D) = "bump" {}
         // _DistortionMap ("Distortion Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
+        [Toggle(USE_COMPUTE_UV)] _UseComputeUV ("Use Compute UV", Int) = 0
         [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
         _RefractPower ("Refract Power", Float) = 1
         _RefractIntensity ("Refract Intensity", Float) = 1
@@ -63,6 +64,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
             }
             
             HLSLPROGRAM
+            #pragma shader_feature _ USE_COMPUTE_UV
             #pragma vertex VertexPass
             #pragma fragment FragmentPass
 
@@ -172,11 +174,15 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 half dist = coff.x * Y0 + coff.y * Y1 + coff.z * Y2 + coff.w * Y3;
                 vsOut.thickness = exp(-dist * dist * _ThicknessSharpness * 0.1);
 
+                #if defined(USE_COMPUTE_UV)
                 half3 leftDirectionOS = TransformWorldToObjectDir(half3(1, 0, 0));
                 half3 upDirectionOS = TransformWorldToObjectDir(half3(0, 1, 0));
                 float u = dot(vsIn.positionOS.xyz, leftDirectionOS);
                 float v = dot(vsIn.positionOS.xyz, upDirectionOS);
-                vsOut.texCoord.zw = float2(u, v);
+                vsOut.texCoord.zw = float2(u, v) * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
+                #else
+                vsOut.texCoord.zw = vsIn.texCoord.xy * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
+                #endif
 
                 // Light space thickness for better diffuse.
                 // half Y1LS =  sphereCoff * lightDir.z;
@@ -222,16 +228,16 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 float2 uvOffset = reflectDirTS.xy * depth / 1024;
                 // half2 distortionTEX = SAMPLE_TEXTURE2D(_DistortionMap, sampler_DistortionMap, fsIn.texCoord * _DistortionMap_ST.xy + _DistortionMap_ST.zw + uvOffset).rg;
                 // float2 refractUV = distortionTEX * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw;
-                float2 refractUV = fsIn.texCoord.zw * _ParallaxMap_ST.xy + _ParallaxMap_ST.zw + normalVS.xy * 0.01 + uvOffset;
+                float2 refractUV = fsIn.texCoord.zw + normalVS.xy * 0.01 + uvOffset;
                 half refractColor = SAMPLE_TEXTURE2D(_ParallaxMap, sampler_ParallaxMap, refractUV).r;
                 refractColor = pow(refractColor, _RefractPower) * _RefractIntensity;
 
                 // ============= SSS & Diffuse
                 half3 scatter = _ScatterAmount.rgb;
                 half3 sg = SGDiffuseLighting(normalWS, lightDir, scatter);
-                half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
-                half3 diffuse = wrapDiffuse * baseColor;
-                // half3 diffuse = shadowAtten * distanceAtten * sg;
+                // half3 wrapDiffuse = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
+                // half3 diffuse = wrapDiffuse * baseColor;
+                half3 diffuse = shadowAtten * distanceAtten * sg;
 
                 // ============= Specular
                 half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH) * lightColor * NoL;
@@ -250,13 +256,14 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
 
                 // ============= Final Tune
                 half3 finalColor = diffuse + specular + GIData;
-                finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor + refractColor * _InnerColor.rgb;
+                finalColor = mainTex.rgb * lerp(_MainColor.rgb * finalColor, _EdgeColor.rgb, thickness) + backColor;
+                finalColor = lerp(finalColor, _InnerColor.rgb, refractColor);
                 finalColor = lerp(finalColor, specular, _Roughness);
 
                 // Fast ToneMap
                 finalColor = saturate((finalColor * (2.51 * finalColor + 0.03)) / (finalColor * (2.43 * finalColor + 0.59) + 0.14));
                 
-                return half4(thickness.xxx, 1.0);
+                return half4(finalColor, 1.0);
             }
             ENDHLSL
         }
