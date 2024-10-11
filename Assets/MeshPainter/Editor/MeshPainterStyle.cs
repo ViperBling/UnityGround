@@ -22,7 +22,17 @@ public class MeshPainterStyle : Editor
     private int m_BrushSizeInPercent;
     private Texture2D m_MaskTexture;
 
-    void OnPreSceneGUI()
+    void OnEnable()
+    {
+        SceneView.duringSceneGui += this.OnSceneGUI;
+    }
+
+    private void OnDestroy()
+    {
+        SceneView.duringSceneGui -= this.OnSceneGUI;
+    }
+
+    void OnSceneGUI(SceneView obj)
     {
         if (m_bIsPaint)
         {
@@ -82,7 +92,7 @@ public class MeshPainterStyle : Editor
 
     void InitBrush()
     {
-        string meshPaintEditorFolder = "Assets/VFXTest/MeshPainter/Editor/";
+        string meshPaintEditorFolder = "Assets/MeshPainter/Editor/";
         ArrayList brushList = new ArrayList();
         Texture brushes;
         int numBrushes = 0;
