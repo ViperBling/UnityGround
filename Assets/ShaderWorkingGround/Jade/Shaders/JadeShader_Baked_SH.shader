@@ -48,7 +48,7 @@ Shader "VFXTest/JadeShader_Baked_SH"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
-        #include "Assets/VFXTest/Jade/Shaders/SG.hlsl"
+        #include "SG.hlsl"
         ENDHLSL
 
         Pass

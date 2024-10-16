@@ -53,7 +53,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
-        #include "Assets/VFXTest/Jade/Shaders/SG.hlsl"
+        #include "SG.hlsl"
         ENDHLSL
 
         Pass
@@ -242,7 +242,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
                 // ============= Specular
                 half3 specular = _SpecularColor.rgb * CalcSpecular(_Roughness, NoH) * lightColor * NoL;
 
-                // ============= BackLighta
+                // ============= BackLight
                 half3 backLightDir = -normalize(lightDir + normalWS * _BackDistortion);
                 half VoL = saturate(dot(viewDirWS, backLightDir));
                 half backLightTerm = pow(VoL, _BackPower) * _BackScale;

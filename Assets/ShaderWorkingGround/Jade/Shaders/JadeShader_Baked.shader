@@ -1,11 +1,11 @@
-Shader "VFXTest/JadeShader"
+Shader "VFXTest/JadeShader_Baked"
 {
     Properties
     {
         [HDR]_MainColor ("Main Color", Color) = (1, 1, 1, 1)
         _MainTex ("Main Texture", 2D) = "white" {}
         _NormalMap ("Normal Texture", 2D) = "bump" {}
-        _GeoMap ("Geometry Map", 2D) = "white" {}
+        // _GeoMap ("Geometry Map", 2D) = "white" {}
         _DistortionMap ("Distortion Map", 2D) = "white" {}
         _ParallaxMap ("Parallax Map", 2D) = "white" {}
         [HDR]_InnerColor ("Inner Color", Color) = (1, 1, 1, 1)
@@ -33,6 +33,7 @@ Shader "VFXTest/JadeShader"
         _BackDistortion ("Back Distortion", Range(0.0, 2)) = 0.5
         _BackPower ("Back Power", Float) = 1
         _BackScale ("Back Scale", Float) = 1
+        _Sharpness ("Thickness Sharpness", Float) = 1
         _ThicknessScale ("ThicknessScale", Float) = 1
         _ThicknessPower ("ThicknessPower", Float) = 1
     }
@@ -48,7 +49,7 @@ Shader "VFXTest/JadeShader"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
-        #include "Assets/VFXTest/Jade/Shaders/SG.hlsl"
+        #include "SG.hlsl"
         ENDHLSL
 
         Pass
@@ -59,10 +60,9 @@ Shader "VFXTest/JadeShader"
 
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             TEXTURE2D(_NormalMap);      SAMPLER(sampler_NormalMap);
-            TEXTURE2D(_GeoMap);         SAMPLER(sampler_GeoMap);
+            // TEXTURE2D(_GeoMap);         SAMPLER(sampler_GeoMap);
             TEXTURE2D(_DistortionMap);     SAMPLER(sampler_DistortionMap);
             TEXTURE2D(_ParallaxMap);    SAMPLER(sampler_ParallaxMap);
-            // TEXTURE2D(_CameraOpaqueTexture);       SAMPLER(sampler_CameraOpaqueTexture);
 
             CBUFFER_START(UnityPerMaterial)
             half4 _MainColor;
@@ -74,6 +74,7 @@ Shader "VFXTest/JadeShader"
             half _RefractIntensity;
             half _InnerDepth;
             half4 _ScatterAmount;
+            half _Sharpness;
             half4 _EdgeColor;
             half4 _SpecularColor;
             half _Shininess;
@@ -93,7 +94,10 @@ Shader "VFXTest/JadeShader"
             {
                 float4 positionOS : POSITION;
                 half3 normalOS    : NORMAL;
+                half4 vertexColor : COLOR;
                 float2 texCoord   : TEXCOORD0;
+                float2 texCoord2  : TEXCOORD1;
+                float2 texCoord3  : TEXCOORD2;
             };
 
             struct Varyings
@@ -105,6 +109,7 @@ Shader "VFXTest/JadeShader"
                 float4 tSpace2    : TEXCOORD3;
                 half3  viewDirWS  : TEXCOORD4;
                 half3  viewDirTS  : TEXCOORD5;
+                half   thickness  : TEXCOORD6;
             };
 
             float3 WorldNormal(float3 tSpace0, float3 tSpace1, float3 tSpace2, float3 normal)
@@ -135,7 +140,7 @@ Shader "VFXTest/JadeShader"
                 vsOut.positionCS = TransformObjectToHClip(vsIn.positionOS.xyz);
                 vsOut.texCoord = TRANSFORM_TEX(vsIn.texCoord, _MainTex);
                 // vsOut.texCoord = vsIn.texCoord;
-                float3 positionWS = TransformObjectToWorld(vsIn.positionOS);
+                float3 positionWS = TransformObjectToWorld(vsIn.positionOS.xyz);
 
                 VertexNormalInputs normalInputs = GetVertexNormalInputs(vsIn.normalOS);
                 vsOut.tSpace0 = float4(normalInputs.tangentWS.x, normalInputs.bitangentWS.x, normalInputs.normalWS.x, positionWS.x);
@@ -145,7 +150,16 @@ Shader "VFXTest/JadeShader"
                 float3x3 TBN = float3x3(normalInputs.tangentWS.xyz, normalInputs.bitangentWS.xyz, normalInputs.normalWS.xyz);
 
                 vsOut.viewDirWS = normalize(_WorldSpaceCameraPos - positionWS);
-                vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS)); 
+                vsOut.viewDirTS = normalize(mul(TBN, vsOut.viewDirWS));
+                
+                float4 meanRayAndReverseDist = float4(vsIn.texCoord2.xy, vsIn.texCoord3.xy);
+                float3 meanRay = meanRayAndReverseDist.xyz * 2.0 - 1.0;
+                meanRay = TransformObjectToWorldDir(meanRay);
+                // float meanDist = 1.0 / meanRayAndReverseDist.w;
+                float meanDist = meanRayAndReverseDist.w;
+                half MoV = dot(vsOut.viewDirWS, meanRay);
+                vsOut.thickness = exp(_Sharpness * (MoV - 1.0)) * meanDist - 0.5;
+                // vsOut.thickness = pow(MoV * 0.5 + 0.5, _Sharpness) * meanDist - 0.5;
                 
                 return vsOut;
             }
@@ -158,19 +172,17 @@ Shader "VFXTest/JadeShader"
                 half shadowAtten = mainLight.shadowAttenuation;
                 half distanceAtten = mainLight.distanceAttenuation;
                 
-                float3 positionWS = float3(fsIn.tSpace0.w, fsIn.tSpace1.w, fsIn.tSpace2.w);
-                half3 vertexNormalWS = normalize(float3(fsIn.tSpace0.z, fsIn.tSpace1.z, fsIn.tSpace2.z));
                 half3 viewDirWS = fsIn.viewDirWS;
                 half3 viewDirTS = fsIn.viewDirTS;
 
                 half4 mainTex = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord);
                 half3 baseColor = mainTex.rgb * _MainColor.rgb;
                 half4 normalTex = SAMPLE_TEXTURE2D(_NormalMap, sampler_NormalMap, fsIn.texCoord);
-                half4 geoTex = SAMPLE_TEXTURE2D(_GeoMap, sampler_GeoMap, fsIn.texCoord);
-                half ao = geoTex.r;
-                half thickness = saturate(pow(1 - geoTex.g, _ThicknessPower)) * _ThicknessScale;
+                half ao = normalTex.a;
+                // half thickness = saturate(pow(1 - geoTex.g, _ThicknessPower)) * _ThicknessScale;
+                half thickness = saturate(pow(fsIn.thickness, _ThicknessPower) * _ThicknessScale);
 
-                half3 normalTS = UnpackNormalScale(normalTex, 1.0);
+                half3 normalTS = UnpackNormalRGB(normalTex, 1.0);
                 half3 normalWS = WorldNormal(fsIn.tSpace0.xyz, fsIn.tSpace1.xyz, fsIn.tSpace2.xyz, normalTS);
 
                 half3 halfDir = normalize(lightDir + viewDirWS);
@@ -213,7 +225,7 @@ Shader "VFXTest/JadeShader"
 
                 // ============= Final Tune
                 half3 finalColor = backColor + baseColor * (diffuse + specular + GIData) + refractColor * _InnerColor.rgb;
-                half3 fresnelTrem = pow(1 - NoV, _FresnelPow);
+                half fresnelTrem = pow(1 - NoV, _FresnelPow);
                 finalColor = lerp(finalColor, _EdgeColor.rgb, fresnelTrem * thickness);
                 // finalColor += fresnelTrem * _EdgeColor.rgb;
 
