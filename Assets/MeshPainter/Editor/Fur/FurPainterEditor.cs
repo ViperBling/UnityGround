@@ -16,7 +16,6 @@ public class FurPainterEditor : Editor
 
     private Texture[] m_BrushTextures;
     private Texture[] m_LayerTextures;
-    private int m_BrushIndex = 0;
 
     private int m_SelectedBrush = 0;
     private int m_SelectedTexture = 0;
