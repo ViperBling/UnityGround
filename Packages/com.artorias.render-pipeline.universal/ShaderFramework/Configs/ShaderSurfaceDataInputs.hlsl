@@ -1,1 +1,0 @@
-#include "Packages/com.artorias.render-pipeline.universal/ShaderFramework/Shaders/ShaderSurfaceData/ATRP_SurfaceDataInput_Lit.hlsl"
