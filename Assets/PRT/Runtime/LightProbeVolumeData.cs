@@ -2,7 +2,11 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+
+#if UNITY_EDITOR
+using System.Linq;
 using UnityEditor;
+#endif
 
 namespace PRT
 {
@@ -38,8 +42,10 @@ namespace PRT
             }
 
             VolumePosition = volume.gameObject.transform.position;
+#if UNITY_EDITOR
             EditorUtility.SetDirty(this);
             UnityEditor.AssetDatabase.SaveAssets();
+#endif
         }
         
         public void TryLoadSurfelData(LightProbeVolume volume)

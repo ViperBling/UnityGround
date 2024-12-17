@@ -4,10 +4,10 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEditor;
 
-namespace PRT
+namespace PRT.Editor
 {
     [CustomEditor(typeof(LightProbeVolume))]
-    public class LightProbeVolumeDebug : Editor
+    public class LightProbeVolumeDebug : UnityEditor.Editor
     {
         public override void OnInspectorGUI() 
         {

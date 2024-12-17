@@ -7,7 +7,7 @@ using UnityEditor;
 namespace PRT
 {
     [CustomEditor(typeof(LightProbe))]
-    public class LightProbeDebug : Editor
+    public class LightProbeDebug : UnityEditor.Editor
     {
         public override void OnInspectorGUI() 
         {

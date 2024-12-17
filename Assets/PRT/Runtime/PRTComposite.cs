@@ -2,7 +2,7 @@
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-namespace PRT
+namespace PRT.Editor
 {
     public class PRTComposite : ScriptableRendererFeature
     {
