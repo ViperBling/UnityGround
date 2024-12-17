@@ -6,6 +6,9 @@ namespace PRT.Editor
 {
     public class PRTComposite : ScriptableRendererFeature
     {
+        public Material CompositeMaterial;
+        private CustomRenderPass _customPass;
+        
         class CustomRenderPass : ScriptableRenderPass
         {
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -63,7 +66,7 @@ namespace PRT.Editor
         {
             _customPass = new CustomRenderPass();
 
-            _customPass.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+            _customPass.renderPassEvent = RenderPassEvent.AfterRenderingOpaques;
             _customPass.BlitMaterial = CompositeMaterial;
         }
 
@@ -76,8 +79,5 @@ namespace PRT.Editor
         {
             _customPass.Setup(renderer.cameraColorTargetHandle, renderer.cameraDepthTargetHandle);
         }
-
-        public Material CompositeMaterial;
-        private CustomRenderPass _customPass;
     }
 }

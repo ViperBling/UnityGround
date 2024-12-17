@@ -2,7 +2,6 @@
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" {}
     }
     SubShader
     {
@@ -17,8 +16,6 @@
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Assets/PRT/Shaders/SH.hlsl"
-
-            sampler2D _MainTex;
             
             TEXTURE2D_X(_CameraDepthTexture);
             TEXTURE2D_X_HALF(_GBuffer0);
@@ -64,27 +61,20 @@
             v2f vert (appdata vsIn)
             {
                 v2f vsOut;
-                vsOut.vertex = TransformObjectToHClip(vsIn.vertex);
+                vsOut.vertex = TransformObjectToHClip(vsIn.vertex.xyz);
                 vsOut.uv = vsIn.uv;
                 return vsOut;
             }
 
             float4 frag (v2f psIn) : SV_Target
             {
-                float4 color = tex2D(_MainTex, psIn.uv);
+                float4 color = float4(0, 0, 0, 1);
 
                 float4 worldPos = GetFragmentWorldPos(psIn.uv);
                 float3 albedo = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, sampler_point_clamp, psIn.uv, 0).xyz;
                 float3 normal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, psIn.uv, 0).xyz;
 
-                float3 gi = SampleSHVoxel(
-                    worldPos,
-                    albedo,
-                    normal,
-                    _CoefficientVoxel,
-                    _CoefficientVoxelSize,
-                    _CoefficientVoxelCorner,
-                    _CoefficientVoxelGridSize);
+                float3 gi = SampleSHVoxel(worldPos, albedo, normal, _CoefficientVoxel, _CoefficientVoxelSize, _CoefficientVoxelCorner, _CoefficientVoxelGridSize);
                 color.rgb += gi * _GIIntensity;
 
                 return color;

@@ -3781,8 +3781,8 @@ MonoBehaviour:
   ProbeSizeZ: 5
   ProbeGridSize: 2
   VolumeData: {fileID: 11400000, guid: e07d254d603e07440a202ef7a1b0cad2, type: 2}
-  SkyLightIntensity: 1
-  GIIntensity: 2
+  SkyLightIntensity: 5.4
+  GIIntensity: 8.5
   DebugMode: 2
   Probes:
   - {fileID: 4754284433398315415}

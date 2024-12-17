@@ -1,0 +1,126 @@
+﻿#pragma kernel CSMain
+#pragma kernel DepthCopy
+
+#pragma kernel DebugEdit
+#pragma kernel DebugCopyScale
+#pragma kernel DebugApplyBorders
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+
+#define THREADS 8
+
+uint2 _SrcSize;
+uint2 _DstSize;
+uint _SrcSlice;
+uint _DstSlice;
+uint2 _SceneSize;
+
+RWTexture2DArray<float> _DepthPyramid;
+Texture2D<float> _CameraDepthTexture;
+
+inline float SampleSliceDepth(uint3 pos)
+{
+    return _DepthPyramid[uint3(min(pos.xy, float2(_SrcSize.x - 1, _SrcSize.y - 1)), pos.z)];
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    [branch]
+    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+    
+    float minValue = -1;
+    // 相当于对id.xy乘以2
+    float2 prevPos = id.xy << 1;
+    // 对应上一级mip的Index
+    uint3 prevID = uint3(prevPos.xy, _SrcSlice);
+
+    uint3 o1 = prevID + uint3(1, 0, 0);
+    uint3 o2 = prevID + uint3(1, 1, 0);
+    uint3 o3 = prevID + uint3(0, 1, 0);
+
+    // 0 -------- 1
+    // |          |
+    // |          |
+    // 3 -------- 2
+    // 0是当前的深度值，1、2、3是周围的深度值
+    float d0 = _DepthPyramid[prevID];
+    float d1 = SampleSliceDepth(o1);
+    float d2 = SampleSliceDepth(o2);
+    float d3 = SampleSliceDepth(o3);
+
+    // 取所有深度值的最小值作为当前mip的深度值
+    minValue = min(min(d0, d1), min(d2, d3));
+
+    _DepthPyramid[uint3(id.xy, _DstSlice)] = minValue;
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void DepthCopy(uint3 id : SV_DispatchThreadID)
+{
+    [branch]
+    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+    
+    // _DepthPyramid[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
+    _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
+}
+
+// ==================== Debug ==================== //
+float _Low;
+float _High;
+
+[numthreads(THREADS, THREADS, 1)]
+void DebugEdit(uint3 id : SV_DispatchThreadID)
+{
+    float r = _DepthPyramid[uint3(id.xy, _DstSlice)];
+    r = smoothstep(_Low, _High, r);
+    _DepthPyramid[uint3(id.xy, _DstSlice)] = r;
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void DebugCopyScale(uint3 id : SV_DispatchThreadID)
+{
+    // uint2 o0 = uint2(0, 1);
+    // uint2 o1 = uint2(1, 0);
+
+    uint2 pos = id.xy >> _DstSlice;
+
+    float r = _DepthPyramid[uint3(pos, _DstSlice)];
+
+    // float r0 = _DepthPyramid[uint3(pos + o1, _DstSlice)];
+    // float r1 = _DepthPyramid[uint3(pos - o1, _DstSlice)];
+    // float ddx = abs(r0 - r1);
+    //
+    // float r2 = _DepthPyramid[uint3(pos + o0, _DstSlice)];
+    // float r3 = _DepthPyramid[uint3(pos - o0, _DstSlice)];
+    // float ddy = abs(r2 - r3);
+
+    _DepthPyramid[uint3(id.xy, 0)] = r;
+}
+
+[numthreads(THREADS, THREADS, 1)]
+void DebugApplyBorders(uint3 id : SV_DispatchThreadID)
+{
+    uint2 o0 = uint2(0, 1);
+    uint2 o1 = uint2(1, 0);
+
+    uint2 pos = id.xy >> 0;
+
+    float r = _DepthPyramid[uint3(pos, 0)];
+
+    float r0 = _DepthPyramid[uint3(pos + o1, 0)];
+    float r1 = _DepthPyramid[uint3(pos - o1, 0)];
+    float ddx = abs(r0 - r1);
+    
+    float r2 = _DepthPyramid[uint3(pos + o0, 0)];
+    float r3 = _DepthPyramid[uint3(pos - o0, 0)];
+    float ddy = abs(r2 - r3);
+
+    float t = 1;
+    if (ddy > 0 || ddx > 0)
+    {
+        t = 0;
+    }
+
+    _DepthPyramid[uint3(pos, 0)] = r * t;
+}
