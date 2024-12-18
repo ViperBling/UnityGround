@@ -56,10 +56,10 @@ MonoBehaviour:
     failOperation: 0
     zFailOperation: 0
   m_ShadowTransparentReceive: 1
-  m_RenderingMode: 0
+  m_RenderingMode: 1
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 0
-  m_AccurateGbufferNormals: 0
+  m_AccurateGbufferNormals: 1
   m_IntermediateTextureMode: 1
 --- !u!114 &3647697481995194211
 MonoBehaviour:
@@ -77,6 +77,6 @@ MonoBehaviour:
   m_DepthPyramidShader: {fileID: 7200000, guid: 82d4644844864438a323109c9ccbc0cc,
     type: 3}
   m_Settings:
-    ShowDebug: 1
+    ShowDebug: 0
     DebugSlice: 0
     DebugMinMax: {x: 0, y: 0.1}

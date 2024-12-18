@@ -79,8 +79,8 @@ namespace ArtSSR
 
             public override void OnCameraSetup(CommandBuffer cmdBuffer, ref RenderingData renderingData)
             {
-                int width = (int)renderingData.cameraData.cameraTargetDescriptor.width * 1;
-                int height = (int)renderingData.cameraData.cameraTargetDescriptor.height * 1;
+                int width = (int)(renderingData.cameraData.cameraTargetDescriptor.width * GlobalArtSSRSettings.GlobalResolutionScale);
+                int height = (int)(renderingData.cameraData.cameraTargetDescriptor.height * GlobalArtSSRSettings.GlobalResolutionScale);
 
                 // 最接近的完整的2次幂
                 int paddedWidth = Mathf.NextPowerOfTwo(width);
@@ -117,8 +117,8 @@ namespace ArtSSR
                 float width = m_SceneSize.x;
                 float height = m_SceneSize.y;
 
-                float actualWidth = renderingData.cameraData.cameraTargetDescriptor.width * 1;
-                float actualHeight = renderingData.cameraData.cameraTargetDescriptor.height * 1;
+                float actualWidth = renderingData.cameraData.cameraTargetDescriptor.width * GlobalArtSSRSettings.GlobalResolutionScale;
+                float actualHeight = renderingData.cameraData.cameraTargetDescriptor.height * GlobalArtSSRSettings.GlobalResolutionScale;
                 if (m_Settings.PyramidShader == null) return;
                 
                 // Init Depth Pyramid
@@ -165,8 +165,8 @@ namespace ArtSSR
                     int groupX = Mathf.CeilToInt(width / m_NumThreads);
                     int groupY = Mathf.CeilToInt(height / m_NumThreads);
                     cmdBuffer.DispatchCompute(m_Settings.PyramidShader, 2, groupX, groupY, 1);
-                    // cmdBuffer.DispatchCompute(m_Settings.PyramidShader, 3, groupX, groupY, 1);
-                    // cmdBuffer.DispatchCompute(m_Settings.PyramidShader, 4, groupX, groupY, 1);
+                    cmdBuffer.DispatchCompute(m_Settings.PyramidShader, 3, groupX, groupY, 1);
+                    cmdBuffer.DispatchCompute(m_Settings.PyramidShader, 4, groupX, groupY, 1);
 
                     cmdBuffer.Blit(m_FinalDepthPyramidID, colorAttachmentHandle, Vector2.one, Vector2.zero, 0, 0);
                     
