@@ -26,7 +26,7 @@ inline float SampleSliceDepth(uint3 pos)
 [numthreads(THREADS, THREADS, 1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-    [branch]
+    UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
     float minValue = -1;
@@ -58,7 +58,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 [numthreads(THREADS, THREADS, 1)]
 void DepthCopy(uint3 id : SV_DispatchThreadID)
 {
-    [branch]
+    UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
     // _DepthPyramid[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];

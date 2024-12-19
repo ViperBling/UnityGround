@@ -224,7 +224,7 @@ namespace ArtSSR
 
             m_DepthPyramidPass = new DepthPyramidPass(m_DepthSliceBuffer, m_Settings);
             m_Settings.PyramidShader = m_DepthPyramidShader;
-            m_DepthPyramidPass.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+            m_DepthPyramidPass.renderPassEvent = RenderPassEvent.AfterRenderingSkybox;
             if (m_Settings.ShowDebug)
             {
                 m_DepthPyramidPass.renderPassEvent = RenderPassEvent.AfterRenderingTransparents;

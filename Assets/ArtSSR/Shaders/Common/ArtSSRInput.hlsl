@@ -2,8 +2,8 @@
 
 #define BINARY_STEP_COUNT 16
 
-TEXTURE2D(_CameraDepthTexture);                 SamplerState sampler_CameraDepth;
-TEXTURE2D(_ReflectedColorMap);       SamplerState sampler_ReflectedColorMap;
+TEXTURE2D(_CameraDepthTexture);                 SamplerState point_clamp_sampler;
+TEXTURE2D(_ReflectedColorMap);       
 
 TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
