@@ -18,11 +18,11 @@
             
             HLSLPROGRAM
 
-            // #pragma enable_d3d11_debug_symbols
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex VertexPass
             #pragma fragment LinearFragmentPass
 
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
+            // #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
@@ -34,7 +34,7 @@
             
             HLSLPROGRAM
 
-            // #pragma enable_d3d11_debug_symbols
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex VertexPass
             #pragma fragment HiZFragmentPass
 
@@ -50,7 +50,7 @@
             
             HLSLPROGRAM
 
-            // #pragma enable_d3d11_debug_symbols
+            #pragma enable_d3d11_debug_symbols
             #pragma vertex VertexPass
             #pragma fragment CompositeFragmentPass
 

@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
 #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
+#include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
 
 struct Attributes
 {
@@ -32,15 +32,16 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     [branch]
     if (rawDepth == 0) return float4(0, 0, 0, 0);
 
-    float4 normalGBuffer = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_GBuffer, fsIn.texCoord, 0);
+    float4 normalGBuffer = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, fsIn.texCoord, 0);
     float smoothness = normalGBuffer.w;
     float3 normal = normalGBuffer.xyz * 2.0 - 1.0;
 
     float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
     float4 positionVS = mul(_InvProjectionMatrix, positionCS);
     positionVS /= positionVS.w;
+    // UNITY_UV_STARTS_AT_TOP
     positionVS.y *= -1;
-
+    // 重建世界坐标
     float4 positionWS = mul(_InvViewMatrix, positionVS);
     float3 viewDirWS = normalize(float3(positionWS.xyz) - _WorldSpaceCameraPos);
     // 视线的反射向量
@@ -106,20 +107,65 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
                     break;
                 }
             }
+        }
 
-            if (depthDelta > thickness) hit = 0;
+        if (depthDelta > thickness) hit = 0;
 
-            int binarySearchSteps = BINARY_STEP_COUNT * hit;
+        int binarySearchSteps = BINARY_STEP_COUNT * hit;
 
-            UNITY_LOOP
-            for (int i = 0; i < BINARY_STEP_COUNT; i++)
-            {
+        UNITY_LOOP
+        for (int i = 0; i < BINARY_STEP_COUNT; i++)
+        {
+            ray *= 0.5f;
                 
+            UNITY_FLATTEN
+            if (depthDelta > 0)
+            {
+                currentPositionVS -= ray;
+            }
+            else if (depthDelta < 0)
+            {
+                currentPositionVS += ray;
+            }
+            else
+            {
+                break;
+            }
+
+            float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, -currentPositionVS.y, -currentPositionVS.z, 1));
+            texCoord /= texCoord.w;
+            maskOut = ScreenEdgeMask(texCoord);
+            texCoord.x = texCoord.x * 0.5 + 0.5;
+            texCoord.y = texCoord.y * -0.5 + 0.5;
+
+            currentPositionSS = texCoord.xy;
+
+            float sd = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
+            depthDelta = currentPositionVS.z - LinearEyeDepth(sd, _ProjectionParams.z);
+            float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
+            if (abs(depthDelta) > minV)
+            {
+                hit = 0;
+                break;
             }
         }
+
+        // Remove backface intersections
+        float3 currentNormal = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, currentPositionSS, 0);
+        float3 curUnpackNormal = currentNormal * 2.0 - 1.0;
+        float backFaceDot = dot(curUnpackNormal, reflectDirWS);
+
+        UNITY_FLATTEN
+        if (backFaceDot > 0) hit = 0;
     }
+
+    float3 deltaDir = positionVS.xyz - currentPositionVS;
+    float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
+    progress = smoothstep(0.0, 0.5, 1 - progress);
+
+    maskOut *= hit;
     
-    return half4(1, 0, 0, 1);
+    return half4(currentPositionSS, maskOut * progress, 1);
 }
 
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
