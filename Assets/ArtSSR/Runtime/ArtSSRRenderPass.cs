@@ -12,7 +12,7 @@ namespace ArtSSR
             private static int m_Frame = 0; // Frame counter
             public RenderTargetIdentifier m_ColorSource { get; internal set; }
             private int m_ReflectionMapID;
-            private int m_TempPaddedDepthID;
+            private int m_TempPaddedSceneColorID;
         
             internal SSRSettings m_Settings { get; set; }
             
@@ -84,12 +84,12 @@ namespace ArtSSR
                 
                 cmdBuffer.GetTemporaryRT(m_ReflectionMapID, Mathf.CeilToInt(m_PaddedScreenWidth), Mathf.CeilToInt(m_PaddedScreenHeight), 0, FilterMode.Point, RenderTextureFormat.ARGBHalf);
                 
-                m_TempPaddedDepthID = Shader.PropertyToID("_TempPaddedDepth");
+                m_TempPaddedSceneColorID = Shader.PropertyToID("_TempPaddedSceneColor");
                 int tX = m_IsPadded ? Mathf.NextPowerOfTwo(cameraRTDesc.width) : cameraRTDesc.width;
                 int tY = m_IsPadded ? Mathf.NextPowerOfTwo(cameraRTDesc.height) : cameraRTDesc.height;
                 cameraRTDesc.width = tX;
                 cameraRTDesc.height = tY;
-                cmdBuffer.GetTemporaryRT(m_TempPaddedDepthID, cameraRTDesc, FilterMode.Trilinear);
+                cmdBuffer.GetTemporaryRT(m_TempPaddedSceneColorID, cameraRTDesc, FilterMode.Trilinear);
             }
         
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -99,7 +99,7 @@ namespace ArtSSR
                 const int compositePass = 2;
                 
                 CommandBuffer cmdBuffer = CommandBufferPool.Get("ArtSSR");
-                cmdBuffer.Blit(m_ColorSource, m_TempPaddedDepthID, m_PaddedScale, Vector2.zero);
+                cmdBuffer.Blit(m_ColorSource, m_TempPaddedSceneColorID, m_PaddedScale, Vector2.zero);
                 
                 // Calculate the reflection
                 if (m_Settings.m_TracingMode == RayTracingMode.HiZTracing)
@@ -112,10 +112,10 @@ namespace ArtSSR
                 }
                 
                 // Composite the reflection
-                cmdBuffer.Blit(m_TempPaddedDepthID, m_ColorSource, m_Settings.m_SSRMaterial, compositePass);
+                cmdBuffer.Blit(m_TempPaddedSceneColorID, m_ColorSource, m_Settings.m_SSRMaterial, compositePass);
                 
                 cmdBuffer.ReleaseTemporaryRT(m_ReflectionMapID);
-                cmdBuffer.ReleaseTemporaryRT(m_TempPaddedDepthID);
+                cmdBuffer.ReleaseTemporaryRT(m_TempPaddedSceneColorID);
                 
                 context.ExecuteCommandBuffer(cmdBuffer);
                 CommandBufferPool.Release(cmdBuffer);
@@ -124,7 +124,7 @@ namespace ArtSSR
             public override void OnCameraCleanup(CommandBuffer cmdBuffer)
             {
                 cmdBuffer.ReleaseTemporaryRT(m_ReflectionMapID);
-                cmdBuffer.ReleaseTemporaryRT(m_TempPaddedDepthID);
+                cmdBuffer.ReleaseTemporaryRT(m_TempPaddedSceneColorID);
                 m_Frame++;
             }
         }

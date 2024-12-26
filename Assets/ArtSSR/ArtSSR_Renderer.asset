@@ -78,11 +78,11 @@ MonoBehaviour:
   m_SSRSettings:
     m_TracingMode: 0
     m_StepStrideLength: 0.03
-    m_MaxSteps: 512
+    m_MaxSteps: 128
     m_DownSample: 0
-    m_MinSmoothness: 0.5
-    m_ReflectSky: 1
-    m_DitherMode: 1
+    m_MinSmoothness: 0
+    m_ReflectSky: 0
+    m_DitherMode: 0
     m_SSRMaterial: {fileID: 0}
     m_SSRShader: {fileID: 4800000, guid: ac92abd988ba4243b4986851fa5dac6f, type: 3}
 --- !u!114 &3647697481995194211

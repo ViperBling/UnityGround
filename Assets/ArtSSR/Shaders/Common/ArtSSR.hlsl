@@ -178,5 +178,38 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
 
 float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 {
-    return half4(1, 1, 1, 1);
+    half invPaddedScale = 1.0 / _PaddedScale;
+    float4 sceneColor = SAMPLE_TEXTURE2D(_TempPaddedSceneColor, sampler_TempPaddedSceneColor, fsIn.texCoord * invPaddedScale);
+    
+    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, fsIn.texCoord).r;
+
+    UNITY_BRANCH
+    if (rawDepth == 0) return half4(0, 0, 0, 0);
+
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, fsIn.texCoord);
+    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
+    float steppedSmoothness = smoothstep(_MinSmoothness, 1, normalGBuffer.w);
+
+    float3 positionWS = GetWorldPosition(rawDepth, fsIn.texCoord);
+    float3 viewDirWS = normalize(positionWS - _WorldSpaceCameraPos.xyz);
+
+    float fresnel = 1 - dot(viewDirWS, -normalWS);
+    normalWS = mul(_ViewMatrix, float4(normalWS, 0)).xyz;
+    normalWS.y *= -1;
+
+    float3 reflectedUV = SAMPLE_TEXTURE2D(_ReflectedColorMap, sampler_point_clamp, fsIn.texCoord * invPaddedScale).rgb;
+    float maskValue = saturate(reflectedUV.z) * steppedSmoothness;
+    // reflectedUV.xy +=
+
+    float lumin = 1.0;
+    float luminMask = 1 - lumin;
+    luminMask = pow(luminMask, 5);
+
+    half4 reflectedColor = SAMPLE_TEXTURE2D_LOD(_TempPaddedSceneColor, sampler_TempPaddedSceneColor, reflectedUV.xy, 0);
+
+    half4 blendedColor = reflectedColor;
+
+    half3 finalColor = lerp(sceneColor, blendedColor.xyz, 0.5);
+    
+    return half4(blendedColor.xyz, 1);
 }
