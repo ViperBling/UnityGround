@@ -32,9 +32,9 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     [branch]
     if (rawDepth == 0) return float4(0, 0, 0, 0);
 
-    float4 normalGBuffer = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, fsIn.texCoord, 0);
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, fsIn.texCoord);
     float smoothness = normalGBuffer.w;
-    float3 normal = normalGBuffer.xyz * 2.0 - 1.0;
+    float3 normal = UnpackNormal(normalGBuffer.xyz);
 
     float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
     float4 positionVS = mul(_InvProjectionMatrix, positionCS);
@@ -165,7 +165,10 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
     maskOut *= hit;
     
-    return half4(currentPositionSS, maskOut * progress, 1);
+    half3 finalResult = half3(currentPositionSS, maskOut * progress);
+    // finalResult = normal;
+    
+    return half4(finalResult, 1);
 }
 
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
