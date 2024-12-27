@@ -5,6 +5,7 @@
 TEXTURE2D(_CameraDepthTexture);                 SamplerState point_clamp_sampler;
 TEXTURE2D(_ReflectedColorMap);
 TEXTURE2D(_TempPaddedSceneColor);    SAMPLER(sampler_TempPaddedSceneColor);
+TEXTURE2D(_MainTex);                 SAMPLER(sampler_MainTex);
 
 TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal

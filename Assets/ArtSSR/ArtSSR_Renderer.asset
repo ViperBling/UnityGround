@@ -78,10 +78,10 @@ MonoBehaviour:
   m_SSRSettings:
     m_TracingMode: 0
     m_StepStrideLength: 0.03
-    m_MaxSteps: 128
+    m_MaxSteps: 512
     m_DownSample: 0
-    m_MinSmoothness: 0
-    m_ReflectSky: 0
+    m_MinSmoothness: 0.58
+    m_ReflectSky: 1
     m_DitherMode: 0
     m_SSRMaterial: {fileID: 0}
     m_SSRShader: {fileID: 4800000, guid: ac92abd988ba4243b4986851fa5dac6f, type: 3}
@@ -97,7 +97,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 056e535e619b41fbb917421781a4c20a, type: 3}
   m_Name: ArtDepthPyramid
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   m_DepthPyramidShader: {fileID: 7200000, guid: 82d4644844864438a323109c9ccbc0cc,
     type: 3}
   m_Settings:

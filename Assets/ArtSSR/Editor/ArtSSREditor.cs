@@ -1,6 +1,9 @@
-﻿namespace ArtSSR.Editor
+﻿using UnityEditor;
+
+namespace ArtSSR.Editor
 {
-    public class ArtSSREditor
+    [CustomEditor(typeof(ArtSSRRenderFeature))]
+    public class ArtSSREditor : UnityEditor.Editor
     {
         
     }
