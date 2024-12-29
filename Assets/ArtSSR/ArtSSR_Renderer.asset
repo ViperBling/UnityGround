@@ -80,7 +80,7 @@ MonoBehaviour:
     m_StepStrideLength: 0.03
     m_MaxSteps: 512
     m_DownSample: 0
-    m_MinSmoothness: 0.58
+    m_MinSmoothness: 0.5
     m_ReflectSky: 1
     m_DitherMode: 0
     m_SSRMaterial: {fileID: 0}
