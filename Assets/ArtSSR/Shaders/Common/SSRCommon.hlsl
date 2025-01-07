@@ -12,7 +12,7 @@ inline float ScreenEdgeMask(float2 clipPos)
     }
 
     float t1 = smoothstep(0, 0.2, yDiff);
-    float t2 = smoothstep(0, 0.2, xDiff);
+    float t2 = smoothstep(0, 0.1, xDiff);
 
     return saturate(t1 * t2);
 }

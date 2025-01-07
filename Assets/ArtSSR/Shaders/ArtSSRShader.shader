@@ -20,6 +20,7 @@
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
+            #pragma target 4.5
             #pragma vertex VertexPass
             #pragma fragment LinearFragmentPass
 
@@ -40,6 +41,7 @@
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
+            #pragma target 4.5
             #pragma vertex VertexPass
             #pragma fragment HiZFragmentPass
 
@@ -58,6 +60,7 @@
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
+            #pragma target 4.5
             #pragma vertex VertexPass
             #pragma fragment CompositeFragmentPass
 
