@@ -28,7 +28,7 @@
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            // #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
+            #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL

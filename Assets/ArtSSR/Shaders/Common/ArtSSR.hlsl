@@ -65,6 +65,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float maskOut = 1;
     float3 currentPositionVS = positionVS.xyz;
     float2 currentPositionSS = fsIn.texCoord;
+    float3 currentPositionWS = positionWS.xyz;
     
     bool doRayMarch = smoothness > _MinSmoothness;
 
@@ -72,99 +73,130 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float maxRayLength = _NumSteps * scaledStepStride;
     float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
     float fixNumStep = max(maxDist / scaledStepStride, 0);
-    
+
     UNITY_BRANCH
     if (doRayMarch)
     {
-        float3 ray = reflectDirVS * scaledStepStride;
+        float3 rayStep = reflectDirVS * scaledStepStride;
         float depthDelta = 0;
-    
+
         UNITY_LOOP
         for (int step = 0; step < fixNumStep; step++)
         {
-            currentPositionVS += ray;
-    
-            float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, -currentPositionVS.y, -currentPositionVS.z, 1.0));
+            float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, currentPositionVS.y, -currentPositionVS.z, 1));
             texCoord /= texCoord.w;
             texCoord.x = texCoord.x * 0.5 + 0.5;
             texCoord.y = texCoord.y * 0.5 + 0.5;
-    
-            UNITY_BRANCH
-            if (texCoord.x < 0 || texCoord.x > 1 || texCoord.y < 0 || texCoord.y > 1) break;
-    
+
             float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
-    
+
             UNITY_BRANCH
             if (abs(rawDepth - sampledDepth) > 0 && sampledDepth != 0)
             {
                 depthDelta = currentPositionVS.z - LinearEyeDepth(sampledDepth, _ZBufferParams.z);
-    
-                UNITY_BRANCH
-                if (depthDelta > 0 && depthDelta < scaledStepStride * 2.0)
+                if (depthDelta > 0.0)
                 {
                     currentPositionSS = texCoord.xy;
                     hit = 1;
                     break;
                 }
             }
+            currentPositionVS += rayStep * step;
         }
-
-        UNITY_FLATTEN
-        if (depthDelta > thickness) hit = 0;
-        
-        UNITY_LOOP
-        for (int i = 0; i < BINARY_STEP_COUNT; i++)
-        {
-            ray *= 0.5f;
-                
-            UNITY_FLATTEN
-            if (depthDelta > 0)
-            {
-                currentPositionVS -= ray;
-            }
-            else if (depthDelta < 0)
-            {
-                currentPositionVS += ray;
-            }
-            else
-            {
-                break;
-            }
-        
-            float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, -currentPositionVS.y, -currentPositionVS.z, 1));
-            texCoord /= texCoord.w;
-            maskOut = ScreenEdgeMask(texCoord);
-            texCoord.x = texCoord.x * 0.5 + 0.5;
-            texCoord.y = texCoord.y * 0.5 + 0.5;
-
-            currentPositionSS = texCoord.xy;
-
-            float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
-            depthDelta = currentPositionVS.z - LinearEyeDepth(sampledDepth, _ZBufferParams.z);
-            float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
-            if (abs(depthDelta) > minV)
-            {
-                hit = 0;
-                break;
-            }
-        }
-        
-        // Remove backface intersections
-        float3 currentNormal = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, currentPositionSS);
-        float3 curUnpackNormal = UnpackNormal(currentNormal);
-        float backFaceDot = dot(curUnpackNormal, reflectDirWS);
-        
-        UNITY_FLATTEN
-        if (backFaceDot > 0) hit = 0;
     }
     
-    float3 deltaDir = positionVS.xyz - currentPositionVS;
-    float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
-    progress = smoothstep(0.0, 0.5, 1 - progress);
-    
+    // UNITY_BRANCH
+    // if (doRayMarch)
+    // {
+    //     float3 ray = reflectDirVS * scaledStepStride;
+    //     float depthDelta = 0;
+    //
+    //     UNITY_LOOP
+    //     for (int step = 0; step < fixNumStep; step++)
+    //     {
+    //         currentPositionVS += ray;
+    //
+    //         float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, -currentPositionVS.y, -currentPositionVS.z, 1.0));
+    //         texCoord /= texCoord.w;
+    //         texCoord.x = texCoord.x * 0.5 + 0.5;
+    //         texCoord.y = texCoord.y * 0.5 + 0.5;
+    //
+    //         UNITY_BRANCH
+    //         if (texCoord.x < 0 || texCoord.x > 1 || texCoord.y < 0 || texCoord.y > 1) break;
+    //
+    //         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
+    //
+    //         UNITY_BRANCH
+    //         if (abs(rawDepth - sampledDepth) > 0 && sampledDepth != 0)
+    //         {
+    //             depthDelta = currentPositionVS.z - LinearEyeDepth(sampledDepth, _ZBufferParams.z);
+    //
+    //             UNITY_BRANCH
+    //             if (depthDelta > 0 && depthDelta < scaledStepStride * 2.0)
+    //             {
+    //                 currentPositionSS = texCoord.xy;
+    //                 hit = 1;
+    //                 break;
+    //             }
+    //         }
+    //     }
+    //
+    //     UNITY_FLATTEN
+    //     if (depthDelta > thickness) hit = 0;
+    //     
+    //     UNITY_LOOP
+    //     for (int i = 0; i < BINARY_STEP_COUNT; i++)
+    //     {
+    //         ray *= 0.5f;
+    //
+    //         UNITY_FLATTEN
+    //         if (depthDelta > 0)
+    //         {
+    //             currentPositionVS -= ray;
+    //         }
+    //         else if (depthDelta < 0)
+    //         {
+    //             currentPositionVS += ray;
+    //         }
+    //         else
+    //         {
+    //             break;
+    //         }
+    //     
+    //         float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, -currentPositionVS.y, -currentPositionVS.z, 1));
+    //         texCoord /= texCoord.w;
+    //         maskOut = ScreenEdgeMask(texCoord);
+    //         texCoord.x = texCoord.x * 0.5 + 0.5;
+    //         texCoord.y = texCoord.y * 0.5 + 0.5;
+    //
+    //         currentPositionSS = texCoord.xy;
+    //
+    //         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
+    //         depthDelta = currentPositionVS.z - LinearEyeDepth(sampledDepth, _ZBufferParams.z);
+    //         float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
+    //         if (abs(depthDelta) > minV)
+    //         {
+    //             hit = 0;
+    //             break;
+    //         }
+    //     }
+    //     
+    //     // Remove backface intersections
+    //     float3 currentNormal = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, currentPositionSS);
+    //     float3 curUnpackNormal = UnpackNormal(currentNormal);
+    //     float backFaceDot = dot(curUnpackNormal, reflectDirWS);
+    //     
+    //     UNITY_FLATTEN
+    //     if (backFaceDot > 0) hit = 0;
+    // }
+    //
+    // float3 deltaDir = positionVS.xyz - currentPositionVS;
+    // float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
+    // progress = smoothstep(0.0, 0.5, 1 - progress);
+    //
     maskOut *= hit;
     
-    half3 finalResult = half3(currentPositionSS, maskOut * progress);
+    half3 finalResult = half3(currentPositionSS, maskOut);
     // finalResult = hit;
     
     return half4(finalResult, 1);
@@ -194,5 +226,5 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    return half4(reflectedUV.zzz, 1);
+    return half4(blendedColor.xyz, 1);
 }
