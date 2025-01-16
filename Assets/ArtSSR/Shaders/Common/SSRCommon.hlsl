@@ -22,7 +22,7 @@ float3 GetWorldPosition(float rawDepth, float2 texCoord)
     float4 positionCS = float4(texCoord * 2 - 1, rawDepth, 1);
     positionCS.y *= -1;
 
-    float4 positionVS = mul(_InvProjectionMatrix, positionCS);
+    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
     positionVS /= positionVS.w;
     float4 positionWS = mul(_InvViewMatrix, positionVS);
     return positionWS.xyz;

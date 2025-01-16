@@ -36,74 +36,43 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float smoothness = normalGBuffer.w;
     float3 normal = UnpackNormal(normalGBuffer.xyz);
 
-    float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
-    float4 positionVS = mul(_InvProjectionMatrix, positionCS);
-    positionVS /= positionVS.w;
-#if UNITY_UV_STARTS_AT_TOP
-    positionVS.y *= -1;
-#endif
-    // 重建世界坐标
-    float4 positionWS = mul(_InvViewMatrix, positionVS);
-    float3 viewDirWS = normalize(float3(positionWS.xyz) - _WorldSpaceCameraPos);
-    // 视线的反射向量
-    float3 reflectDirWS = reflect(viewDirWS, normal);
-    
-    float3 reflectDirVS = normalize(mul(_ViewMatrix, float4(reflectDirWS, 0))).xyz;
-    reflectDirVS.z *= -1;
-    positionVS.z *= -1;
-
-    float VoR = saturate(dot(viewDirWS, reflectDirWS));
-    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-
-    // 越界检测，超过thickness认为在物体内部
-    float thickness = _StepStride * 2;
-    float oneMinusVoR = sqrt(1 - VoR);
-    float scaledStepStride = _StepStride / oneMinusVoR;
-    thickness /= oneMinusVoR;
-    
-    int hit = 0;
-    float maskOut = 1;
-    float3 currentPositionVS = positionVS.xyz;
-    float2 currentPositionSS = fsIn.texCoord;
-    float3 currentPositionWS = positionWS.xyz;
-    
-    bool doRayMarch = smoothness > _MinSmoothness;
-
-    // 步长调整
-    float maxRayLength = _NumSteps * scaledStepStride;
-    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
-    float fixNumStep = max(maxDist / scaledStepStride, 0);
-
-    UNITY_BRANCH
-    if (doRayMarch)
-    {
-        float3 rayStep = reflectDirVS * scaledStepStride;
-        float depthDelta = 0;
-
-        UNITY_LOOP
-        for (int step = 0; step < fixNumStep; step++)
-        {
-            float4 texCoord = mul(_ProjectionMatrix, float4(currentPositionVS.x, currentPositionVS.y, -currentPositionVS.z, 1));
-            texCoord /= texCoord.w;
-            texCoord.x = texCoord.x * 0.5 + 0.5;
-            texCoord.y = texCoord.y * 0.5 + 0.5;
-
-            float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, texCoord.xy).r;
-
-            UNITY_BRANCH
-            if (abs(rawDepth - sampledDepth) > 0 && sampledDepth != 0)
-            {
-                depthDelta = currentPositionVS.z - LinearEyeDepth(sampledDepth, _ZBufferParams.z);
-                if (depthDelta > 0.0)
-                {
-                    currentPositionSS = texCoord.xy;
-                    hit = 1;
-                    break;
-                }
-            }
-            currentPositionVS += rayStep * step;
-        }
-    }
+//     float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
+//     float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
+//     positionVS /= positionVS.w;
+// #if UNITY_UV_STARTS_AT_TOP
+//     positionVS.y *= -1;
+// #endif
+//     // 重建世界坐标
+//     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
+//     float3 viewDirWS = normalize(float3(positionWS.xyz) - _WorldSpaceCameraPos);
+//     // 视线的反射向量
+//     float3 reflectDirWS = reflect(viewDirWS, normal);
+//     
+//     float3 reflectDirVS = normalize(mul(_ViewMatrixSSR, float4(reflectDirWS, 0))).xyz;
+//     reflectDirVS.z *= -1;
+//     positionVS.z *= -1;
+//
+//     float VoR = saturate(dot(viewDirWS, reflectDirWS));
+//     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+//
+//     // 越界检测，超过thickness认为在物体内部
+//     float thickness = _StepStride * 2;
+//     float oneMinusVoR = sqrt(1 - VoR);
+//     float scaledStepStride = _StepStride / oneMinusVoR;
+//     thickness /= oneMinusVoR;
+//     
+//     int hit = 0;
+//     float maskOut = 1;
+//     float3 currentPositionVS = positionVS.xyz;
+//     float2 currentPositionSS = fsIn.texCoord;
+//     float3 currentPositionWS = positionWS.xyz;
+//     
+//     bool doRayMarch = smoothness > _MinSmoothness;
+//
+//     // 步长调整
+//     float maxRayLength = _NumSteps * scaledStepStride;
+//     float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+//     float fixNumStep = max(maxDist / scaledStepStride, 0);
     
     // UNITY_BRANCH
     // if (doRayMarch)
@@ -194,10 +163,10 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     // float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
     // progress = smoothstep(0.0, 0.5, 1 - progress);
     //
-    maskOut *= hit;
+    // maskOut *= hit;
     
-    half3 finalResult = half3(currentPositionSS, maskOut);
-    // finalResult = hit;
+    // half3 finalResult = half3(currentPositionSS, maskOut);
+    half3 finalResult = 0.2;
     
     return half4(finalResult, 1);
 }

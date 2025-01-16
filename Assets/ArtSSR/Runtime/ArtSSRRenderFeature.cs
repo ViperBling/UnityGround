@@ -61,6 +61,28 @@ namespace ArtSSR
         {
             var projectionMatrix = renderingData.cameraData.GetGPUProjectionMatrix();
             var viewMatrix = renderingData.cameraData.GetViewMatrix();
+            var vpMatrix = projectionMatrix * viewMatrix;
+            
+            Matrix4x4 clipView = viewMatrix;
+            clipView.SetColumn(3, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            Matrix4x4 clipViewProj = projectionMatrix * clipView;
+            
+            Matrix4x4 clipViewProjInv = clipViewProj.inverse;
+
+            var nearPlane = renderingData.cameraData.camera.nearClipPlane;
+            Vector4 topLeftCorner = clipViewProjInv.MultiplyPoint(new Vector4(-1.0f, 1.0f, -1.0f, 1.0f));
+            Vector4 topRightCorner = clipViewProjInv.MultiplyPoint(new Vector4(1.0f, 1.0f, -1.0f, 1.0f));
+            Vector4 bottomLeftCorner = clipViewProjInv.MultiplyPoint(new Vector4(-1.0f, -1.0f, -1.0f, 1.0f));
+
+            Vector4 cameraXExtent = topRightCorner - topLeftCorner;
+            Vector4 cameraYExtent = bottomLeftCorner - topLeftCorner;
+
+            var cameraPosWS = renderingData.cameraData.worldSpaceCameraPos;
+            
+            m_SSRSettings.m_SSRMaterial.SetVector("_TopLeftCorner", topLeftCorner);
+            m_SSRSettings.m_SSRMaterial.SetVector("_CameraXExtent", cameraXExtent);
+            m_SSRSettings.m_SSRMaterial.SetVector("_CameraYExtent", cameraYExtent);
+            m_SSRSettings.m_SSRMaterial.SetVector("_ProjectionParamsSSR", new Vector4(1.0f / nearPlane, cameraPosWS.x, cameraPosWS.y, cameraPosWS.z));
 
 #if UNITY_EDITOR
             if (renderingData.cameraData.isSceneViewCamera)
@@ -75,10 +97,10 @@ namespace ArtSSR
             m_SSRSettings.m_SSRMaterial.SetFloat("_RenderScale", renderingData.cameraData.renderScale);
 #endif
             
-            m_SSRSettings.m_SSRMaterial.SetMatrix("_ProjectionMatrix", projectionMatrix);
-            m_SSRSettings.m_SSRMaterial.SetMatrix("_InvProjectionMatrix", projectionMatrix.inverse);
-            m_SSRSettings.m_SSRMaterial.SetMatrix("_ViewMatrix", viewMatrix);
-            m_SSRSettings.m_SSRMaterial.SetMatrix("_InvViewMatrix", viewMatrix.inverse);
+            m_SSRSettings.m_SSRMaterial.SetMatrix("_ProjectionMatrixSSR", projectionMatrix);
+            m_SSRSettings.m_SSRMaterial.SetMatrix("_InvProjectionMatrixSSR", projectionMatrix.inverse);
+            m_SSRSettings.m_SSRMaterial.SetMatrix("_ViewMatrixSSR", viewMatrix);
+            m_SSRSettings.m_SSRMaterial.SetMatrix("_InvViewMatrixSSR", viewMatrix.inverse);
         }
         
         private bool GetMaterial()

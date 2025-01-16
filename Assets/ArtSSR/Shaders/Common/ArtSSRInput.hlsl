@@ -12,10 +12,15 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 SAMPLER(sampler_point_clamp);
 
-float4x4 _ProjectionMatrix;
-float4x4 _InvProjectionMatrix;
-// float4x4 _ViewMatrix;
-// float4x4 _InvViewMatrix;
+float4 _TopLeftCorner;
+float4 _CameraXExtent;
+float4 _CameraYExtent;
+float4 _ProjectionParamsSSR;
+
+float4x4 _ProjectionMatrixSSR;
+float4x4 _InvProjectionMatrixSSR;
+float4x4 _ViewMatrixSSR;
+float4x4 _InvViewMatrixSSR;
 
 float3 _WorldSpaceViewDir;
 float _RenderScale;
