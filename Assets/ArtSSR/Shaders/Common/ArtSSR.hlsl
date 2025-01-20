@@ -15,6 +15,17 @@ struct Varyings
     float2 texCoord : TEXCOORD0;
 };
 
+half3 ReconstructViewPos(float2 texCoord, float linearEyeDepth)
+{
+    texCoord.y = 1 - texCoord.y;
+
+    float zScale = linearEyeDepth * _ProjectionParamsSSR.z;
+    float3 viewPos = _CameraViewTopLeftCorner.xyz + _CameraXExtent.xyz * texCoord.x + _CameraYExtent.xyz * texCoord.y;
+    viewPos *= zScale;
+    return viewPos;
+}
+
+
 Varyings VertexPass(Attributes vsIn)
 {
     Varyings vsOut = (Varyings)0;
@@ -32,10 +43,18 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     [branch]
     if (rawDepth == 0) return float4(0, 0, 0, 0);
 
+    float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams.z);
+
+    float3 positionCS = ReconstructViewPos(fsIn.texCoord, linearDepth);
+
     float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, fsIn.texCoord);
     float smoothness = normalGBuffer.w;
     float3 normal = UnpackNormal(normalGBuffer.xyz);
 
+    half3 finalResult = positionCS;
+    
+    return half4(finalResult, 1);
+    
 //     float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
 //     float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
 //     positionVS /= positionVS.w;
@@ -166,9 +185,9 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     // maskOut *= hit;
     
     // half3 finalResult = half3(currentPositionSS, maskOut);
-    half3 finalResult = 0.2;
-    
-    return half4(finalResult, 1);
+    // half3 finalResult = positionCS;
+    //
+    // return half4(finalResult, 1);
 }
 
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
@@ -195,5 +214,5 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    return half4(blendedColor.xyz, 1);
+    return half4(reflectedUV.xyz, 1);
 }

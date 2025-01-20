@@ -79,10 +79,10 @@ namespace ArtSSR
 
             var cameraPosWS = renderingData.cameraData.worldSpaceCameraPos;
             
-            m_SSRSettings.m_SSRMaterial.SetVector("_TopLeftCorner", topLeftCorner);
+            m_SSRSettings.m_SSRMaterial.SetVector("_CameraViewTopLeftCorner", topLeftCorner);
             m_SSRSettings.m_SSRMaterial.SetVector("_CameraXExtent", cameraXExtent);
             m_SSRSettings.m_SSRMaterial.SetVector("_CameraYExtent", cameraYExtent);
-            m_SSRSettings.m_SSRMaterial.SetVector("_ProjectionParamsSSR", new Vector4(1.0f / nearPlane, cameraPosWS.x, cameraPosWS.y, cameraPosWS.z));
+            m_SSRSettings.m_SSRMaterial.SetVector("_ProjectionParamsSSR", new Vector4(cameraPosWS.x, cameraPosWS.y, cameraPosWS.z, 1.0f / nearPlane));
 
 #if UNITY_EDITOR
             if (renderingData.cameraData.isSceneViewCamera)
