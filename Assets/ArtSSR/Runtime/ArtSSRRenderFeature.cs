@@ -61,28 +61,6 @@ namespace ArtSSR
         {
             var projectionMatrix = renderingData.cameraData.GetGPUProjectionMatrix();
             var viewMatrix = renderingData.cameraData.GetViewMatrix();
-            var vpMatrix = projectionMatrix * viewMatrix;
-            
-            Matrix4x4 clipView = viewMatrix;
-            clipView.SetColumn(3, new Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            Matrix4x4 clipViewProj = projectionMatrix * clipView;
-            
-            Matrix4x4 clipViewProjInv = clipViewProj.inverse;
-
-            var nearPlane = renderingData.cameraData.camera.nearClipPlane;
-            Vector4 topLeftCorner = clipViewProjInv.MultiplyPoint(new Vector4(-1.0f, 1.0f, -1.0f, 1.0f));
-            Vector4 topRightCorner = clipViewProjInv.MultiplyPoint(new Vector4(1.0f, 1.0f, -1.0f, 1.0f));
-            Vector4 bottomLeftCorner = clipViewProjInv.MultiplyPoint(new Vector4(-1.0f, -1.0f, -1.0f, 1.0f));
-
-            Vector4 cameraXExtent = topRightCorner - topLeftCorner;
-            Vector4 cameraYExtent = bottomLeftCorner - topLeftCorner;
-
-            var cameraPosWS = renderingData.cameraData.worldSpaceCameraPos;
-            
-            m_SSRSettings.m_SSRMaterial.SetVector("_CameraViewTopLeftCorner", topLeftCorner);
-            m_SSRSettings.m_SSRMaterial.SetVector("_CameraXExtent", cameraXExtent);
-            m_SSRSettings.m_SSRMaterial.SetVector("_CameraYExtent", cameraYExtent);
-            m_SSRSettings.m_SSRMaterial.SetVector("_ProjectionParamsSSR", new Vector4(cameraPosWS.x, cameraPosWS.y, cameraPosWS.z, 1.0f / nearPlane));
 
 #if UNITY_EDITOR
             if (renderingData.cameraData.isSceneViewCamera)

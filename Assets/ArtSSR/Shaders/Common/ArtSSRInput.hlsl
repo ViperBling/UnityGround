@@ -12,11 +12,6 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 SAMPLER(sampler_point_clamp);
 
-float4 _CameraViewTopLeftCorner;
-float4 _CameraXExtent;
-float4 _CameraYExtent;
-float4 _ProjectionParamsSSR;
-
 float4x4 _ProjectionMatrixSSR;
 float4x4 _InvProjectionMatrixSSR;
 float4x4 _ViewMatrixSSR;

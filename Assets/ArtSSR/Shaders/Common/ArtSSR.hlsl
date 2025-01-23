@@ -15,16 +15,6 @@ struct Varyings
     float2 texCoord : TEXCOORD0;
 };
 
-half3 ReconstructViewPos(float2 texCoord, float linearEyeDepth)
-{
-    texCoord.y = 1 - texCoord.y;
-
-    float zScale = linearEyeDepth * _ProjectionParamsSSR.z;
-    float3 viewPos = _CameraViewTopLeftCorner.xyz + _CameraXExtent.xyz * texCoord.x + _CameraYExtent.xyz * texCoord.y;
-    viewPos *= zScale;
-    return viewPos;
-}
-
 
 Varyings VertexPass(Attributes vsIn)
 {
@@ -38,20 +28,57 @@ Varyings VertexPass(Attributes vsIn)
 
 float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 {
-    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, fsIn.texCoord).r;
+    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, fsIn.texCoord).r;
 
     [branch]
     if (rawDepth == 0) return float4(0, 0, 0, 0);
 
-    float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams.z);
-
-    float3 positionCS = ReconstructViewPos(fsIn.texCoord, linearDepth);
-
     float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, fsIn.texCoord);
     float smoothness = normalGBuffer.w;
-    float3 normal = UnpackNormal(normalGBuffer.xyz);
+    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    half3 finalResult = positionCS;
+    float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
+    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
+    positionVS /= positionVS.w;
+#if UNITY_UV_STARTS_AT_TOP
+    positionVS.y *= -1;
+#endif
+    float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
+
+    float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+
+    bool doRayMarch = smoothness > _MinSmoothness;
+
+    float3 curPositionWS = positionWS;
+    int hit = 0;
+    float2 curScreenTexCoord = 0;
+    
+    if (doRayMarch)
+    {
+        float3 rayDir = reflectDirWS * _StepStride;
+        for (int i = 0; i < _NumSteps; i++)
+        {
+            curPositionWS += rayDir;
+
+            // float4 positionNDC = mul(unity_MatrixVP, float4(curPositionWS, 1.0));
+            float4 curPositionVS = mul(_ViewMatrixSSR, float4(curPositionWS, 1.0));
+            // curPositionVS.y *= -1;
+            float4 curPositionCS = mul(_ProjectionMatrixSSR, curPositionVS);
+            float3 texCoord = curPositionCS.xyz / curPositionCS.w;
+            texCoord.x = texCoord.x * 0.5 + 0.5;
+            texCoord.y = texCoord.y * 0.5 + 0.5;
+
+            if (abs(texCoord.z - rawDepth) > 0)
+            {
+                hit = 1;
+                curScreenTexCoord = texCoord.xy;
+                break;
+            }
+        }
+    }
+    
+    half3 finalResult = half3(curScreenTexCoord, hit);
     
     return half4(finalResult, 1);
     
@@ -214,5 +241,5 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    return half4(reflectedUV.xyz, 1);
+    return half4(finalColor.xyz, 1);
 }
