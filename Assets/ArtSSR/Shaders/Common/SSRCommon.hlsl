@@ -1,5 +1,18 @@
 ﻿#pragma once
 
+float3 GetWorldPosition(float rawDepth, float2 texCoord)
+{
+    float4 positionCS = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
+#if UNITY_UV_STARTS_AT_TOP
+    positionCS.y *= -1;
+#endif
+    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
+    float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
+    positionWS /= positionWS.w;
+
+    return positionWS.xyz;
+}
+
 inline float ScreenEdgeMask(float2 clipPos)
 {
     float yDiff = 1 - abs(clipPos.y);
@@ -15,17 +28,6 @@ inline float ScreenEdgeMask(float2 clipPos)
     float t2 = smoothstep(0, 0.1, xDiff);
 
     return saturate(t1 * t2);
-}
-
-float3 GetWorldPosition(float rawDepth, float2 texCoord)
-{
-    float4 positionCS = float4(texCoord * 2 - 1, rawDepth, 1);
-    positionCS.y *= -1;
-
-    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
-    positionVS /= positionVS.w;
-    float4 positionWS = mul(_InvViewMatrix, positionVS);
-    return positionWS.xyz;
 }
 
 inline float RGB2Lum(float3 rgb)

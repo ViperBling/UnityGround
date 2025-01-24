@@ -29,7 +29,7 @@ Varyings VertexPass(Attributes vsIn)
 float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 {
     float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, fsIn.texCoord).r;
-
+    
     [branch]
     if (rawDepth == 0) return float4(0, 0, 0, 0);
 
@@ -37,43 +37,62 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    float4 positionCS = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
-    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
-    positionVS /= positionVS.w;
+    float4 positionNDC = float4(fsIn.texCoord * 2.0 - 1.0 , rawDepth, 1.0);
 #if UNITY_UV_STARTS_AT_TOP
-    positionVS.y *= -1;
+    positionNDC.y *= -1;
 #endif
+    float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
+    positionWS /= positionWS.w;
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    float3 reflectDirVS = normalize(mul(_ViewMatrixSSR, float4(reflectDirWS, 0.0))).xyz;
 
+    float3 curPositionVS = positionVS.xyz;
+    float2 curScreenTexCoord = fsIn.texCoord;
+
+    int hit = 0;
+    
     bool doRayMarch = smoothness > _MinSmoothness;
 
-    float3 curPositionWS = positionWS;
-    int hit = 0;
-    float2 curScreenTexCoord = 0;
-    
+    UNITY_BRANCH
     if (doRayMarch)
     {
-        float3 rayDir = reflectDirWS * _StepStride;
+        float3 rayDir = reflectDirVS * _StepStride;
+
+        UNITY_LOOP
         for (int i = 0; i < _NumSteps; i++)
         {
-            curPositionWS += rayDir;
+            curPositionVS += rayDir;
 
-            // float4 positionNDC = mul(unity_MatrixVP, float4(curPositionWS, 1.0));
-            float4 curPositionVS = mul(_ViewMatrixSSR, float4(curPositionWS, 1.0));
-            // curPositionVS.y *= -1;
-            float4 curPositionCS = mul(_ProjectionMatrixSSR, curPositionVS);
+            float4 curPositionCS = mul(_ProjectionMatrixSSR, float4(curPositionVS.x, curPositionVS.y, curPositionVS.z, 1.0));
+        #if UNITY_UV_STARTS_AT_TOP
+            curPositionCS.y *= -1;
+        #endif
             float3 texCoord = curPositionCS.xyz / curPositionCS.w;
             texCoord.x = texCoord.x * 0.5 + 0.5;
             texCoord.y = texCoord.y * 0.5 + 0.5;
 
-            if (abs(texCoord.z - rawDepth) > 0)
+            UNITY_BRANCH
+            if (texCoord.x < 0 || texCoord.x > 1 || texCoord.y < 0 || texCoord.y > 1) break;
+
+            float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
+
+            UNITY_BRANCH
+            if (abs(sampledDepth - rawDepth) > 0.0 && sampledDepth != 0)
             {
-                hit = 1;
-                curScreenTexCoord = texCoord.xy;
-                break;
+                // float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
+                // float depthDelta = curPositionVS.z - linearDepth;
+                
+                UNITY_BRANCH
+                if (sampledDepth > rawDepth && rawDepth + 0.0001 > sampledDepth)
+                // if (depthDelta > 0)
+                {
+                    hit = 1;
+                    curScreenTexCoord = texCoord.xy;
+                    break;
+                }
             }
         }
     }
@@ -227,7 +246,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     half invPaddedScale = 1.0 / _PaddedScale;
     float4 sceneColor = SAMPLE_TEXTURE2D(_TempPaddedSceneColor, sampler_TempPaddedSceneColor, fsIn.texCoord * invPaddedScale);
     
-    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, point_clamp_sampler, fsIn.texCoord).r;
+    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, fsIn.texCoord).r;
 
     // Keep Skybox Color
     UNITY_BRANCH

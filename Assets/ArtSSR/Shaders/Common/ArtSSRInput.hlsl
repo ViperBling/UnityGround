@@ -2,7 +2,8 @@
 
 #define BINARY_STEP_COUNT 16
 
-TEXTURE2D(_CameraDepthTexture);                 SamplerState point_clamp_sampler;
+TEXTURE2D(_CameraOpaqueTexture);                SAMPLER(sampler_CameraOpaqueTexture);
+TEXTURE2D(_CameraDepthTexture);                 SAMPLER(sampler_CameraDepthTexture);
 TEXTURE2D(_ReflectedColorMap);
 TEXTURE2D(_TempPaddedSceneColor);    SAMPLER(sampler_TempPaddedSceneColor);
 TEXTURE2D(_MainTex);                 SAMPLER(sampler_MainTex);
