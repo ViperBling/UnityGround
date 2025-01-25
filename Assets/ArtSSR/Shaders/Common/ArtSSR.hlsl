@@ -42,8 +42,9 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     positionNDC.y *= -1;
 #endif
     float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
+    // 后面会直接用到positionVS，所以要先除以w
+    positionVS /= positionVS.w;
     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
-    positionWS /= positionWS.w;
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
@@ -53,12 +54,12 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float2 curScreenTexCoord = fsIn.texCoord;
 
     int hit = 0;
-    
     bool doRayMarch = smoothness > _MinSmoothness;
 
     UNITY_BRANCH
     if (doRayMarch)
     {
+        // 步进方向
         float3 rayDir = reflectDirVS * _StepStride;
 
         UNITY_LOOP
@@ -66,10 +67,12 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         {
             curPositionVS += rayDir;
 
-            float4 curPositionCS = mul(_ProjectionMatrixSSR, float4(curPositionVS.x, curPositionVS.y, curPositionVS.z, 1.0));
+            // 根据当前相机空间坐标计算投影坐标
+            float4 curPositionCS = mul(_ProjectionMatrixSSR, float4(curPositionVS, 1.0));
         #if UNITY_UV_STARTS_AT_TOP
             curPositionCS.y *= -1;
         #endif
+            // 除以w得到归一化设备坐标
             float3 texCoord = curPositionCS.xyz / curPositionCS.w;
             texCoord.x = texCoord.x * 0.5 + 0.5;
             texCoord.y = texCoord.y * 0.5 + 0.5;
@@ -77,17 +80,19 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
             UNITY_BRANCH
             if (texCoord.x < 0 || texCoord.x > 1 || texCoord.y < 0 || texCoord.y > 1) break;
 
+            // 当前步进位置的深度
             float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
 
             UNITY_BRANCH
             if (abs(sampledDepth - rawDepth) > 0.0 && sampledDepth != 0)
             {
-                // float linearDepth = LinearEyeDepth(rawDepth, _ZBufferParams);
-                // float depthDelta = curPositionVS.z - linearDepth;
+                // 当前步进位置的线性深度
+                float linearDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
+                // 真实深度值和采样深度值的差值
+                float depthDelta = -curPositionVS.z - linearDepth;
                 
                 UNITY_BRANCH
-                if (sampledDepth > rawDepth && rawDepth + 0.0001 > sampledDepth)
-                // if (depthDelta > 0)
+                if (depthDelta > 0 && depthDelta < _StepStride * 2.0)
                 {
                     hit = 1;
                     curScreenTexCoord = texCoord.xy;
