@@ -50,6 +50,19 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(_ViewMatrixSSR, float4(reflectDirWS, 0.0))).xyz;
 
+    float VoR = saturate(dot(viewDirWS, reflectDirWS));
+    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+
+    // 越界检测，超过thickness认为在物体内部
+    float thickness = _StepStride * 2;
+    float oneMinusVoR = sqrt(1 - VoR);
+    float scaledStepStride = _StepStride / oneMinusVoR;
+    thickness /= oneMinusVoR;
+
+    float maxRayLength = _NumSteps * scaledStepStride;
+    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+    float fixNumStep = max(maxDist / scaledStepStride, 0);
+
     float3 curPositionVS = positionVS.xyz;
     float2 curScreenTexCoord = fsIn.texCoord;
 
@@ -60,10 +73,11 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     if (doRayMarch)
     {
         // 步进方向
-        float3 rayDir = reflectDirVS * _StepStride;
+        float3 rayDir = reflectDirVS * scaledStepStride;
+        float depthDelta = 0;
 
         UNITY_LOOP
-        for (int i = 0; i < _NumSteps; i++)
+        for (int i = 0; i < fixNumStep; i++)
         {
             curPositionVS += rayDir;
 
@@ -89,10 +103,10 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
                 // 当前步进位置的线性深度
                 float linearDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
                 // 真实深度值和采样深度值的差值
-                float depthDelta = -curPositionVS.z - linearDepth;
+                depthDelta = -curPositionVS.z - linearDepth;
                 
                 UNITY_BRANCH
-                if (depthDelta > 0 && depthDelta < _StepStride * 2.0)
+                if (depthDelta > 0 && depthDelta < scaledStepStride * 2.0)
                 {
                     hit = 1;
                     curScreenTexCoord = texCoord.xy;
@@ -100,6 +114,9 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
                 }
             }
         }
+
+        UNITY_BRANCH
+        if (depthDelta > thickness) hit = 0;
     }
     
     half3 finalResult = half3(curScreenTexCoord, hit);
