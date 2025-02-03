@@ -67,6 +67,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float2 curScreenTexCoord = fsIn.texCoord;
 
     int hit = 0;
+    float maskOut = 1;
     bool doRayMarch = smoothness > _MinSmoothness;
 
     UNITY_BRANCH
@@ -117,9 +118,51 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
         UNITY_BRANCH
         if (depthDelta > thickness) hit = 0;
+
+        UNITY_LOOP
+        for (int i = 0; i < BINARY_STEP_COUNT; i++)
+        {
+            rayDir *= 0.5f;
+            UNITY_FLATTEN
+            if (depthDelta > 0) curPositionVS -= rayDir;
+            else if (depthDelta < 0) curPositionVS += rayDir;
+            else break;
+
+            float4 curPositionCS = mul(_ProjectionMatrixSSR, float4(curPositionVS, 1.0));
+        #if UNITY_UV_STARTS_AT_TOP
+            curPositionCS.y *= -1;
+        #endif
+            // 除以w得到归一化设备坐标
+            float3 texCoord = curPositionCS.xyz / curPositionCS.w;
+            maskOut = ScreenEdgeMask(texCoord.xy);
+            texCoord.x = texCoord.x * 0.5 + 0.5;
+            texCoord.y = texCoord.y * 0.5 + 0.5;
+
+            curScreenTexCoord = texCoord.xy;
+
+            float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
+            float linearDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
+            depthDelta = -curPositionVS.z - linearDepth;
+            float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
+            if (abs(depthDelta) > minV)
+            {
+                hit = 0;
+                break;
+            }
+        }
+        float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
+        float backFaceDot = dot(curNormalWS, reflectDirWS);
+        UNITY_FLATTEN
+        if (backFaceDot > 0) hit = 0;
     }
+
+    float3 deltaDir = positionVS.xyz - curPositionVS;
+    float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
+    progress = smoothstep(0.0, 0.5, 1 - progress);
+
+    maskOut *= hit;
     
-    half3 finalResult = half3(curScreenTexCoord, hit);
+    half3 finalResult = half3(curScreenTexCoord, maskOut * progress);
     
     return half4(finalResult, 1);
     
