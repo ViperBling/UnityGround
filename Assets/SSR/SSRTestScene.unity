@@ -277,7 +277,7 @@ PrefabInstance:
     - target: {fileID: 678142488307056550, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 0.535
       objectReference: {fileID: 0}
     - target: {fileID: 678142488307056550, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
         type: 3}
@@ -287,7 +287,7 @@ PrefabInstance:
     - target: {fileID: 678142488307056550, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: 0.527
       objectReference: {fileID: 0}
     - target: {fileID: 678142488307056550, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
         type: 3}
@@ -412,6 +412,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Prefab_Ground_Metal
       objectReference: {fileID: 0}
+    - target: {fileID: 8911361592892230471, guid: a99dea780025b4d43b959cb05ec56ce0,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 9e5a1c50196aa654aab5d7600aafa1a0, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -561,7 +566,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0
+      value: 0.535
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
@@ -571,7 +576,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: -1.352
+      value: -0.825
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: e8c66cf4d16e7eb49b5eb555a2c5496a,
         type: 3}
