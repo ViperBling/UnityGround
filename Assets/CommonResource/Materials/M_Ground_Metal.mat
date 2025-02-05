@@ -173,7 +173,7 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _HeightTransition: 0
-    - _Metallic: 1
+    - _Metallic: 0.726
     - _Metallic0: 0
     - _Metallic1: 0
     - _Metallic2: 0
@@ -186,7 +186,7 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
-    - _Smoothness: 1
+    - _Smoothness: 0.627
     - _Smoothness0: 0.5
     - _Smoothness1: 0.5
     - _Smoothness2: 0.5
