@@ -1,14 +1,19 @@
 ﻿#pragma once
 
+#define BINARY_STEP_COUNT 16
+
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
+
 float3 GetWorldPosition(float rawDepth, float2 texCoord)
 {
-    float4 positionCS = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
-#if UNITY_UV_STARTS_AT_TOP
-    positionCS.y *= -1;
+    float4 positionNDC = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
+#ifdef UNITY_UV_STARTS_AT_TOP
+    positionNDC.y *= -1;
 #endif
-    float4 positionVS = mul(_InvProjectionMatrixSSR, positionCS);
+    float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
+    positionVS /= positionVS.w;
     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
-    positionWS /= positionWS.w;
 
     return positionWS.xyz;
 }

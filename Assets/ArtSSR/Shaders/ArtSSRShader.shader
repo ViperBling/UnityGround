@@ -16,6 +16,10 @@
         Pass
         {
             Name "Linear SSR"
+            Tags
+            {
+                "RenderPipeline" = "UniversalPipeline"
+            }
             
             HLSLPROGRAM
 
@@ -37,6 +41,10 @@
         Pass
         {
             Name "HiZ SSR"
+            Tags
+            {
+                "RenderPipeline" = "UniversalPipeline"
+            }
             
             HLSLPROGRAM
 
@@ -45,6 +53,8 @@
             #pragma vertex VertexPass
             #pragma fragment HiZFragmentPass
 
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
@@ -56,6 +66,10 @@
         Pass
         {
             Name "Composite"
+            Tags
+            {
+                "RenderPipeline" = "UniversalPipeline"
+            }
             
             HLSLPROGRAM
 
@@ -63,6 +77,10 @@
             #pragma target 4.5
             #pragma vertex VertexPass
             #pragma fragment CompositeFragmentPass
+
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"

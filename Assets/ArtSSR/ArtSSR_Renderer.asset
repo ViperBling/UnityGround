@@ -77,7 +77,7 @@ MonoBehaviour:
   m_Active: 1
   m_SSRSettings:
     m_TracingMode: 0
-    m_StepStrideLength: 0.01
+    m_StepStrideLength: 0.03
     m_MaxSteps: 512
     m_DownSample: 0
     m_MinSmoothness: 0.5

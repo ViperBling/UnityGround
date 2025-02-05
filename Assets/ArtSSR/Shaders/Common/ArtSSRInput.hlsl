@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#define BINARY_STEP_COUNT 16
-
 TEXTURE2D(_CameraOpaqueTexture);                SAMPLER(sampler_CameraOpaqueTexture);
 TEXTURE2D(_CameraDepthTexture);                 SAMPLER(sampler_CameraDepthTexture);
 TEXTURE2D(_ReflectedColorMap);
@@ -13,6 +11,7 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 SAMPLER(sampler_point_clamp);
 
+CBUFFER_START(UnityPerMaterial)
 float4x4 _ProjectionMatrixSSR;
 float4x4 _InvProjectionMatrixSSR;
 float4x4 _ViewMatrixSSR;
@@ -35,3 +34,4 @@ float _ArtSSR_GlobalInvScale;
 
 int _Frame;
 int _DitherMode;
+CBUFFER_END
