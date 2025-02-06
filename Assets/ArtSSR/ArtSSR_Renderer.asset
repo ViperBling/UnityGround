@@ -17,9 +17,8 @@ MonoBehaviour:
       type: 3}
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
   m_RendererFeatures:
-  - {fileID: 3647697481995194211}
   - {fileID: 3232484422580113879}
-  m_RendererFeatureMap: 630f699688399f32d711dfb57417dc2c
+  m_RendererFeatureMap: d711dfb57417dc2c
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -75,32 +74,3 @@ MonoBehaviour:
   m_Name: ArtSSRRenderFeature
   m_EditorClassIdentifier: 
   m_Active: 1
-  m_SSRSettings:
-    m_TracingMode: 0
-    m_StepStrideLength: 0.03
-    m_MaxSteps: 512
-    m_DownSample: 0
-    m_MinSmoothness: 0.5
-    m_ReflectSky: 1
-    m_DitherMode: 0
-    m_SSRMaterial: {fileID: 0}
-    m_SSRShader: {fileID: 4800000, guid: ac92abd988ba4243b4986851fa5dac6f, type: 3}
---- !u!114 &3647697481995194211
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 056e535e619b41fbb917421781a4c20a, type: 3}
-  m_Name: ArtDepthPyramid
-  m_EditorClassIdentifier: 
-  m_Active: 0
-  m_DepthPyramidShader: {fileID: 7200000, guid: 82d4644844864438a323109c9ccbc0cc,
-    type: 3}
-  m_Settings:
-    ShowDebug: 0
-    DebugSlice: 0
-    DebugMinMax: {x: 0, y: 0.1}

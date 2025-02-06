@@ -15,7 +15,13 @@ namespace SSR
         public SSRRenderModeParameter m_RenderMode = new(value: SSRRenderMode.Approximation, overrideState: false);
         
         [InspectorName("Minimum Smoothness")]
-        public ClampedFloatParameter m_MiniSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: false);
+        public ClampedFloatParameter m_MinSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: false);
+        
+        [InspectorName("Smoothness Fade Start")]
+        public ClampedFloatParameter m_FadeSmoothness = new(value: 0.6f, min: 0.0f, max: 1.0f, overrideState: false);
+
+        [InspectorName("Screen Edge Fade Distance"), Tooltip("The distance from the edge of the screen where SSR fades out.")]
+        public ClampedFloatParameter m_EdgeFade = new(value: 0.1f, min: 0.0f, max: 1.0f, overrideState: true);
         
         [Tooltip("The thickness mode of SSR.")]
         public SSRThicknessParameter m_ThicknessMode = new(value: ThicknessMode.Constant, overrideState: false);
@@ -32,7 +38,7 @@ namespace SSR
         
         public bool IsActive()
         {
-            throw new NotImplementedException();
+            return m_State.value == SSRState.Enabled && SystemInfo.supportedRenderTargetCount >= 3;
         }
 
         public bool IsTileCompatible() => false;

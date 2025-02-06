@@ -79,8 +79,8 @@ namespace ArtSSR
 
             public override void OnCameraSetup(CommandBuffer cmdBuffer, ref RenderingData renderingData)
             {
-                int width = (int)(renderingData.cameraData.cameraTargetDescriptor.width * GlobalArtSSRSettings.GlobalResolutionScale);
-                int height = (int)(renderingData.cameraData.cameraTargetDescriptor.height * GlobalArtSSRSettings.GlobalResolutionScale);
+                int width = (int)(renderingData.cameraData.cameraTargetDescriptor.width);
+                int height = (int)(renderingData.cameraData.cameraTargetDescriptor.height);
 
                 // 最接近的完整的2次幂
                 int paddedWidth = Mathf.NextPowerOfTwo(width);
@@ -117,8 +117,8 @@ namespace ArtSSR
                 float width = m_SceneSize.x;
                 float height = m_SceneSize.y;
 
-                float actualWidth = renderingData.cameraData.cameraTargetDescriptor.width * GlobalArtSSRSettings.GlobalResolutionScale;
-                float actualHeight = renderingData.cameraData.cameraTargetDescriptor.height * GlobalArtSSRSettings.GlobalResolutionScale;
+                float actualWidth = renderingData.cameraData.cameraTargetDescriptor.width;
+                float actualHeight = renderingData.cameraData.cameraTargetDescriptor.height;
                 if (m_Settings.PyramidShader == null) return;
                 
                 // Init Depth Pyramid

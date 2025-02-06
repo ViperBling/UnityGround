@@ -197,5 +197,5 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    return half4(reflectedUV.zzz, 1);
+    return half4(finalColor.xyz, 1);
 }
