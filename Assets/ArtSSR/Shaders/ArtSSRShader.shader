@@ -10,29 +10,27 @@
         
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UnityGBuffer.hlsl"
+        #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
+        // The Blit.hlsl file provides the vertex shader (Vert),
+        // input structure (Attributes) and output strucutre (Varyings)
+        #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
         ENDHLSL
         
         Pass
         {
             Name "Linear SSR"
-            Tags
-            {
-                "RenderPipeline" = "UniversalPipeline"
-            }
             
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
-            #pragma target 4.5
-            #pragma vertex VertexPass
+            #pragma target 3.5
+            #pragma vertex Vert
             #pragma fragment LinearFragmentPass
 
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
@@ -41,23 +39,18 @@
         Pass
         {
             Name "HiZ SSR"
-            Tags
-            {
-                "RenderPipeline" = "UniversalPipeline"
-            }
             
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
-            #pragma target 4.5
-            #pragma vertex VertexPass
+            #pragma target 3.5
+            #pragma vertex Vert
             #pragma fragment HiZFragmentPass
 
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
@@ -66,23 +59,18 @@
         Pass
         {
             Name "Composite"
-            Tags
-            {
-                "RenderPipeline" = "UniversalPipeline"
-            }
             
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
-            #pragma target 4.5
-            #pragma vertex VertexPass
+            #pragma target 3.5
+            #pragma vertex Vert
             #pragma fragment CompositeFragmentPass
 
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSRInput.hlsl"
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL

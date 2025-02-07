@@ -139,10 +139,10 @@ FHitPoint SSRRayMarching(FRay ray, half dither, float distance)
         bool isScreenSpace = (rayPositionNDC.x > 0.0 && rayPositionNDC.x < 1.0 && rayPositionNDC.y > 0.0 && rayPositionNDC.y < 1.0);
         if (!isScreenSpace) break;
 
-        // 当前像素点的原生深度
+        // 当前像素点的归一化深度
         float deviceDepth = SAMPLE_TEXTURE2D_X_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, rayPositionNDC.xy, 0).r;
 
-        // 当前像素点的归一化深度
+        // 当前像素点的原生深度
         float sceneDepth = ConvertLinearEyeDepth(deviceDepth);
         // 反射向量步进的深度
         float hitDepth = ConvertLinearEyeDepth(rayPositionNDC.z);

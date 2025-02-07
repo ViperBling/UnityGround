@@ -18,9 +18,9 @@
             #include "Assets/PRT/Shaders/SH.hlsl"
             
             TEXTURE2D_X(_CameraDepthTexture);
-            TEXTURE2D_X_HALF(_GBuffer0);
-            TEXTURE2D_X_HALF(_GBuffer1);
-            TEXTURE2D_X_HALF(_GBuffer2);
+            TEXTURE2D_X(_GBuffer0);
+            TEXTURE2D_X(_GBuffer1);
+            TEXTURE2D_X(_GBuffer2);
 
             float4x4 _ScreenToWorld[2];
             SamplerState sampler_point_clamp;

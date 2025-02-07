@@ -3,36 +3,78 @@
 #define BINARY_STEP_COUNT 16
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonLighting.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 
-float3 GetWorldPosition(float rawDepth, float2 texCoord)
+TEXTURE2D_X(_GBuffer0);         // Diffuse
+TEXTURE2D_X(_GBuffer1);         // Metal
+TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
+
+SAMPLER(sampler_BlitTexture);
+SAMPLER(sampler_point_clamp);
+
+CBUFFER_START(UnityPerMaterial)
+float3 _WorldSpaceViewDir;
+half _EdgeFade;
+float _StepStride;
+float _MaxSteps;
+float _MinSmoothness;
+int _Frame;
+CBUFFER_END
+
+#ifdef _GBUFFER_NORMALS_OCT
+half3 UnpackNormal(half3 pn)
 {
-    float4 positionNDC = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
-#ifdef UNITY_UV_STARTS_AT_TOP
-    positionNDC.y *= -1;
-#endif
-    float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
-    positionVS /= positionVS.w;
-    float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
-
-    return positionWS.xyz;
+    half2 remappedOctNormalWS = half2(Unpack888ToFloat2(pn));           // values between [ 0, +1]
+    half2 octNormalWS = remappedOctNormalWS.xy * half(2.0) - half(1.0); // values between [-1, +1]
+    return half3(UnpackNormalOctQuadEncode(octNormalWS));               // values between [-1, +1]
 }
+#else
+half3 UnpackNormal(half3 pn) { return pn; }                             // values between [-1, +1]
+#endif
 
-inline float ScreenEdgeMask(float2 clipPos)
+// float3 GetWorldPosition(float rawDepth, float2 texCoord)
+// {
+//     float4 positionNDC = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
+// #ifdef UNITY_UV_STARTS_AT_TOP
+//     positionNDC.y *= -1;
+// #endif
+//     float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
+//     positionVS /= positionVS.w;
+//     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
+//
+//     return positionWS.xyz;
+// }
+
+inline float ScreenEdgeMask(float2 screenUV)
 {
-    float yDiff = 1 - abs(clipPos.y);
-    float xDiff = 1 - abs(clipPos.x);
-
-    UNITY_FLATTEN
-    if (yDiff < 0 || xDiff < 0)
+    // float yDiff = 1 - abs(screenUV.y);
+    // float xDiff = 1 - abs(screenUV.x);
+    //
+    // UNITY_FLATTEN
+    // if (yDiff < 0 || xDiff < 0)
+    // {
+    //     return 0;
+    // }
+    //
+    // float t1 = smoothstep(0, 0.2, yDiff);
+    // float t2 = smoothstep(0, 0.1, xDiff);
+    //
+    // return saturate(t1 * t2);
+    UNITY_BRANCH
+    if (_EdgeFade == 0.0)
     {
-        return 0;
+        return 1.0;
     }
-
-    float t1 = smoothstep(0, 0.2, yDiff);
-    float t2 = smoothstep(0, 0.1, xDiff);
-
-    return saturate(t1 * t2);
+    else
+    {
+        half fadeRcpLength = rcp(_EdgeFade);
+        float2 coordCS = screenUV * 2.0 - 1.0;
+        float2 t = Remap10(abs(coordCS.xy), fadeRcpLength, fadeRcpLength);
+        return Smoothstep01(t.x) * Smoothstep01(t.y);
+    }
 }
 
 inline float RGB2Lum(float3 rgb)

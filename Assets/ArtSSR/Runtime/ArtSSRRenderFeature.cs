@@ -37,7 +37,7 @@ namespace ArtSSR
             ArtSSREffect artSSRVolume = stack.GetComponent<ArtSSREffect>();
             bool isSSRActive = artSSRVolume != null && artSSRVolume.IsActive();
 
-            if (renderingData.cameraData.camera.cameraType != CameraType.Preview && isSSRActive)
+            if (isSSRActive)
             {
                 m_SSRRenderPass.m_SSRVolume = artSSRVolume;
                 renderer.EnqueuePass(m_SSRRenderPass);

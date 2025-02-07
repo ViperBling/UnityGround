@@ -20,7 +20,11 @@ namespace ArtSSR
         [InspectorName("Minimum Smoothness")]
         public ClampedFloatParameter m_MinSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: false);
 
-        public ClampedFloatParameter m_StepStrideLength = new(value: 0.03f, min: 0.0f, max: 1.0f, overrideState: false);
+        [InspectorName("Ray Step Length")]
+        public ClampedFloatParameter m_StepStrideLength = new(value: 0.03f, min: 0.001f, max: 1.0f, overrideState: false);
+        
+        [InspectorName("Screen Edge Fade Distance"), Tooltip("The distance from the edge of the screen where SSR fades out.")]
+        public ClampedFloatParameter m_EdgeFade = new(value: 0.1f, min: 0.0f, max: 1.0f, overrideState: true);
         
         public ClampedIntParameter m_MaxSteps = new(value: 64, min: 32, max: 512, overrideState: false);
         

@@ -21,10 +21,11 @@ namespace ArtSSR
             
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
             // private static readonly int m_FadeSmoothnessID = Shader.PropertyToID("_FadeSmoothness");
-            // private static readonly int m_EdgeFadeID = Shader.PropertyToID("_EdgeFade");
+            private static readonly int m_EdgeFadeID = Shader.PropertyToID("_EdgeFade");
             // private static readonly int m_ThicknessID = Shader.PropertyToID("_Thickness");
             private static readonly int m_StepStrideID = Shader.PropertyToID("_StepStride");
             private static readonly int m_MaxStepsID = Shader.PropertyToID("_MaxSteps");
+            private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
             // private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
 
             private bool m_IsPadded = false;
@@ -77,11 +78,6 @@ namespace ArtSSR
                 //     m_PaddedScreenHeight = m_ScreenHeight / m_Scale;
                 // }
                 
-                cameraRTDesc.colorFormat = RenderTextureFormat.DefaultHDR;
-                cameraRTDesc.mipCount = 8;
-                cameraRTDesc.autoGenerateMips = true;
-                cameraRTDesc.useMipMap = true;
-                
                 // Vector2 screenResolution = new Vector2(m_ScreenWidth, m_ScreenHeight);
                 // m_Settings.m_SSRMaterial.SetVector("_ScreenResolution", screenResolution);
                 // if (m_IsPadded)
@@ -115,9 +111,9 @@ namespace ArtSSR
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
-                // desc.depthBufferBits = 0;
-                // desc.msaaSamples = 1;
-                // desc.useMipMap = false;
+                desc.depthBufferBits = 0;
+                desc.msaaSamples = 1;
+                desc.useMipMap = false;
                 
                 // Approximation mode
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_ArtSSRSourceTexture");
@@ -150,8 +146,10 @@ namespace ArtSSR
                 using var newProfile = new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag));
                 
                 m_Material.SetFloat(m_MinSmoothnessID, m_SSRVolume.m_MinSmoothness.value);
+                m_Material.SetFloat(m_EdgeFadeID, m_SSRVolume.m_EdgeFade.value);
                 m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
                 m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
+                m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
                 
                 const int linearPass = 0;
                 const int hiZPass = 1;

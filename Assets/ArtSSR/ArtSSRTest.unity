@@ -2380,6 +2380,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: Prefab_Ground_Metal
       objectReference: {fileID: 0}
+    - target: {fileID: 3519274295454414731, guid: a99dea780025b4d43b959cb05ec56ce0,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -2515,6 +2520,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: StanfordDragon
+      objectReference: {fileID: 0}
+    - target: {fileID: 153948861714687260, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 678142488307056550, guid: 38d7ccc79ca19844dbe5f3497324b2d5,
         type: 3}
