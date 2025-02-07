@@ -22,18 +22,24 @@ MonoBehaviour:
   m_DitherMode:
     m_OverrideState: 1
     m_Value: 0
+  m_ThicknessScale:
+    m_OverrideState: 1
+    m_Value: 2
   m_MinSmoothness:
     m_OverrideState: 1
     m_Value: 0.5
+  m_FadeSmoothness:
+    m_OverrideState: 1
+    m_Value: 0.75
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 0.05
+    m_Value: 0.01
   m_EdgeFade:
     m_OverrideState: 1
-    m_Value: 0.082
+    m_Value: 0.12
   m_MaxSteps:
     m_OverrideState: 1
-    m_Value: 256
+    m_Value: 512
   m_DownSample:
     m_OverrideState: 1
     m_Value: 0

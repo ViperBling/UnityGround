@@ -38,7 +38,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
 
     // 越界检测，超过thickness认为在物体内部
-    float thickness = _StepStride * 2.0;
+    float thickness = _StepStride * _ThicknessScale;
     float oneMinusVoR = sqrt(1 - VoR);
     float scaledStepStride = _StepStride / oneMinusVoR;
     thickness /= oneMinusVoR;
@@ -54,11 +54,11 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     float maskOut = 1;
     
     // 步进方向
-    float3 rayDir = reflectDirVS * _StepStride;
+    float3 rayDir = reflectDirVS * scaledStepStride;
     float depthDelta = 0;
 
     UNITY_LOOP
-    for (int i = 0; i < _MaxSteps; i++)
+    for (int i = 0; i < fixNumStep; i++)
     {
         curPositionVS += rayDir;
 
@@ -89,7 +89,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
             depthDelta = hitDepth - sceneDepth;
             
             UNITY_BRANCH
-            if (depthDelta > 0 && depthDelta < _StepStride * 2.0)
+            if (depthDelta > 0 && depthDelta < thickness)
             {
                 hit = 1;
                 curScreenTexCoord = texCoord.xy;
@@ -137,21 +137,20 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
             break;
         }
     }
-    // float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
-    // float backFaceDot = dot(curNormalWS, reflectDirWS);
-    // UNITY_FLATTEN
-    // if (backFaceDot > 0) hit = 0;
+    float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
+    float backFaceDot = dot(curNormalWS, reflectDirWS);
+    UNITY_FLATTEN
+    if (backFaceDot > 0) hit = 0;
 
     float3 deltaDir = positionVS.xyz - curPositionVS;
     float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
-    progress = smoothstep(0.0, 0.5, 1 - progress);
+    progress = Smootherstep(0.0, 0.5, 1 - progress);
 
     maskOut *= hit * progress;
 
-    half3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, curScreenTexCoord, 0).rgb;
+    half3 reflectColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, curScreenTexCoord).rgb;
     
     half3 finalResult = lerp(sceneColor, reflectColor, maskOut);
-    // finalResult = hit;
     
     return half4(finalResult, 1);
 }
@@ -169,8 +168,18 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     
     // half invPaddedScale = 1.0 / _PaddedScale;
     // float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+
+    half4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
+    half smoothness = normalGBuffer.w;
+
+    half fadeSmoothness = (_FadeSmoothness < smoothness) ? 1.0 : (smoothness - _MinSmoothness) * rcp(_FadeSmoothness - _MinSmoothness);
+
+    half smoothness2 = smoothness * smoothness;
+    half smoothness4 = smoothness2 * smoothness2;
+
+    half oneMinusSmoothness4 = 1 - smoothness4;
     
-    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV).rgb;
+    float3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, oneMinusSmoothness4 * 5.0).rgb;
     
     // half4 reflectedColor = SAMPLE_TEXTURE2D_LOD(_TempPaddedSceneColor, sampler_TempPaddedSceneColor, reflectedUV.xy, 0);
     
@@ -178,5 +187,5 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     
     // half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    return half4(reflectedUV.xyz, 1);
+    return half4(reflectColor.xyz, smoothness4 * fadeSmoothness);
 }

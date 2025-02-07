@@ -17,8 +17,14 @@ namespace ArtSSR
         [InspectorName("Dither Mode")]
         public ArtSSRDitherModeParameter m_DitherMode = new(value: DitherMode.Disabled, overrideState: false);
         
+        [InspectorName("Thickness Scale")]
+        public ClampedFloatParameter m_ThicknessScale = new(value: 2.0f, min: 0.001f, max: 30.0f, overrideState: false);
+        
         [InspectorName("Minimum Smoothness")]
         public ClampedFloatParameter m_MinSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: false);
+        
+        [InspectorName("Smoothness Fade Start")]
+        public ClampedFloatParameter m_FadeSmoothness = new(value: 0.6f, min: 0.0f, max: 1.0f, overrideState: false);
 
         [InspectorName("Ray Step Length")]
         public ClampedFloatParameter m_StepStrideLength = new(value: 0.03f, min: 0.001f, max: 1.0f, overrideState: false);

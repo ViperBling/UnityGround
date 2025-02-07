@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#define BINARY_STEP_COUNT 16
+#define BINARY_STEP_COUNT 32
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
@@ -12,16 +12,20 @@ TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
+TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
+
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
 CBUFFER_START(UnityPerMaterial)
-float3 _WorldSpaceViewDir;
-half _EdgeFade;
-float _StepStride;
-float _MaxSteps;
-float _MinSmoothness;
-int _Frame;
+    float3      _WorldSpaceViewDir;
+    half        _ThicknessScale;
+    half        _EdgeFade;
+    float       _StepStride;
+    float       _MaxSteps;
+    float       _MinSmoothness;
+    half        _FadeSmoothness;
+    int         _Frame;
 CBUFFER_END
 
 #ifdef _GBUFFER_NORMALS_OCT

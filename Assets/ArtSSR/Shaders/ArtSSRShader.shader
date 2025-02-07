@@ -60,6 +60,8 @@
         {
             Name "Composite"
             
+            Blend SrcAlpha OneMinusSrcAlpha, SrcAlpha SrcAlpha
+            
             HLSLPROGRAM
 
             #pragma enable_d3d11_debug_symbols
