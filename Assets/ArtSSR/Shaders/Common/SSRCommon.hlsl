@@ -39,19 +39,6 @@ half3 UnpackNormal(half3 pn)
 half3 UnpackNormal(half3 pn) { return pn; }                             // values between [-1, +1]
 #endif
 
-// float3 GetWorldPosition(float rawDepth, float2 texCoord)
-// {
-//     float4 positionNDC = float4(texCoord * 2.0 - 1.0 , rawDepth, 1.0);
-// #ifdef UNITY_UV_STARTS_AT_TOP
-//     positionNDC.y *= -1;
-// #endif
-//     float4 positionVS = mul(_InvProjectionMatrixSSR, positionNDC);
-//     positionVS /= positionVS.w;
-//     float4 positionWS = mul(_InvViewMatrixSSR, positionVS);
-//
-//     return positionWS.xyz;
-// }
-
 inline float ScreenEdgeMask(float2 screenUV)
 {
     // float yDiff = 1 - abs(screenUV.y);

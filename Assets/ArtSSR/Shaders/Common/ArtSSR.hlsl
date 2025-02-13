@@ -77,6 +77,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
         // 当前步进位置的深度
         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, texCoord.xy).r;
+        float backFaceDepth = SAMPLE_TEXTURE2D(_SSRCameraBackFaceDepthTexture, sampler_point_clamp, texCoord.xy).r;
 
         UNITY_BRANCH
         if (abs(sampledDepth - rawDepth) > 0.0 && sampledDepth != 0)
@@ -87,9 +88,11 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
             float hitDepth = LinearEyeDepth(curPositionCS.z, _ZBufferParams);
             // 步进深度较大时，说明已经碰到物体，相交了
             depthDelta = hitDepth - sceneDepth;
+
+            float objectDepthDelta = abs(sceneDepth - LinearEyeDepth(backFaceDepth, _ZBufferParams));
             
             UNITY_BRANCH
-            if (depthDelta > 0 && depthDelta < thickness)
+            if (depthDelta > 0 && depthDelta < objectDepthDelta * _ThicknessScale)
             {
                 hit = 1;
                 curScreenTexCoord = texCoord.xy;
@@ -98,49 +101,49 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         }
     }
 
-    UNITY_BRANCH
-    if (depthDelta > thickness) hit = 0;
+    // UNITY_BRANCH
+    // if (depthDelta > thickness) hit = 0;
     
-    int binaryStepCount = BINARY_STEP_COUNT * hit;
+    // int binaryStepCount = BINARY_STEP_COUNT * hit;
     
-    UNITY_LOOP
-    for (int i = 0; i < binaryStepCount; i++)
-    {
-        rayDir *= 0.5f;
-        UNITY_FLATTEN
-        if (depthDelta > 0) curPositionVS -= rayDir;
-        else if (depthDelta < 0) curPositionVS += rayDir;
-        else break;
+    // UNITY_LOOP
+    // for (int i = 0; i < binaryStepCount; i++)
+    // {
+    //     rayDir *= 0.5f;
+    //     UNITY_FLATTEN
+    //     if (depthDelta > 0) curPositionVS -= rayDir;
+    //     else if (depthDelta < 0) curPositionVS += rayDir;
+    //     else break;
     
-        float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        curPositionCS.y *= -1;
-    #endif
-        // 除以w得到归一化设备坐标
-        curPositionCS *= rcp(curPositionCS.w);
-        float2 texCoord = curPositionCS.xy;
-        texCoord.xy = texCoord.xy * 0.5 + 0.5;
+    //     float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
+    // #ifdef UNITY_UV_STARTS_AT_TOP
+    //     curPositionCS.y *= -1;
+    // #endif
+    //     // 除以w得到归一化设备坐标
+    //     curPositionCS *= rcp(curPositionCS.w);
+    //     float2 texCoord = curPositionCS.xy;
+    //     texCoord.xy = texCoord.xy * 0.5 + 0.5;
         
-        maskOut = ScreenEdgeMask(texCoord.xy);
-        curScreenTexCoord = texCoord.xy;
+    //     maskOut = ScreenEdgeMask(texCoord.xy);
+    //     curScreenTexCoord = texCoord.xy;
     
-        float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
-        float sceneDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
-        float hitDepth = LinearEyeDepth(curPositionCS.z, _ZBufferParams);
+    //     float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
+    //     float sceneDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
+    //     float hitDepth = LinearEyeDepth(curPositionCS.z, _ZBufferParams);
         
-        depthDelta = hitDepth - sceneDepth;
+    //     depthDelta = hitDepth - sceneDepth;
         
-        float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
-        if (abs(depthDelta) > minV)
-        {
-            hit = 0;
-            break;
-        }
-    }
-    float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
-    float backFaceDot = dot(curNormalWS, reflectDirWS);
-    UNITY_FLATTEN
-    if (backFaceDot > 0) hit = 0;
+    //     float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
+    //     if (abs(depthDelta) > minV)
+    //     {
+    //         hit = 0;
+    //         break;
+    //     }
+    // }
+    // float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
+    // float backFaceDot = dot(curNormalWS, reflectDirWS);
+    // UNITY_FLATTEN
+    // if (backFaceDot > 0) hit = 0;
 
     float3 deltaDir = positionVS.xyz - curPositionVS;
     float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);

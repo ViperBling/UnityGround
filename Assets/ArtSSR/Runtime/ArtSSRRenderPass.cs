@@ -28,7 +28,7 @@ namespace ArtSSR
             private static readonly int m_StepStrideID = Shader.PropertyToID("_StepStride");
             private static readonly int m_MaxStepsID = Shader.PropertyToID("_MaxSteps");
             private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
-            // private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
+            private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
 
             private bool m_IsPadded = false;
             

@@ -12,7 +12,7 @@ namespace ArtSSR
         private Material m_SSRMaterial;
         
         private ArtSSRRenderPass m_SSRRenderPass;
-        // private ArtSSRBackFaceDepthPass m_BackFaceDepthPass;
+        private ArtSSRBackFaceDepthPass m_BackFaceDepthPass;
         
         private readonly static FieldInfo m_RenderingModeFieldInfo = typeof(UniversalRenderer).GetField("m_RenderingMode", BindingFlags.NonPublic | BindingFlags.Instance);
         
@@ -20,11 +20,11 @@ namespace ArtSSR
         {
             GetMaterial();
 
-            // if (m_BackFaceDepthPass == null)
-            // {
-            //     m_BackFaceDepthPass = new ArtSSRBackFaceDepthPass(m_SSRMaterial);
-            //     m_BackFaceDepthPass.renderPassEvent = RenderPassEvent.AfterRenderingSkybox;
-            // }
+            if (m_BackFaceDepthPass == null)
+            {
+                m_BackFaceDepthPass = new ArtSSRBackFaceDepthPass(m_SSRMaterial);
+                m_BackFaceDepthPass.renderPassEvent = RenderPassEvent.AfterRenderingSkybox;
+            }
 
             if (m_SSRRenderPass == null)
             {
@@ -47,8 +47,8 @@ namespace ArtSSR
 
             if (isSSRActive)
             {
-                // m_BackFaceDepthPass.m_SSRVolume = artSSRVolume;
-                // renderer.EnqueuePass(m_BackFaceDepthPass);
+                m_BackFaceDepthPass.m_SSRVolume = artSSRVolume;
+                renderer.EnqueuePass(m_BackFaceDepthPass);
                 
                 m_SSRRenderPass.m_SSRVolume = artSSRVolume;
                 renderer.EnqueuePass(m_SSRRenderPass);
