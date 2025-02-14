@@ -42,6 +42,7 @@ Shader "VFXTest/JadeShader"
         {
             "RenderType" = "Opaque"
             "Queue" = "Geometry"
+            "RenderPipeline" = "UniversalPipeline"
         }
         
         HLSLINCLUDE

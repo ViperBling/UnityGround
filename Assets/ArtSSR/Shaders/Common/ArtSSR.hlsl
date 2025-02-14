@@ -12,14 +12,15 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
     bool isBackground = rawDepth == 0.0;
     
-    UNITY_BRANCH
-    if (isBackground) return sceneColor;
+    // UNITY_BRANCH
+    // if (isBackground) return half4(screenUV.xy, 0, 1);
 
     float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    if (smoothness < _MinSmoothness) return sceneColor;
+    UNITY_BRANCH
+    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
     float4 positionNDC = float4(screenUV * 2.0 - 1.0 , rawDepth, 1.0);
 #ifdef UNITY_UV_STARTS_AT_TOP
@@ -77,7 +78,6 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
         // 当前步进位置的深度
         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, texCoord.xy).r;
-        float backFaceDepth = SAMPLE_TEXTURE2D(_SSRCameraBackFaceDepthTexture, sampler_point_clamp, texCoord.xy).r;
 
         UNITY_BRANCH
         if (abs(sampledDepth - rawDepth) > 0.0 && sampledDepth != 0)
@@ -89,10 +89,12 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
             // 步进深度较大时，说明已经碰到物体，相交了
             depthDelta = hitDepth - sceneDepth;
 
-            float objectDepthDelta = abs(sceneDepth - LinearEyeDepth(backFaceDepth, _ZBufferParams));
+            // float backFaceDepth = SAMPLE_TEXTURE2D(_SSRCameraBackFaceDepthTexture, sampler_point_clamp, texCoord.xy).r;
+            // backFaceDepth = LinearEyeDepth(backFaceDepth, _ZBufferParams);
+            // float objectDepthDelta = abs(hitDepth - backFaceDepth);
             
             UNITY_BRANCH
-            if (depthDelta > 0 && depthDelta < objectDepthDelta * _ThicknessScale)
+            if (depthDelta > 0 && depthDelta < thickness)
             {
                 hit = 1;
                 curScreenTexCoord = texCoord.xy;
@@ -101,49 +103,53 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         }
     }
 
-    // UNITY_BRANCH
-    // if (depthDelta > thickness) hit = 0;
+    UNITY_BRANCH
+    if (depthDelta > thickness) hit = 0;
     
-    // int binaryStepCount = BINARY_STEP_COUNT * hit;
+    int binaryStepCount = BINARY_STEP_COUNT * hit;
     
-    // UNITY_LOOP
-    // for (int i = 0; i < binaryStepCount; i++)
-    // {
-    //     rayDir *= 0.5f;
-    //     UNITY_FLATTEN
-    //     if (depthDelta > 0) curPositionVS -= rayDir;
-    //     else if (depthDelta < 0) curPositionVS += rayDir;
-    //     else break;
+    UNITY_LOOP
+    for (int i = 0; i < binaryStepCount; i++)
+    {
+        rayDir *= 0.5f;
+        UNITY_FLATTEN
+        if (depthDelta > 0) curPositionVS -= rayDir;
+        else if (depthDelta < 0) curPositionVS += rayDir;
+        else break;
     
-    //     float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-    // #ifdef UNITY_UV_STARTS_AT_TOP
-    //     curPositionCS.y *= -1;
-    // #endif
-    //     // 除以w得到归一化设备坐标
-    //     curPositionCS *= rcp(curPositionCS.w);
-    //     float2 texCoord = curPositionCS.xy;
-    //     texCoord.xy = texCoord.xy * 0.5 + 0.5;
+        float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        curPositionCS.y *= -1;
+    #endif
+        // 除以w得到归一化设备坐标
+        curPositionCS *= rcp(curPositionCS.w);
+        float2 texCoord = curPositionCS.xy;
+        texCoord.xy = texCoord.xy * 0.5 + 0.5;
         
-    //     maskOut = ScreenEdgeMask(texCoord.xy);
-    //     curScreenTexCoord = texCoord.xy;
+        maskOut = ScreenEdgeMask(texCoord.xy);
+        curScreenTexCoord = texCoord.xy;
     
-    //     float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
-    //     float sceneDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
-    //     float hitDepth = LinearEyeDepth(curPositionCS.z, _ZBufferParams);
+        float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
+        float backFaceDepth = SAMPLE_TEXTURE2D(_SSRCameraBackFaceDepthTexture, sampler_point_clamp, texCoord.xy).r;
+
+        float sceneDepth = LinearEyeDepth(sampledDepth, _ZBufferParams);
+        float hitDepth = LinearEyeDepth(curPositionCS.z, _ZBufferParams);
+        // float linearBackFaceDepth = LinearEyeDepth(backFaceDepth, _ZBufferParams);
+        // float objectDepthDelta = abs(sceneDepth - linearBackFaceDepth);
         
-    //     depthDelta = hitDepth - sceneDepth;
+        depthDelta = hitDepth - sceneDepth;
         
-    //     float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
-    //     if (abs(depthDelta) > minV)
-    //     {
-    //         hit = 0;
-    //         break;
-    //     }
-    // }
-    // float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
-    // float backFaceDot = dot(curNormalWS, reflectDirWS);
-    // UNITY_FLATTEN
-    // if (backFaceDot > 0) hit = 0;
+        float minV = 1.0 / max(oneMinusVoR * float(i), 0.001);
+        if (abs(depthDelta) > minV)
+        {
+            hit = 0;
+            break;
+        }
+    }
+    float3 curNormalWS = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, curScreenTexCoord).xyz);
+    float backFaceDot = dot(curNormalWS, reflectDirWS);
+    UNITY_FLATTEN
+    if (backFaceDot > 0) hit = 0;
 
     float3 deltaDir = positionVS.xyz - curPositionVS;
     float progress = dot(deltaDir, deltaDir) / (maxDist * maxDist);
@@ -151,9 +157,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
     maskOut *= hit * progress;
 
-    half3 reflectColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, curScreenTexCoord).rgb;
-    
-    half3 finalResult = lerp(sceneColor, reflectColor, maskOut);
+    half3 finalResult = half3(curScreenTexCoord.xy, maskOut);
     
     return half4(finalResult, 1);
 }
@@ -170,7 +174,11 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float2 screenUV = fsIn.texcoord;
     
     // half invPaddedScale = 1.0 / _PaddedScale;
-    // float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
+
+    UNITY_BRANCH
+    if (rawDepth == 0.0) return sceneColor;
 
     half4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
     half smoothness = normalGBuffer.w;
@@ -182,13 +190,13 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half oneMinusSmoothness4 = 1 - smoothness4;
     
-    float3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, oneMinusSmoothness4 * 5.0).rgb;
+    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV).rgb;
+
+    half4 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy);
+
+    half4 blendedColor = reflectedColor;
     
-    // half4 reflectedColor = SAMPLE_TEXTURE2D_LOD(_TempPaddedSceneColor, sampler_TempPaddedSceneColor, reflectedUV.xy, 0);
+    half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
     
-    // half4 blendedColor = reflectedColor;
-    
-    // half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
-    
-    return half4(reflectColor.xyz, smoothness4 * fadeSmoothness);
+    return half4(finalColor.xyz, 1.0);
 }

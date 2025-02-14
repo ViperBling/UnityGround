@@ -13,13 +13,13 @@ namespace ArtSSR
             private const string m_ProfilingTag = "ArtSSR_RenderReflection";
 
             public ArtSSREffect m_SSRVolume;
-            
+
             private static int m_Frame = 0; // Frame counter
-            
+
             private Material m_Material;
             private RTHandle m_SceneColorHandle;
             private RTHandle m_ReflectColorHandle;
-            
+
             private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
             private static readonly int m_FadeSmoothnessID = Shader.PropertyToID("_FadeSmoothness");
@@ -31,7 +31,7 @@ namespace ArtSSR
             private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
 
             private bool m_IsPadded = false;
-            
+
             public ArtSSRRenderPass(Material material)
             {
                 m_Material = material;
@@ -45,8 +45,9 @@ namespace ArtSSR
 
             public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraRTDesc)
             {
+                if (m_Material == null) return;
                 base.Configure(cmd, cameraRTDesc);
-            
+
                 m_Material.SetInt(m_FrameID, m_Frame);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
@@ -72,15 +73,15 @@ namespace ArtSSR
                 desc.depthBufferBits = 0;
                 desc.msaaSamples = 1;
                 desc.useMipMap = false;
-                
+
                 // Approximation mode
-                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_ArtSSRSourceTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
                 desc.useMipMap = false;
                 FilterMode filterMode = FilterMode.Point;
 
-                RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_ArtSSRReflectionColorTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
                 ConfigureInput(ScriptableRenderPassInput.Depth);
-                
+
                 ConfigureTarget(m_SceneColorHandle, m_SceneColorHandle);
             }
 
@@ -110,24 +111,25 @@ namespace ArtSSR
                     m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
                     m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
                     m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
-                
+
                     const int linearPass = 0;
                     const int hiZPass = 1;
                     const int compositePass = 2;
 
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
-                
+
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing)
                     {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass : hiZPass);
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: hiZPass);
                     }
                     else
                     {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass : linearPass);
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: linearPass);
                     }
-                
-                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass : compositePass);
-                
+
+                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
+                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: compositePass);
+
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
                     CommandBufferPool.Release(cmd);
@@ -141,11 +143,11 @@ namespace ArtSSR
             private readonly Material m_SSRMaterial;
             public ArtSSREffect m_SSRVolume;
             private RTHandle m_BackFaceDepthHandle;
-            
+
             private RenderStateBlock m_DepthRenderStateBlock = new(RenderStateMask.Nothing);
 
             private static readonly int m_SSRBackFaceDepthID = Shader.PropertyToID("_SSRCameraBackFaceDepthTexture");
-            
+
             public ArtSSRBackFaceDepthPass(Material material)
             {
                 m_SSRMaterial = material;
@@ -155,13 +157,13 @@ namespace ArtSSR
             {
                 m_BackFaceDepthHandle?.Release();
             }
-            
+
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
                 RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
                 desc.msaaSamples = 1;
-                
-                RenderingUtils.ReAllocateIfNeeded(ref m_BackFaceDepthHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name : "_SSRCameraBackFaceDepthTexture");
+
+                RenderingUtils.ReAllocateIfNeeded(ref m_BackFaceDepthHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRCameraBackFaceDepthTexture");
                 cmd.SetGlobalTexture(m_SSRBackFaceDepthID, m_BackFaceDepthHandle);
             }
 
@@ -190,21 +192,21 @@ namespace ArtSSR
                         m_BackFaceDepthHandle,
                         RenderBufferLoadAction.DontCare,
                         RenderBufferStoreAction.Store);
-                    cmd.ClearRenderTarget(clearDepth : true, clearColor : true, Color.clear);
+                    cmd.ClearRenderTarget(clearDepth: true, clearColor: true, Color.clear);
 
                     RendererListDesc rendererListDesc = new(new ShaderTagId("DepthOnly"), renderingData.cullResults, renderingData.cameraData.camera);
                     m_DepthRenderStateBlock.depthState = new DepthState(true, CompareFunction.LessEqual);
                     m_DepthRenderStateBlock.mask |= RenderStateMask.Depth;
                     m_DepthRenderStateBlock.rasterState = new RasterState(CullMode.Front);
                     m_DepthRenderStateBlock.mask |= RenderStateMask.Raster;
-                    
+
                     rendererListDesc.stateBlock = m_DepthRenderStateBlock;
                     rendererListDesc.sortingCriteria = renderingData.cameraData.defaultOpaqueSortFlags;
                     rendererListDesc.renderQueueRange = RenderQueueRange.opaque;
                     RendererList rendererList = context.CreateRendererList(rendererListDesc);
 
                     cmd.DrawRendererList(rendererList);
-                    
+
                     m_SSRMaterial.EnableKeyword("_BACKFACE_ENABLED");
                 }
                 context.ExecuteCommandBuffer(cmd);
@@ -213,5 +215,5 @@ namespace ArtSSR
             }
         }
     }
-    
+
 }

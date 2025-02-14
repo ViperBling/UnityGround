@@ -60,7 +60,7 @@ Shader "VFXTest/JadeShader_Baked_SH_H"
         {
             Tags
             {
-                "LightMode" = "UniversalForward"
+                "RenderPipeline" = "UniversalPipeline"
             }
             
             HLSLPROGRAM

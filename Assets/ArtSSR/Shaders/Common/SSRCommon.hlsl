@@ -13,6 +13,7 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
+TEXTURE2D_X(_SSRSceneColorTexture);
 
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
