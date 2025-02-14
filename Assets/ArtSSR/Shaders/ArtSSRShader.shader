@@ -73,6 +73,8 @@
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
+            #pragma multi_compile_fragment _ DITHER_8x8 DITHER_INTERLEAVED_GRADIENT
+
             #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL

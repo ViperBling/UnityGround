@@ -173,30 +173,51 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
     
-    // half invPaddedScale = 1.0 / _PaddedScale;
+    half invPaddedScale = 1.0 / _PaddedScale;
     float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
-    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV * invPaddedScale);
 
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
 
+    half dither = 0.0;
+    UNITY_BRANCH
+#if defined(DITHER_8x8)
+    // dither = Dither8x8(screenUV, 0.8);
+#elif defined(DITHER_INTERLEAVED_GRADIENT)
+    // dither = IGN(screenUV.x * _ScreenParams.x, screenUV.y * _ScreenParams.y, _Frame);
+#endif
+
+    // dither = dither * 2.0 - 1.0;
+
     half4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
+    half3 normalWS = UnpackNormal(normalGBuffer.xyz);
     half smoothness = normalGBuffer.w;
+    half3 normalVS = mul(UNITY_MATRIX_I_V, float4(normalWS, 0.0)).xyz;
+    half3 normalCS = mul(GetViewToHClipMatrix(), float4(normalVS, 0.0)).xyz;
+#ifdef UNITY_UV_STARTS_AT_TOP
+    normalCS.y *= -1;
+#endif
 
-    half fadeSmoothness = (_FadeSmoothness < smoothness) ? 1.0 : (smoothness - _MinSmoothness) * rcp(_FadeSmoothness - _MinSmoothness);
+    half4 specularColor = SAMPLE_TEXTURE2D(_GBuffer1, sampler_point_clamp, screenUV);
 
-    half smoothness2 = smoothness * smoothness;
-    half smoothness4 = smoothness2 * smoothness2;
+    float3 positionWS = GetWorldPosition(screenUV, rawDepth);
+    half3 viewDirWS = normalize(positionWS - _WorldSpaceCameraPos);
 
-    half oneMinusSmoothness4 = 1 - smoothness4;
+    half steppedS = Smootherstep(_MinSmoothness, 1.0, smoothness);
+    half steppedS2 = steppedS * steppedS;
+    half fresnel = saturate(1 - dot(-viewDirWS, normalWS));
+
+    const float2 uvOffset = normalCS * lerp(dither * 0.05f, 0.0, steppedS2);
     
-    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV).rgb;
+    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, (screenUV + 0) * invPaddedScale).rgb;
 
-    half4 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy);
+    half4 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy + uvOffset);
 
     half4 blendedColor = reflectedColor;
     
     half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
+    // finalColor = specularColor.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

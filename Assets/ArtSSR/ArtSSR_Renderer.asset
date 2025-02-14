@@ -59,7 +59,7 @@ MonoBehaviour:
   m_RenderingMode: 1
   m_DepthPrimingMode: 0
   m_CopyDepthMode: 0
-  m_AccurateGbufferNormals: 0
+  m_AccurateGbufferNormals: 1
   m_IntermediateTextureMode: 1
 --- !u!114 &3232484422580113879
 MonoBehaviour:

@@ -35,7 +35,7 @@ MonoBehaviour:
     m_Value: 0
   m_DitherMode:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 1
   m_ThicknessScale:
     m_OverrideState: 1
     m_Value: 2.7
@@ -50,7 +50,7 @@ MonoBehaviour:
     m_Value: 0.01
   m_EdgeFade:
     m_OverrideState: 1
-    m_Value: 0.032
+    m_Value: 0.04
   m_MaxSteps:
     m_OverrideState: 1
     m_Value: 256

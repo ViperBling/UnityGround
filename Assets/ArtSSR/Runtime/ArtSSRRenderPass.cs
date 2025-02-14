@@ -29,8 +29,16 @@ namespace ArtSSR
             private static readonly int m_MaxStepsID = Shader.PropertyToID("_MaxSteps");
             private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
             private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
+            private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
+            private static readonly int m_PaddedResolutionID = Shader.PropertyToID("_PaddedResolution");
+            private static readonly int m_PaddedScaleID = Shader.PropertyToID("_PaddedScale");
+            private static readonly int m_CrossEpsID = Shader.PropertyToID("_CrossEps");
 
             private bool m_IsPadded = false;
+            private float m_Scale;
+            private Vector2 m_ScreenResolution;
+            private Vector2 m_PaddedScreenResolution;
+            private Vector2 m_PaddedScale;
 
             public ArtSSRRenderPass(Material material)
             {
@@ -51,19 +59,38 @@ namespace ArtSSR
                 m_Material.SetInt(m_FrameID, m_Frame);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
+                m_Scale = (float)m_SSRVolume.m_DownSample + 1.0f;
 
-                if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Disabled)
+                float globalResolution = 1.0f / m_Scale;
+                if (m_IsPadded)
                 {
-                    m_Material.DisableKeyword("DITHER_8x8");
-                    m_Material.DisableKeyword("DITHER_INTERLEAVED_GRADIENT");
+                    m_ScreenResolution.x = cameraRTDesc.width * globalResolution;
+                    m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
+                    m_PaddedScreenResolution.x = Mathf.NextPowerOfTwo((int)m_ScreenResolution.x);
+                    m_PaddedScreenResolution.y = Mathf.NextPowerOfTwo((int)m_ScreenResolution.y);
                 }
-                else if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Dither8x8)
+                else 
                 {
-                    m_Material.EnableKeyword("DITHER_8x8");
+                    m_ScreenResolution.x = cameraRTDesc.width;
+                    m_ScreenResolution.y = cameraRTDesc.height;
+                    m_PaddedScreenResolution = m_ScreenResolution / m_Scale;
+                }
+
+                m_Material.SetVector(m_ScreenResolutionID, m_ScreenResolution);
+                if (m_IsPadded)
+                {
+                    m_PaddedScale = m_PaddedScreenResolution / m_ScreenResolution;
+                    m_Material.SetVector(m_PaddedResolutionID, m_PaddedScreenResolution);
+                    m_Material.SetVector(m_PaddedScaleID, m_PaddedScale);
+
+                    float cX = 1.0f / (512.0f * m_PaddedScreenResolution.x);
+                    float cY = 1.0f / (512.0f * m_PaddedScreenResolution.y);
+                    m_Material.SetVector(m_CrossEpsID, new Vector2(cX, cY));
                 }
                 else
                 {
-                    m_Material.EnableKeyword("DITHER_INTERLEAVED_GRADIENT");
+                    m_PaddedScale = Vector2.one;
+                    m_Material.SetVector(m_PaddedScaleID, m_PaddedScale);
                 }
             }
 
@@ -73,6 +100,11 @@ namespace ArtSSR
                 desc.depthBufferBits = 0;
                 desc.msaaSamples = 1;
                 desc.useMipMap = false;
+
+                int tx = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.width) : desc.width);
+                int ty = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.height) : desc.height);
+                desc.width = tx;
+                desc.height = ty;
 
                 // Approximation mode
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
@@ -104,13 +136,7 @@ namespace ArtSSR
 
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
-                    m_Material.SetFloat(m_MinSmoothnessID, m_SSRVolume.m_MinSmoothness.value);
-                    m_Material.SetFloat(m_FadeSmoothnessID, m_SSRVolume.m_FadeSmoothness.value);
-                    m_Material.SetFloat(m_EdgeFadeID, m_SSRVolume.m_EdgeFade.value);
-                    m_Material.SetFloat(m_ThicknessScaleID, m_SSRVolume.m_ThicknessScale.value);
-                    m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
-                    m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
-                    m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
+                    SetMaterialProperties(ref renderingData);
 
                     const int linearPass = 0;
                     const int hiZPass = 1;
@@ -134,6 +160,31 @@ namespace ArtSSR
                     cmd.Clear();
                     CommandBufferPool.Release(cmd);
                 }
+            }
+
+            private void SetMaterialProperties(ref RenderingData renderingData)
+            {
+                if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Disabled)
+                {
+                    m_Material.DisableKeyword("DITHER_8x8");
+                    m_Material.DisableKeyword("DITHER_INTERLEAVED_GRADIENT");
+                }
+                else if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Dither8x8)
+                {
+                    m_Material.EnableKeyword("DITHER_8x8");
+                }
+                else if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.InterleavedGradient)
+                {
+                    m_Material.EnableKeyword("DITHER_INTERLEAVED_GRADIENT");
+                }
+                
+                m_Material.SetFloat(m_MinSmoothnessID, m_SSRVolume.m_MinSmoothness.value);
+                m_Material.SetFloat(m_FadeSmoothnessID, m_SSRVolume.m_FadeSmoothness.value);
+                m_Material.SetFloat(m_EdgeFadeID, m_SSRVolume.m_EdgeFade.value);
+                m_Material.SetFloat(m_ThicknessScaleID, m_SSRVolume.m_ThicknessScale.value);
+                m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
+                m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
+                m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
             }
         }
 
@@ -206,8 +257,6 @@ namespace ArtSSR
                     RendererList rendererList = context.CreateRendererList(rendererListDesc);
 
                     cmd.DrawRendererList(rendererList);
-
-                    m_SSRMaterial.EnableKeyword("_BACKFACE_ENABLED");
                 }
                 context.ExecuteCommandBuffer(cmd);
                 cmd.Clear();
