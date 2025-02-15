@@ -41,6 +41,8 @@ Varyings BuildVaryings(Attributes input)
 
     UNITY_SETUP_INSTANCE_ID(input);
 
+    UNITY_TRANSFER_INSTANCE_ID(input, output);
+
 #if defined(HAVE_VFX_MODIFICATION)
     AttributesElement element;
     ZERO_INITIALIZE(AttributesElement, element);
@@ -48,13 +50,16 @@ Varyings BuildVaryings(Attributes input)
     if (!GetMeshAndElementIndex(input, element))
         return output; // Culled index.
 
+#if UNITY_ANY_INSTANCING_ENABLED
+    output.instanceID = input.instanceID; //Transfer instanceID again because we modify it in GetMeshAndElementIndex
+#endif
+
     if (!GetInterpolatorAndElementData(output, element))
         return output; // Dead particle.
 
     SetupVFXMatrices(element, output);
 #endif
 
-    UNITY_TRANSFER_INSTANCE_ID(input, output);
     UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
 
 #if defined(FEATURES_GRAPH_VERTEX)
@@ -128,7 +133,7 @@ Varyings BuildVaryings(Attributes input)
         output.positionCS.z = max(output.positionCS.z, UNITY_NEAR_CLIP_VALUE);
     #endif
 #elif (SHADERPASS == SHADERPASS_META)
-    output.positionCS = UnityMetaVertexPosition(input.positionOS, input.uv1, input.uv2, unity_LightmapST, unity_DynamicLightmapST);
+    output.positionCS = UnityMetaVertexPosition(input.positionOS, input.uv1.xy, input.uv2.xy, unity_LightmapST, unity_DynamicLightmapST);
 #else
     output.positionCS = TransformWorldToHClip(positionWS);
 #endif

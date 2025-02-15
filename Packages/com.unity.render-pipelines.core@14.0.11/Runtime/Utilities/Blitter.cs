@@ -261,7 +261,7 @@ namespace UnityEngine.Rendering
             s_PropertyBlock.SetTexture(BlitShaderIDs._BlitTexture, source);
             DrawTriangle(cmd, material, pass);
         }
-        
+
         /// <summary>
         /// Blit a RTHandle texture
         /// </summary>
@@ -272,6 +272,7 @@ namespace UnityEngine.Rendering
         /// <param name="pass">Pass idx within the material to invoke.</param>
         public static void BlitTexture(CommandBuffer cmd, RenderTargetIdentifier source, Vector4 scaleBias, Material material, int pass)
         {
+            s_PropertyBlock.Clear();
             s_PropertyBlock.SetVector(BlitShaderIDs._BlitScaleBias, scaleBias);
             // Unfortunately there is no function bind a RenderTargetIdentifier with a property block so we have to bind it globally.
             cmd.SetGlobalTexture(BlitShaderIDs._BlitTexture, source);
@@ -288,6 +289,8 @@ namespace UnityEngine.Rendering
         /// <param name="pass">Pass idx within the material to invoke.</param>
         public static void BlitTexture(CommandBuffer cmd, RenderTargetIdentifier source, RenderTargetIdentifier destination, Material material, int pass)
         {
+            s_PropertyBlock.Clear();
+            s_PropertyBlock.SetVector(BlitShaderIDs._BlitScaleBias, Vector2.one);
             // Unfortunately there is no function bind a RenderTargetIdentifier with a property block so we have to bind it globally.
             cmd.SetGlobalTexture(BlitShaderIDs._BlitTexture, source);
             cmd.SetRenderTarget(destination);
@@ -306,12 +309,14 @@ namespace UnityEngine.Rendering
         /// <param name="pass">Pass idx within the material to invoke.</param>
         public static void BlitTexture(CommandBuffer cmd, RenderTargetIdentifier source, RenderTargetIdentifier destination, RenderBufferLoadAction loadAction, RenderBufferStoreAction storeAction, Material material, int pass)
         {
+            s_PropertyBlock.Clear();
+            s_PropertyBlock.SetVector(BlitShaderIDs._BlitScaleBias, Vector2.one);
             // Unfortunately there is no function bind a RenderTargetIdentifier with a property block so we have to bind it globally.
             cmd.SetGlobalTexture(BlitShaderIDs._BlitTexture, source);
             cmd.SetRenderTarget(destination, loadAction, storeAction);
             DrawTriangle(cmd, material, pass);
         }
-        
+
         /// <summary>
         /// Blit a Texture with a given Material. Unity uses the reference name `_BlitTexture` to bind the input texture. Set the destination parameter before using this method.
         /// </summary>

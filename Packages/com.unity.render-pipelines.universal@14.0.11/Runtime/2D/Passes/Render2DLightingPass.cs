@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine.Profiling;
+using UnityEngine.Experimental.Rendering.Universal;
 
 namespace UnityEngine.Rendering.Universal
 {
@@ -194,8 +195,7 @@ namespace UnityEngine.Rendering.Universal
             var batchesDrawn = 0;
             var rtCount = 0U;
 
-            // Account for Sprite Mask and normal map usage where the first and last layer has to render the stencil pass
-            bool hasSpriteMask = UnityEngine.SpriteMaskUtility.HasSpriteMaskInScene();
+            // Account for sprite mask interaction with normals. Only clear normals at the start as we require stencil for sprite mask in different layer batches
             bool normalsFirstClear = true;
 
             // Draw lights
@@ -220,13 +220,12 @@ namespace UnityEngine.Rendering.Universal
 
                     batchesDrawn++;
 
-                    if (layerBatch.lightStats.totalNormalMapUsage > 0 ||
-                        (hasSpriteMask && i == 0) ||
-                        (hasSpriteMask && i + 1 == batchCount))
+                    if (layerBatch.useNormals)
                     {
                         filterSettings.sortingLayerRange = layerBatch.layerRange;
                         var depthTarget = m_NeedsDepth ? depthAttachmentHandle.nameID : BuiltinRenderTextureType.None;
-                        this.RenderNormals(context, renderingData, normalsDrawSettings, filterSettings, depthTarget, ref normalsFirstClear);
+                        this.RenderNormals(context, renderingData, normalsDrawSettings, filterSettings, depthTarget, normalsFirstClear);
+						normalsFirstClear = false;
                     }
 
                     using (new ProfilingScope(cmd, m_ProfilingDrawLightTextures))
@@ -369,6 +368,15 @@ namespace UnityEngine.Rendering.Universal
 
             LayerUtility.InitializeBudget(m_Renderer2DData.lightRenderTextureMemoryBudget);
             ShadowRendering.InitializeBudget(m_Renderer2DData.shadowRenderTextureMemoryBudget);
+
+            // Set screenParams when pixel perfect camera is used with the reference resolution
+            camera.TryGetComponent(out PixelPerfectCamera pixelPerfectCamera);
+            if (pixelPerfectCamera != null && pixelPerfectCamera.enabled && pixelPerfectCamera.offscreenRTSize != Vector2Int.zero)
+            {
+                var cameraWidth = pixelPerfectCamera.offscreenRTSize.x;
+                var cameraHeight = pixelPerfectCamera.offscreenRTSize.y;
+                renderingData.commandBuffer.SetGlobalVector(ShaderPropertyId.screenParams, new Vector4(cameraWidth, cameraHeight, 1.0f + 1.0f / cameraWidth, 1.0f + 1.0f / cameraHeight));
+            }
 
             var isSceneLit = m_Renderer2DData.lightCullResult.IsSceneLit();
             if (isSceneLit)

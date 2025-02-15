@@ -1,3 +1,4 @@
+#include_with_pragmas "Packages/com.unity.render-pipelines.core/ShaderLibrary/FoveatedRenderingKeywords.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #if defined(FOG_LINEAR) || defined(FOG_EXP) || defined(FOG_EXP2)
 #define USE_FOG 1
@@ -19,3 +20,7 @@
 
 //Unlit can use the DepthNormal pass which creates a discrepancy while computing depth
 #define FORCE_NORMAL_OUTPUT_UNLIT_VERTEX_SHADER 1
+
+#if HAS_STRIPS
+#define HAS_STRIPS_DATA 1
+#endif

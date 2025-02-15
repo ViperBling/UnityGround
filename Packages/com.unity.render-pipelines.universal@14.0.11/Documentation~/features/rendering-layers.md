@@ -70,9 +70,9 @@ To implement the example:
 
 5. Make the following settings on Lights and Spheres:
 
-    Light `A`: in the property **Light > General > Rendering Layers**, clear all options, and select `Green`.
+    Light `A`: in the property **Light > Rendering > Rendering Layers**, clear all options, and select `Green`.
 
-    Light `B`: in the property **Light > General > Rendering Layers**, clear all options, and select `Red`.
+    Light `B`: in the property **Light > Rendering > Rendering Layers**, clear all options, and select `Red`.
 
     Sphere `C`: in the property **Mesh Renderer > Additional Settings > Rendering Layer Mask**, select all options, clear `Green`.
 
@@ -140,4 +140,8 @@ This section contains information related to the impact of Rendering Layers on p
 
 * When using Rendering Layers only for Lights in the Forward Rendering Path, the performance impact is insignificant.
 
-* Performance impact grows more significantly when the Rendering Layer count exceeds a multiple of 8. For example: increasing the layer count from 8 to 9 layers has a bigger relative impact than increasing the layer count from 9 to 10 layers.
+* Performance impact grows more significantly when the Rendering Layer count exceeds a multiple of 8. For example: increasing the layer count from 8 to 9 layers has a bigger relative impact than increasing the layer count from 9 to 10 layers. The same consideration applies to increasing the count from 16 to 17, from 24 to 25 and so on.
+
+## Additional resources
+
+- [`RenderingLayerMask` API](ScriptRef:RenderingLayerMask)
