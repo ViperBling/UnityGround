@@ -51,5 +51,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "UnityGround.sln"
+    "dotnet.defaultSolution": "UnityGround.sln",
+    "svn.ignoreMissingSvnWarning": true
 }
