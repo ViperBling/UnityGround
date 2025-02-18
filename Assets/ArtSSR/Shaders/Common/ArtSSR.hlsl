@@ -180,44 +180,26 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
 
-    half dither = 0.0;
-    UNITY_BRANCH
-#if defined(DITHER_8x8)
-    // dither = Dither8x8(screenUV, 0.8);
-#elif defined(DITHER_INTERLEAVED_GRADIENT)
-    // dither = IGN(screenUV.x * _ScreenParams.x, screenUV.y * _ScreenParams.y, _Frame);
-#endif
-
-    // dither = dither * 2.0 - 1.0;
-
-    half4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
-    half3 normalWS = UnpackNormal(normalGBuffer.xyz);
-    half smoothness = normalGBuffer.w;
-    half3 normalVS = mul(UNITY_MATRIX_I_V, float4(normalWS, 0.0)).xyz;
-    half3 normalCS = mul(GetViewToHClipMatrix(), float4(normalVS, 0.0)).xyz;
-#ifdef UNITY_UV_STARTS_AT_TOP
-    normalCS.y *= -1;
-#endif
-
-    half4 specularColor = SAMPLE_TEXTURE2D(_GBuffer1, sampler_point_clamp, screenUV);
-
-    float3 positionWS = GetWorldPosition(screenUV, rawDepth);
-    half3 viewDirWS = normalize(positionWS - _WorldSpaceCameraPos);
-
-    half steppedS = Smootherstep(_MinSmoothness, 1.0, smoothness);
-    half steppedS2 = steppedS * steppedS;
-    half fresnel = saturate(1 - dot(-viewDirWS, normalWS));
-
-    const float2 uvOffset = normalCS * lerp(dither * 0.05f, 0.0, steppedS2);
+    half3 albedo;
+    half3 specular;
+    half occlusion;
+    half3 normal;
+    half smoothness;
+    HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
     
-    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, (screenUV + 0) * invPaddedScale).rgb;
+    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, (screenUV) * invPaddedScale).rgb;
 
-    half4 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy + uvOffset);
+    half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
 
-    half4 blendedColor = reflectedColor;
+    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
+
+    reflectedColor *= occlusion;
+    half reflectivity = ReflectivitySpecular(specular);
+
+    reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
-    half3 finalColor = lerp(sceneColor.xyz, blendedColor.xyz, reflectedUV.z);
-    // finalColor = specularColor.xyz;
+    half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
+    // finalColor = fresnel;
     
     return half4(finalColor.xyz, 1.0);
 }

@@ -33,6 +33,19 @@ CBUFFER_START(UnityPerMaterial)
     half2       _CrossEps;
 CBUFFER_END
 
+#ifndef kMaterialFlagSpecularSetup
+#define kMaterialFlagSpecularSetup 8 // Lit material use specular setup instead of metallic setup
+#endif
+
+#ifndef kDielectricSpec
+#define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
+#endif
+
+uint UnpackMaterialFlags(float packedMaterialFlags)
+{
+    return uint((packedMaterialFlags * 255.0h) + 0.5h);
+}
+
 #ifdef _GBUFFER_NORMALS_OCT
 half3 UnpackNormal(half3 pn)
 {
@@ -56,6 +69,19 @@ float3 GetWorldPosition(float2 screenUV, float rawDepth)
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
     return positionWS.xyz;
+}
+
+inline void HitDataFromGBuffer(float2 texCoord, inout half3 albedo, inout half3 specular, inout half occlusion, inout half3 normal, inout half smoothness)
+{
+    half4 gBuffer0 = SAMPLE_TEXTURE2D(_GBuffer0, sampler_point_clamp, texCoord);
+    half4 gBuffer1 = SAMPLE_TEXTURE2D(_GBuffer1, sampler_point_clamp, texCoord);
+    half4 gBuffer2 = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, texCoord);
+
+    albedo = gBuffer0.rgb;
+    specular = (UnpackMaterialFlags(gBuffer0.a) == kMaterialFlagSpecularSetup) ? gBuffer1.rgb : lerp(kDielectricSpec.rgb, max(albedo.rgb, kDielectricSpec.rgb), gBuffer1.r); // Specular & Metallic setup conversion
+    occlusion = gBuffer1.a;
+    normal = UnpackNormal(gBuffer2.xyz);
+    smoothness = gBuffer2.w;
 }
 
 inline float ScreenEdgeMask(float2 screenUV)
