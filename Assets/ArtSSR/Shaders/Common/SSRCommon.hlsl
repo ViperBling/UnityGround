@@ -18,6 +18,11 @@ TEXTURE2D_X(_SSRSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
+TEXTURE2D_ARRAY(_DepthPyramid);
+SAMPLER(sampler_DepthPyramid);
+float2 _BlueNoiseTextures_TexelSize;
+Buffer<uint2> _DepthPyramidResolutions;
+
 CBUFFER_START(UnityPerMaterial)
     int         _Frame;
     float3      _WorldSpaceViewDir;
@@ -149,5 +154,80 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
+inline uint NextPowerOfTwo(uint value)
+{
+    uint res = 2 << firstbithigh(value - 1);
+    return res;
+}
 
+inline bool FloatEqApprox(float a, float b)
+{
+    return abs(a - b) < 0.00001f;
+}
+
+// HiZ Tracing
+inline uint2 GetLevelResolution(uint index)
+{
+    uint2 res = _PaddedResolution;
+    res.x = res.x >> index;
+    res.y = res.y >> index;
+    return res;
+}
+
+inline float2 ScaledUV(float2 uv, uint index)
+{
+    float2 scaledScreen = GetLevelResolution(index);
+    float realScale = scaledScreen.xy / _PaddedResolution;
+    uv *= realScale;
+    return uv;
+}
+
+inline float SampleDepth(float2 uv, uint index)
+{
+    uv = ScaledUV(uv, index);
+    return SAMPLE_TEXTURE2D_ARRAY(_DepthPyramid, sampler_DepthPyramid, uv, index);
+}
+
+inline float2 GetCell(float2 raySS, float2 cellCount)
+{
+    return floor(raySS.xy * cellCount);
+}
+
+inline float2 GetCellCount(float level)
+{
+    float2 res = GetLevelResolution(level);
+    return res;
+}
+
+inline bool CrossedCellBoundary(float2 cellID1, float2 cellID2)
+{
+    return !FloatEqApprox(cellID1.x, cellID2.x) || !FloatEqApprox(cellID1.y, cellID2.y);
+}
+
+inline float MiniDepthPlane(float2 ray, float level)
+{
+    return SampleDepth(ray, level);
+}
+
+inline float3 IntersectDepthPlane(float3 origin, float3 dir, float depth)
+{
+    return origin + dir * depth;
+}
+
+inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex, float2 cellCount, float2 crossStep, float2 crossOffset)
+{
+    float2 cellSize = 1.0 / cellCount;
+    float2 planes = cellIndex / cellCount + cellSize * crossStep;
+    float2 solutions = (planes - origin) / dir.xy;
+    float3 intersectionPos = origin + dir * min(solutions.x, solutions.y);
+
+    intersectionPos.xy += (solutions.x < solutions.y) ? float2(crossOffset.x, 0.0) : float2(0.0, crossOffset.y);
+
+    return intersectionPos;
+}
+
+inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, float maxIterations, out float hit, out float iterations, out bool isSky)
+{
+
+}
 
