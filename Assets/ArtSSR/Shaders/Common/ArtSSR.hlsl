@@ -165,7 +165,45 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
-    return half4(1, 1, 0, 1);
+
+    float2 screenUV = fsIn.texcoord;
+    float2 paddedScreenUV = fsIn.texcoord * _PaddedScale;
+
+    UNITY_BRANCH
+    if (paddedScreenUV.x > 1.0f || paddedScreenUV.y > 1.0f) return float4(0, 0, 0, 0);
+
+    screenUV = paddedScreenUV;
+    
+    float rawDepth = 1 - SampleDepth(screenUV, 0);
+    rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+
+    UNITY_BRANCH
+    if (rawDepth == 0) return float4(screenUV, 0, 0);
+
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
+    float smoothness = normalGBuffer.w;
+    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
+
+    UNITY_BRANCH
+    if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 0);
+
+    float4 positionNDC = float4(screenUV * 2.0 - 1.0 , rawDepth, 1.0);
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        positionNDC.y *= -1;
+    #endif
+    float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
+    // 后面会直接用到positionVS，所以要先除以w
+    positionVS *= rcp(positionVS.w);
+    float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
+
+    float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
+
+
+    half3 finalResult = positionWS;
+
+    return half4(finalResult, 1);
 }
 
 float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
@@ -199,7 +237,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    // finalColor = fresnel;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

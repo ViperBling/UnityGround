@@ -2,6 +2,10 @@
 
 #define BINARY_STEP_COUNT 32
 
+#define HIZ_START_LEVEL 0
+#define HIZ_MAX_LEVEL 10
+#define HIZ_STOP_LEVEL 0
+
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
@@ -228,6 +232,78 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
 
 inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, float maxIterations, out float hit, out float iterations, out bool isSky)
 {
+    const int rootLevel = HIZ_MAX_LEVEL;
+    const int endLevel = HIZ_STOP_LEVEL;
+    const int startLevel = HIZ_START_LEVEL;
+    int level = HIZ_START_LEVEL;
 
+    iterations = 0;
+    isSky = false;
+    hit = 0;
+
+    UNITY_BRANCH
+    if (reflectDir.z <= 0) return float3(0, 0, 0);
+
+    float3 depth = reflectDir.xyz / reflectDir.z;
+
+    float2 crossStep = float2(depth.x >= 0.0f ? 1.0f : -1.0f, depth.y >= 0.0f ? 1.0f : -1.0f);
+    float2 crossOffset = float2(crossStep.xy * _CrossEps);
+    crossStep.xy = saturate(crossStep.xy);
+
+    // Set current ray to original screen coordinate and depth
+    float3 rayDir = position.xyz;
+
+    float2 rayCell = GetCell(rayDir.xy, GetCellCount(level));
+    rayDir = IntersectCellBoundary(rayDir, depth, rayCell.xy, GetCellCount(level), crossStep.xy, crossOffset.xy);
+
+    UNITY_LOOP
+    while (level >= endLevel && iterations < maxIterations && rayDir.x >= 0 && rayDir.x <1 && rayDir.y >= 0 && rayDir.y < 1 && rayDir.z > 0)
+    {
+        isSky = false;
+
+        const float2 cellCount = GetCellCount(level);
+        const float2 oldCellIdx = GetCell(rayDir.xy, cellCount);
+
+        // Get the minimum depth plane of the current ray
+        float minZ = MiniDepthPlane(rayDir.xy, level);
+
+        float3 tmpRay = rayDir;
+
+        float minMinusRay = minZ - rayDir.z;
+
+        tmpRay = minMinusRay > 0 ? IntersectDepthPlane(tmpRay, depth, minMinusRay) : tmpRay;
+
+        const float2 newCellIdx = GetCell(tmpRay.xy, cellCount);
+
+        UNITY_BRANCH
+        if (CrossedCellBoundary(oldCellIdx, newCellIdx))
+        {
+            tmpRay = IntersectCellBoundary(rayDir, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
+            level = min(rootLevel, level + 2.0f);
+        }
+        else if (level == startLevel)
+        {
+            float minZOffset = (minZ + (1 - position.z) * thickness);
+            isSky = minZ == 1;
+            
+            UNITY_BRANCH
+            if (isSky) break;
+
+            UNITY_FLATTEN
+            if (tmpRay.z > minZOffset)
+            {
+                tmpRay = IntersectCellBoundary(rayDir, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
+                level = HIZ_START_LEVEL + 1;
+            }
+        }
+        --level;
+
+        rayDir.xyz = tmpRay.xyz;
+        ++iterations;
+    }
+    hit = level < endLevel ? 1 : 0;
+    hit = iterations > 0 ? hit : 0;
+
+    return rayDir;
 }
 
