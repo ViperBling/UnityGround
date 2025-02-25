@@ -16,9 +16,10 @@ namespace ArtSSR
 
             private static int m_Frame = 0; // Frame counter
 
-            private Material m_Material;
+            private readonly Material m_Material;
             private RTHandle m_SceneColorHandle;
             private RTHandle m_ReflectColorHandle;
+            private RTHandle m_TempSceneColorHandle;
 
             private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
@@ -101,10 +102,16 @@ namespace ArtSSR
                 desc.msaaSamples = 1;
                 desc.useMipMap = false;
 
+                int width = desc.width;
+                int height = desc.height;
                 int tx = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.width) : desc.width);
                 int ty = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.height) : desc.height);
                 desc.width = tx;
                 desc.height = ty;
+
+                RenderingUtils.ReAllocateIfNeeded(ref m_TempSceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRTempSceneColorTexture");
+                desc.width = width;
+                desc.height = height;
 
                 // Approximation mode
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
@@ -144,6 +151,9 @@ namespace ArtSSR
 
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
+                    cmd.SetGlobalTexture(m_TempSceneColorHandle.name, m_TempSceneColorHandle);
+                    Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_TempSceneColorHandle, new Vector4(m_PaddedScale.x, m_PaddedScale.y, 0, 0));
+
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: hiZPass);
@@ -152,8 +162,6 @@ namespace ArtSSR
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: linearPass);
                     }
-
-                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
                     Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: compositePass);
 
                     context.ExecuteCommandBuffer(cmd);

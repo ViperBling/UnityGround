@@ -17,13 +17,13 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
-TEXTURE2D_X(_SSRSceneColorTexture);
+TEXTURE2D_X(_SSRTempSceneColorTexture);
 
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
-TEXTURE2D_ARRAY(_DepthPyramid);
-SAMPLER(sampler_DepthPyramid);
+TEXTURE2D_ARRAY(_FinalDepthPyramid);
+SAMPLER(sampler_FinalDepthPyramid);
 float2 _BlueNoiseTextures_TexelSize;
 Buffer<uint2> _DepthPyramidResolutions;
 
@@ -189,7 +189,7 @@ inline float2 ScaledUV(float2 uv, uint index)
 inline float SampleDepth(float2 uv, uint index)
 {
     uv = ScaledUV(uv, index);
-    return SAMPLE_TEXTURE2D_ARRAY(_DepthPyramid, sampler_DepthPyramid, uv, index);
+    return SAMPLE_TEXTURE2D_ARRAY(_FinalDepthPyramid, sampler_FinalDepthPyramid, uv, index);
 }
 
 inline float2 GetCell(float2 raySS, float2 cellCount)

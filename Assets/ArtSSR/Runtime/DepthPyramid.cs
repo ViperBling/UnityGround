@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -223,8 +224,14 @@ namespace ArtSSR
             CreateSliceBuffer();
 
             m_DepthPyramidPass = new DepthPyramidPass(m_DepthSliceBuffer, m_Settings);
+            m_DepthPyramidShader = AssetDatabase.LoadAssetAtPath<ComputeShader>("Assets/ArtSSR/Shaders/HiZCompute.compute");
+            if (m_DepthPyramidShader == null)
+            {
+                Debug.LogError("HiZ Compoute Shader not found");
+                return;
+            }
             m_Settings.PyramidShader = m_DepthPyramidShader;
-            m_DepthPyramidPass.renderPassEvent = RenderPassEvent.AfterRenderingSkybox;
+            m_DepthPyramidPass.renderPassEvent = RenderPassEvent.BeforeRenderingSkybox;
             if (m_Settings.ShowDebug)
             {
                 m_DepthPyramidPass.renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
@@ -234,7 +241,6 @@ namespace ArtSSR
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             if (!renderingData.cameraData.postProcessEnabled) return;
-            m_Settings.PyramidShader = m_DepthPyramidShader;
             if (!UniversalRenderPipelineDebugDisplaySettings.Instance.AreAnySettingsActive)
             {
                 renderer.EnqueuePass(m_DepthPyramidPass);

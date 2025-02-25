@@ -166,28 +166,29 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
 
-    float2 screenUV = fsIn.texcoord;
     float2 paddedScreenUV = fsIn.texcoord * _PaddedScale;
 
     UNITY_BRANCH
     if (paddedScreenUV.x > 1.0f || paddedScreenUV.y > 1.0f) return float4(0, 0, 0, 0);
 
-    screenUV = paddedScreenUV;
-    
-    float rawDepth = 1 - SampleDepth(screenUV, 0);
-    rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    float rawDepth = 1 - SampleDepth(fsIn.texcoord, 0);
+    // rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, fsIn.texcoord).r;
+
+    return float4(rawDepth.xxx, 1);
+
+    float2 screenUV = paddedScreenUV;
 
     UNITY_BRANCH
-    if (rawDepth == 0) return float4(screenUV, 0, 0);
+    if (rawDepth == 0) return float4(0, 0, 0, 0);
 
     float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    UNITY_BRANCH
-    if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 0);
+    // UNITY_BRANCH
+    // if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
 
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0 , rawDepth, 1.0);
+    float4 positionNDC = float4(fsIn.texcoord * 2.0 - 1.0 , rawDepth, 1.0);
     #ifdef UNITY_UV_STARTS_AT_TOP
         positionNDC.y *= -1;
     #endif
@@ -201,7 +202,7 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
 
-    half3 finalResult = positionWS;
+    half3 finalResult = rawDepth;
 
     return half4(finalResult, 1);
 }
@@ -211,9 +212,9 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
     
-    half invPaddedScale = 1.0 / _PaddedScale;
+    half2 invPaddedScale = 1.0 / _PaddedScale;
     float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
-    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV * invPaddedScale);
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, screenUV * invPaddedScale);
 
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
@@ -229,7 +230,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
 
-    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
+    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
 
     reflectedColor *= occlusion;
     half reflectivity = ReflectivitySpecular(specular);
@@ -237,7 +238,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    // finalColor = reflectedUV.xyz;
+    finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }
