@@ -238,7 +238,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

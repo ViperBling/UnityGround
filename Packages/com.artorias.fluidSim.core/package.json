@@ -1,0 +1,17 @@
+{
+    "name": "com.artorias.fluid-sim.universal",
+    "description": "Fluid Simulation.",
+    "version": "1.0.0",
+    "unity": "2022.3",
+    "displayName": "Fluid Simulation",
+    "keywords": [
+        "graphics",
+        "performance",
+        "rendering",
+        "mobile",
+        "render",
+        "pipeline"
+    ],
+    "dependencies": {
+    }
+}

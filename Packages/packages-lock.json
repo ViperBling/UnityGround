@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.artorias.fluid-sim.universal": {
+      "version": "file:com.artorias.fluidSim.core",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.artorias.render-pipeline.universal": {
       "version": "file:com.artorias.render-pipeline.universal",
       "depth": 0,
