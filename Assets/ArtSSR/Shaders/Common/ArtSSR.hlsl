@@ -22,10 +22,10 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0 , rawDepth, 1.0);
-#ifdef UNITY_UV_STARTS_AT_TOP
-    positionNDC.y *= -1;
-#endif
+    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        positionNDC.y *= -1;
+    #endif
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);
@@ -65,9 +65,9 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
         // 根据当前相机空间坐标计算投影坐标
         float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        curPositionCS.y *= -1;
-    #endif
+        #ifdef UNITY_UV_STARTS_AT_TOP
+            curPositionCS.y *= -1;
+        #endif
         // 除以w得到归一化设备坐标
         curPositionCS *= rcp(curPositionCS.w);
         float2 texCoord = curPositionCS.xy;
@@ -116,11 +116,11 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         if (depthDelta > 0) curPositionVS -= rayDir;
         else if (depthDelta < 0) curPositionVS += rayDir;
         else break;
-    
+            
         float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        curPositionCS.y *= -1;
-    #endif
+        #ifdef UNITY_UV_STARTS_AT_TOP
+            curPositionCS.y *= -1;
+        #endif
         // 除以w得到归一化设备坐标
         curPositionCS *= rcp(curPositionCS.w);
         float2 texCoord = curPositionCS.xy;
@@ -128,7 +128,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         
         maskOut = ScreenEdgeMask(texCoord.xy);
         curScreenTexCoord = texCoord.xy;
-    
+        
         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_point_clamp, texCoord.xy).r;
         float backFaceDepth = SAMPLE_TEXTURE2D(_SSRCameraBackFaceDepthTexture, sampler_point_clamp, texCoord.xy).r;
 
@@ -166,27 +166,26 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
 
+    float2 screenUV = fsIn.texcoord;
     float2 paddedScreenUV = fsIn.texcoord * _PaddedScale;
 
     UNITY_BRANCH
     if (paddedScreenUV.x > 1.0f || paddedScreenUV.y > 1.0f) return float4(0, 0, 0, 0);
 
-    float rawDepth = 1 - SampleDepth(fsIn.texcoord, 0);
-    // rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, paddedScreenUV).r;
+    float rawDepth = SampleDepth(screenUV, 0);
 
-    float2 screenUV = paddedScreenUV;
+    // UNITY_BRANCH
+    // if (rawDepth == 0) return float4(paddedScreenUV, 0, 0);
 
-    UNITY_BRANCH
-    if (rawDepth == 0) return float4(0, 0, 0, 0);
-
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, paddedScreenUV);
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    // UNITY_BRANCH
-    // if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
+    // Temp, return paddedScreenUV
+    UNITY_BRANCH
+    if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
 
-    float4 positionNDC = float4(fsIn.texcoord * 2.0 - 1.0 , rawDepth, 1.0);
+    float4 positionNDC = float4(paddedScreenUV * 2.0 - 1.0, rawDepth, 1.0);
     #ifdef UNITY_UV_STARTS_AT_TOP
         positionNDC.y *= -1;
     #endif
@@ -199,8 +198,49 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
+    float3 reflectionEndPosVS = positionVS.xyz + reflectDirVS * positionVS.z;
+    float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
+    reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
+    // reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
+    // positionNDC.z = 1 - positionNDC.z;
+    
+    float3 outReflectionDirTS = normalize(reflectionEndPosCS - positionNDC).xyz;
+    // outReflectionDirTS.xy *= float2(0.5f, -0.5f);
 
-    half3 finalResult = rawDepth;
+    outReflectionDirTS.xy /= _PaddedScale;
+    float3 outSamplePosTS = float3(screenUV, positionNDC.z);
+
+    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+    float thickness = 0.01 * (1 - camVoR);
+
+    float hit = 0;
+    float mask = smoothstep(0, 0.1f, camVoR);
+
+    // UNITY_BRANCH
+    // if (mask == 0) return float4(paddedScreenUV, 0, 0);
+
+    float iterations;
+    bool isSky;
+    float3 intersectPoint = HizTrace(thickness, outSamplePosTS, outReflectionDirTS, _MaxSteps, hit, iterations, isSky);
+
+    float3 tempRes = intersectPoint;
+    return float4(tempRes, 1);
+
+    float2 paddedIntersectUV = intersectPoint.xy * _PaddedScale;
+    float edgeMask = ScreenEdgeMask(paddedIntersectUV.xy);
+
+    UNITY_BRANCH
+    if (rawDepth == 0)
+    {
+        float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, paddedIntersectUV).xyz);
+        float backFaceDot = dot(tNormal, reflectDirWS);
+        if (backFaceDot > 0) edgeMask = 0;
+    }
+
+    mask *= hit;
+
+    half3 finalResult = half3(intersectPoint.xy, hit);
+    finalResult = hit;
 
     return half4(finalResult, 1);
 }

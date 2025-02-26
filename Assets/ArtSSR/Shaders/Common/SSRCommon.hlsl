@@ -3,7 +3,7 @@
 #define BINARY_STEP_COUNT 32
 
 #define HIZ_START_LEVEL 0
-#define HIZ_MAX_LEVEL 10
+#define HIZ_MAX_LEVEL 11
 #define HIZ_STOP_LEVEL 0
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
@@ -28,26 +28,26 @@ float2 _BlueNoiseTextures_TexelSize;
 Buffer<uint2> _DepthPyramidResolutions;
 
 CBUFFER_START(UnityPerMaterial)
-    int         _Frame;
-    float3      _WorldSpaceViewDir;
-    half        _ThicknessScale;
-    half        _EdgeFade;
-    float       _StepStride;
-    float       _MaxSteps;
-    float       _MinSmoothness;
-    half        _FadeSmoothness;
-    half2       _ScreenResolution;
-    half2       _PaddedResolution;
-    half2       _PaddedScale;
-    half2       _CrossEps;
+    int _Frame;
+    float3 _WorldSpaceViewDir;
+    half _ThicknessScale;
+    half _EdgeFade;
+    float _StepStride;
+    float _MaxSteps;
+    float _MinSmoothness;
+    half _FadeSmoothness;
+    half2 _ScreenResolution;
+    half2 _PaddedResolution;
+    half2 _PaddedScale;
+    half2 _CrossEps;
 CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
-#define kMaterialFlagSpecularSetup 8 // Lit material use specular setup instead of metallic setup
+    #define kMaterialFlagSpecularSetup 8 // Lit material use specular setup instead of metallic setup
 #endif
 
 #ifndef kDielectricSpec
-#define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
+    #define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
 #endif
 
 uint UnpackMaterialFlags(float packedMaterialFlags)
@@ -63,15 +63,18 @@ half3 UnpackNormal(half3 pn)
     return half3(UnpackNormalOctQuadEncode(octNormalWS));               // values between [-1, +1]
 }
 #else
-half3 UnpackNormal(half3 pn) { return pn; }                             // values between [-1, +1]
+half3 UnpackNormal(half3 pn)
+{
+    return pn;
+}                            // values between [-1, +1]
 #endif
 
 float3 GetWorldPosition(float2 screenUV, float rawDepth)
 {
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0 , rawDepth, 1.0);
-#ifdef UNITY_UV_STARTS_AT_TOP
-    positionNDC.y *= -1;
-#endif
+    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        positionNDC.y *= -1;
+    #endif
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);
@@ -124,7 +127,7 @@ inline float ScreenEdgeMask(float2 screenUV)
 
 inline float Dither8x8(float2 screenUV, float c0)
 {
-    const float dither[64] =
+    const float dither[64] = 
     {
         0, 32, 8, 40, 2, 34, 10, 42,
         48, 16, 56, 24, 50, 18, 58, 26,
@@ -230,7 +233,7 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
     return intersectionPos;
 }
 
-inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, float maxIterations, out float hit, out float iterations, out bool isSky)
+inline float3 HizTrace(float thickness, float3 positionTS, float3 reflectDirTS, float maxIterations, out float hit, out float iterations, out bool isSky)
 {
     const int rootLevel = HIZ_MAX_LEVEL;
     const int endLevel = HIZ_STOP_LEVEL;
@@ -242,34 +245,34 @@ inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, floa
     hit = 0;
 
     UNITY_BRANCH
-    if (reflectDir.z <= 0) return float3(0, 0, 0);
+    if (reflectDirTS.z <= 0) return float3(0, 0, 0);
 
-    float3 depth = reflectDir.xyz / reflectDir.z;
+    float3 depth = reflectDirTS.xyz / reflectDirTS.z;
 
-    float2 crossStep = float2(depth.x >= 0.0f ? 1.0f : -1.0f, depth.y >= 0.0f ? 1.0f : -1.0f);
+    float2 crossStep = float2(depth.x >= 0.0f ? 1.0f : - 1.0f, depth.y >= 0.0f ? 1.0f : - 1.0f);
     float2 crossOffset = float2(crossStep.xy * _CrossEps);
     crossStep.xy = saturate(crossStep.xy);
 
     // Set current ray to original screen coordinate and depth
-    float3 rayDir = position.xyz;
+    float3 rayOrigin = positionTS.xyz;
 
-    float2 rayCell = GetCell(rayDir.xy, GetCellCount(level));
-    rayDir = IntersectCellBoundary(rayDir, depth, rayCell.xy, GetCellCount(level), crossStep.xy, crossOffset.xy);
+    float2 rayCell = GetCell(rayOrigin.xy, GetCellCount(level));
+    rayOrigin = IntersectCellBoundary(rayOrigin, depth, rayCell.xy, GetCellCount(level), crossStep.xy, crossOffset.xy);
 
     UNITY_LOOP
-    while (level >= endLevel && iterations < maxIterations && rayDir.x >= 0 && rayDir.x <1 && rayDir.y >= 0 && rayDir.y < 1 && rayDir.z > 0)
+    while (level >= endLevel && iterations < maxIterations && rayOrigin.x >= 0 && rayOrigin.x < 1 && rayOrigin.y >= 0 && rayOrigin.y < 1 && rayOrigin.z > 0)
     {
         isSky = false;
 
         const float2 cellCount = GetCellCount(level);
-        const float2 oldCellIdx = GetCell(rayDir.xy, cellCount);
+        const float2 oldCellIdx = GetCell(rayOrigin.xy, cellCount);
 
         // Get the minimum depth plane of the current ray
-        float minZ = MiniDepthPlane(rayDir.xy, level);
+        float minZ = MiniDepthPlane(rayOrigin.xy, level);
 
-        float3 tmpRay = rayDir;
+        float3 tmpRay = rayOrigin;
 
-        float minMinusRay = minZ - rayDir.z;
+        float minMinusRay = minZ - rayOrigin.z;
 
         tmpRay = minMinusRay > 0 ? IntersectDepthPlane(tmpRay, depth, minMinusRay) : tmpRay;
 
@@ -278,12 +281,12 @@ inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, floa
         UNITY_BRANCH
         if (CrossedCellBoundary(oldCellIdx, newCellIdx))
         {
-            tmpRay = IntersectCellBoundary(rayDir, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
+            tmpRay = IntersectCellBoundary(rayOrigin, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
             level = min(rootLevel, level + 2.0f);
         }
         else if (level == startLevel)
         {
-            float minZOffset = (minZ + (1 - position.z) * thickness);
+            float minZOffset = (minZ + (1 - positionTS.z) * thickness);
             isSky = minZ == 1;
             
             UNITY_BRANCH
@@ -292,18 +295,18 @@ inline float3 HizTrace(float thickness, float3 position, float3 reflectDir, floa
             UNITY_FLATTEN
             if (tmpRay.z > minZOffset)
             {
-                tmpRay = IntersectCellBoundary(rayDir, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
+                tmpRay = IntersectCellBoundary(rayOrigin, depth, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
                 level = HIZ_START_LEVEL + 1;
             }
         }
-        --level;
 
-        rayDir.xyz = tmpRay.xyz;
+        level--;
+        rayOrigin.xyz = tmpRay.xyz;
         ++iterations;
     }
     hit = level < endLevel ? 1 : 0;
     hit = iterations > 0 ? hit : 0;
 
-    return rayDir;
+    return rayOrigin;
 }
 
