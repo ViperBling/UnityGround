@@ -11,6 +11,7 @@ namespace ArtSSR
         private Shader m_SSRShader;
         private Material m_SSRMaterial;
         
+        private ArtDepthPyramid m_DepthPyramidPass;
         private ArtSSRRenderPass m_SSRRenderPass;
         // private ArtSSRBackFaceDepthPass m_BackFaceDepthPass;
         
@@ -19,6 +20,12 @@ namespace ArtSSR
         public override void Create()
         {
             GetMaterial();
+
+            if (m_DepthPyramidPass == null)
+            {
+                m_DepthPyramidPass = new ArtDepthPyramid();
+                m_DepthPyramidPass.renderPassEvent = RenderPassEvent.BeforeRenderingSkybox;
+            }
 
             // if (m_BackFaceDepthPass == null)
             // {
@@ -35,6 +42,7 @@ namespace ArtSSR
 
         protected override void Dispose(bool disposing)
         {
+            if (m_DepthPyramidPass != null) m_DepthPyramidPass.Dispose();
             if (m_SSRRenderPass != null) m_SSRRenderPass.Dispose();
             CoreUtils.Destroy(m_SSRMaterial);
         }
@@ -47,6 +55,9 @@ namespace ArtSSR
 
             if (isSSRActive)
             {
+                m_DepthPyramidPass.m_SSRVolume = artSSRVolume;
+                renderer.EnqueuePass(m_DepthPyramidPass);
+
                 // m_BackFaceDepthPass.m_SSRVolume = artSSRVolume;
                 // renderer.EnqueuePass(m_BackFaceDepthPass);
                 

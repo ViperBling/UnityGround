@@ -22,8 +22,8 @@ TEXTURE2D_X(_SSRTempSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
-TEXTURE2D_ARRAY(_FinalDepthPyramid);
-SAMPLER(sampler_FinalDepthPyramid);
+TEXTURE2D_ARRAY(_DepthPyramid);
+SAMPLER(sampler_DepthPyramid);
 float2 _BlueNoiseTextures_TexelSize;
 Buffer<uint2> _DepthPyramidResolutions;
 
@@ -189,7 +189,7 @@ inline float2 ScaledUV(float2 uv, uint index)
 inline float SampleDepth(float2 uv, uint index)
 {
     uv = ScaledUV(uv, index);
-    return SAMPLE_TEXTURE2D_ARRAY(_FinalDepthPyramid, sampler_FinalDepthPyramid, uv, index);
+    return SAMPLE_TEXTURE2D_ARRAY(_DepthPyramid, sampler_DepthPyramid, uv, index);
 }
 
 inline float2 GetCell(float2 raySS, float2 cellCount)

@@ -30,9 +30,8 @@ MonoBehaviour:
       type: 3}
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
   m_RendererFeatures:
-  - {fileID: 6421799726137056400}
   - {fileID: -6644773728922210560}
-  m_RendererFeatureMap: 909c19a7d3d01e59006fbec27f05c9a3
+  m_RendererFeatureMap: 006fbec27f05c9a3
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -75,22 +74,3 @@ MonoBehaviour:
   m_CopyDepthMode: 0
   m_AccurateGbufferNormals: 1
   m_IntermediateTextureMode: 1
---- !u!114 &6421799726137056400
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 056e535e619b41fbb917421781a4c20a, type: 3}
-  m_Name: ArtDepthPyramid
-  m_EditorClassIdentifier: 
-  m_Active: 1
-  m_DepthPyramidShader: {fileID: 7200000, guid: 82d4644844864438a323109c9ccbc0cc,
-    type: 3}
-  m_Settings:
-    ShowDebug: 0
-    DebugSlice: 0
-    DebugMinMax: {x: 0, y: 0}

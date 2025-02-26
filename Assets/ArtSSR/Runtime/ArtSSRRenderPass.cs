@@ -60,7 +60,7 @@ namespace ArtSSR
                 m_Material.SetInt(m_FrameID, m_Frame);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
-                m_Scale = 1.0f;
+                m_Scale = m_SSRVolume.m_DownSample.value + 1.0f;
 
                 float globalResolution = 1.0f / m_Scale;
                 if (m_IsPadded)

@@ -172,9 +172,7 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     if (paddedScreenUV.x > 1.0f || paddedScreenUV.y > 1.0f) return float4(0, 0, 0, 0);
 
     float rawDepth = 1 - SampleDepth(fsIn.texcoord, 0);
-    // rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, fsIn.texcoord).r;
-
-    return float4(rawDepth.xxx, 1);
+    // rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, paddedScreenUV).r;
 
     float2 screenUV = paddedScreenUV;
 
@@ -238,7 +236,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    // finalColor = reflectedUV.xyz;
+    finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }
