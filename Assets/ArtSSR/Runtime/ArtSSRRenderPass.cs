@@ -70,11 +70,12 @@ namespace ArtSSR
                 RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
                 desc.depthBufferBits = 0;
                 desc.msaaSamples = 1;
-                desc.useMipMap = false;
+                desc.useMipMap = true;
 
-                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
+                FilterMode filterMode = FilterMode.Bilinear;
+                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
                 desc.useMipMap = false;
-                FilterMode filterMode = FilterMode.Point;
+                filterMode = FilterMode.Point;
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
                 ConfigureInput(ScriptableRenderPassInput.Depth);

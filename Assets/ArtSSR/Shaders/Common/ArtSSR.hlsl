@@ -268,7 +268,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
 
-    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
+    half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
 
     reflectedColor *= occlusion;
     half reflectivity = ReflectivitySpecular(specular);
