@@ -202,9 +202,6 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     // positionVS的z轴为负，所以要取反才能得到正确的反射位置
     float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z;
     float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        reflectionEndPosCS.y *= -1;
-    #endif
     reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
     reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
     positionNDC.z = 1 - positionNDC.z;
@@ -212,20 +209,20 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     // TextureSpace下的反射方向
     float3 outReflectionDirTS = normalize(reflectionEndPosCS - positionNDC).xyz;
     // 缩放向量到[0, 1]范围
-    outReflectionDirTS.xy *= 0.5;
+    outReflectionDirTS.xy *= float2(0.5, -0.5);
 
     // TS下的采样位置
     float3 outSamplePosTS = float3(screenUV, positionNDC.z);
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-    float thickness = (1 - camVoR) * _ThicknessScale;
+    float thickness = (1 - camVoR) * 0.01 * _ThicknessScale;
 
     float hit = 0;
     float mask = smoothstep(0, 0.1f, camVoR);
 
-    // UNITY_BRANCH
-    // if (mask == 0) return float4(screenUV, 0, 0);
+    UNITY_BRANCH
+    if (mask == 0) return float4(screenUV, 0, 0);
 
     float iterations;
     bool isSky;
@@ -243,10 +240,8 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     float stepS = smoothstep(_MinSmoothness, 1, smoothness);
     float fresnel = lerp(smoothnessPow4, 1.0, pow(VoR, 1.0 / smoothnessPow4));
 
-    half3 finalResult = half3(intersectPoint.xy, stepS);
-    half alpha = mask * stepS * fresnel;
-
-    finalResult = hit;
+    half3 finalResult = half3(intersectPoint.xy, mask);
+    half alpha = stepS;
 
     return half4(finalResult, alpha);
 }
@@ -257,7 +252,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float2 screenUV = fsIn.texcoord;
     
     float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
-    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, screenUV);
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
 
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
@@ -269,11 +264,11 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     half smoothness;
     HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
     
-    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV).rgb;
+    float4 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
 
     half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
 
-    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
+    half3 reflectedColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy).rgb;
 
     reflectedColor *= occlusion;
     half reflectivity = ReflectivitySpecular(specular);
@@ -281,7 +276,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

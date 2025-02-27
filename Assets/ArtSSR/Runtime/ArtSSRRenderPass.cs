@@ -19,7 +19,6 @@ namespace ArtSSR
             private readonly Material m_Material;
             private RTHandle m_SceneColorHandle;
             private RTHandle m_ReflectColorHandle;
-            private RTHandle m_TempSceneColorHandle;
 
             private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
@@ -36,7 +35,6 @@ namespace ArtSSR
             private bool m_IsPadded = false;
             private float m_Scale;
             private Vector2 m_ScreenResolution;
-            private Vector2 m_PaddedScale;
 
             public ArtSSRRenderPass(Material material)
             {
@@ -73,8 +71,6 @@ namespace ArtSSR
                 desc.depthBufferBits = 0;
                 desc.msaaSamples = 1;
                 desc.useMipMap = false;
-
-                RenderingUtils.ReAllocateIfNeeded(ref m_TempSceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRTempSceneColorTexture");
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
                 desc.useMipMap = false;
@@ -114,8 +110,7 @@ namespace ArtSSR
 
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
-                    cmd.SetGlobalTexture(m_TempSceneColorHandle.name, m_TempSceneColorHandle);
-                    Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_TempSceneColorHandle, new Vector4(m_PaddedScale.x, m_PaddedScale.y, 0, 0));
+                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
 
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing)
                     {

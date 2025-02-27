@@ -17,7 +17,7 @@ TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
-TEXTURE2D_X(_SSRTempSceneColorTexture);
+TEXTURE2D_X(_SSRSceneColorTexture);
 
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
@@ -168,12 +168,12 @@ inline bool FloatEqApprox(float a, float b)
     return abs(a - b) < 0.00001f;
 }
 
+// HiZ Tracing
 inline float2 GetScreenResolution()
 {
     return _ScreenResolution;
 }
 
-// HiZ Tracing
 inline uint2 GetLevelResolution(uint index)
 {
     uint2 res = GetScreenResolution();
@@ -198,7 +198,7 @@ inline float SampleDepth(float2 uv, uint index)
 
 inline float2 GetCrossEps()
 {
-    return 1.0 / GetScreenResolution() / 128;
+    return 1.0 / GetScreenResolution() / 512.0;
 }
 
 inline float2 GetCell(float2 raySS, float2 cellCount)
@@ -234,7 +234,7 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
     float2 solutions = (planes - origin) / dir.xy;
     float3 intersectionPos = origin + dir * min(solutions.x, solutions.y);
 
-    crossOffset.xy *= 16;
+    // crossOffset.xy *= 16;
     intersectionPos.xy += (solutions.x < solutions.y) ? float2(crossOffset.x, 0.0) : float2(0.0, crossOffset.y);
 
     return intersectionPos;
@@ -297,23 +297,23 @@ inline float3 HizTrace(float thickness, float3 positionTS, float3 reflectDirTS, 
         {
             // 交点不在当前的Cell，计算交点位置，然后进入下一层
             tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
-            level = min(rootLevel, level + 2.0f);
+            level = min(rootLevel, level + 1.0f);
         }
         else if (level == startLevel)
         {
             float minZOffset = minZ + (1 - positionTS.z) * thickness;
-            // float minZOffset = (minZ + (_ProjectionParams.x * 0.0025) / LinearEyeDepth(1 - positionTS.z, _ZBufferParams));
+            // float minZOffset = (minZ + (_ProjectionParams.y * thickness) / LinearEyeDepth(1 - positionTS.z, _ZBufferParams));
             isSky = minZ == 1;
             
             UNITY_BRANCH
-            if ((_ReflectSky == 0 && isSky)) break;
+            if (tmpRayPos.z > minZOffset || (_ReflectSky == 0 && isSky)) break;
 
-            UNITY_FLATTEN
-            if (tmpRayPos.z > minZOffset)
-            {
-                tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
-                level = HIZ_START_LEVEL + 1;
-            }
+            // UNITY_FLATTEN
+            // if (tmpRayPos.z > minZOffset)
+            // {
+            //     tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
+            //     level = HIZ_START_LEVEL + 1;
+            // }
         }
 
         level--;
