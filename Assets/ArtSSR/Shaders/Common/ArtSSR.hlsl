@@ -162,30 +162,31 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     return half4(finalResult, 1);
 }
 
+float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
+{
+    return float4(1, 1, 0, 1);
+}
+
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
 
     float2 screenUV = fsIn.texcoord;
-    float2 paddedScreenUV = fsIn.texcoord * _PaddedScale;
+
+    float rawDepth = 1 - SampleDepth(screenUV, 0);
 
     UNITY_BRANCH
-    if (paddedScreenUV.x > 1.0f || paddedScreenUV.y > 1.0f) return float4(0, 0, 0, 0);
+    if (rawDepth == 0) return float4(screenUV, 0, 0);
 
-    float rawDepth = SampleDepth(screenUV, 0);
-
-    // UNITY_BRANCH
-    // if (rawDepth == 0) return float4(paddedScreenUV, 0, 0);
-
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, paddedScreenUV);
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
 
-    // Temp, return paddedScreenUV
+    // Temp, return screenUV
     UNITY_BRANCH
     if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
 
-    float4 positionNDC = float4(paddedScreenUV * 2.0 - 1.0, rawDepth, 1.0);
+    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
     #ifdef UNITY_UV_STARTS_AT_TOP
         positionNDC.y *= -1;
     #endif
@@ -198,51 +199,56 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
-    float3 reflectionEndPosVS = positionVS.xyz + reflectDirVS * positionVS.z;
+    // positionVS的z轴为负，所以要取反才能得到正确的反射位置
+    float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z;
     float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        reflectionEndPosCS.y *= -1;
+    #endif
     reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
-    // reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
-    // positionNDC.z = 1 - positionNDC.z;
+    reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
+    positionNDC.z = 1 - positionNDC.z;
     
+    // TextureSpace下的反射方向
     float3 outReflectionDirTS = normalize(reflectionEndPosCS - positionNDC).xyz;
-    // outReflectionDirTS.xy *= float2(0.5f, -0.5f);
+    // 缩放向量到[0, 1]范围
+    outReflectionDirTS.xy *= 0.5;
 
-    outReflectionDirTS.xy /= _PaddedScale;
+    // TS下的采样位置
     float3 outSamplePosTS = float3(screenUV, positionNDC.z);
 
+    float VoR = saturate(dot(viewDirWS, reflectDirWS));
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-    float thickness = 0.01 * (1 - camVoR);
+    float thickness = (1 - camVoR) * _ThicknessScale;
 
     float hit = 0;
     float mask = smoothstep(0, 0.1f, camVoR);
 
     // UNITY_BRANCH
-    // if (mask == 0) return float4(paddedScreenUV, 0, 0);
+    // if (mask == 0) return float4(screenUV, 0, 0);
 
     float iterations;
     bool isSky;
     float3 intersectPoint = HizTrace(thickness, outSamplePosTS, outReflectionDirTS, _MaxSteps, hit, iterations, isSky);
 
-    float3 tempRes = intersectPoint;
-    return float4(tempRes, 1);
+    float edgeMask = ScreenEdgeMask(intersectPoint.xy);
 
-    float2 paddedIntersectUV = intersectPoint.xy * _PaddedScale;
-    float edgeMask = ScreenEdgeMask(paddedIntersectUV.xy);
+    float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, intersectPoint.xy).xyz);
+    float backFaceDot = dot(tNormal, reflectDirWS);
+    mask = backFaceDot > 0 && !isSky ? 0 : mask;
 
-    UNITY_BRANCH
-    if (rawDepth == 0)
-    {
-        float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, paddedIntersectUV).xyz);
-        float backFaceDot = dot(tNormal, reflectDirWS);
-        if (backFaceDot > 0) edgeMask = 0;
-    }
+    mask *= hit * edgeMask;
 
-    mask *= hit;
+    float smoothnessPow4 = Pow4(smoothness);
+    float stepS = smoothstep(_MinSmoothness, 1, smoothness);
+    float fresnel = lerp(smoothnessPow4, 1.0, pow(VoR, 1.0 / smoothnessPow4));
 
-    half3 finalResult = half3(intersectPoint.xy, hit);
+    half3 finalResult = half3(intersectPoint.xy, stepS);
+    half alpha = mask * stepS * fresnel;
+
     finalResult = hit;
 
-    return half4(finalResult, 1);
+    return half4(finalResult, alpha);
 }
 
 float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
@@ -250,9 +256,8 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
     
-    half2 invPaddedScale = 1.0 / _PaddedScale;
     float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
-    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, screenUV * invPaddedScale);
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRTempSceneColorTexture, sampler_point_clamp, screenUV);
 
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
@@ -264,7 +269,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     half smoothness;
     HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
     
-    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, (screenUV) * invPaddedScale).rgb;
+    float3 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV).rgb;
 
     half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
 

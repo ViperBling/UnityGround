@@ -31,14 +31,11 @@ namespace ArtSSR
             private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
             private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
-            private static readonly int m_PaddedResolutionID = Shader.PropertyToID("_PaddedResolution");
-            private static readonly int m_PaddedScaleID = Shader.PropertyToID("_PaddedScale");
-            private static readonly int m_CrossEpsID = Shader.PropertyToID("_CrossEps");
+            private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
 
             private bool m_IsPadded = false;
             private float m_Scale;
             private Vector2 m_ScreenResolution;
-            private Vector2 m_PaddedScreenResolution;
             private Vector2 m_PaddedScale;
 
             public ArtSSRRenderPass(Material material)
@@ -60,39 +57,14 @@ namespace ArtSSR
                 m_Material.SetInt(m_FrameID, m_Frame);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
-                m_Scale = m_SSRVolume.m_DownSample.value + 1.0f;
+                m_Scale = m_IsPadded ? 1 : m_SSRVolume.m_DownSample.value + 1.0f;
 
                 float globalResolution = 1.0f / m_Scale;
-                if (m_IsPadded)
-                {
-                    m_ScreenResolution.x = cameraRTDesc.width * globalResolution;
-                    m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
-                    m_PaddedScreenResolution.x = Mathf.NextPowerOfTwo((int)m_ScreenResolution.x);
-                    m_PaddedScreenResolution.y = Mathf.NextPowerOfTwo((int)m_ScreenResolution.y);
-                }
-                else 
-                {
-                    m_ScreenResolution.x = cameraRTDesc.width;
-                    m_ScreenResolution.y = cameraRTDesc.height;
-                    m_PaddedScreenResolution = m_ScreenResolution / m_Scale;
-                }
+
+                m_ScreenResolution.x = cameraRTDesc.width * globalResolution;
+                m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
 
                 m_Material.SetVector(m_ScreenResolutionID, m_ScreenResolution);
-                if (m_IsPadded)
-                {
-                    m_PaddedScale = m_PaddedScreenResolution / m_ScreenResolution;
-                    m_Material.SetVector(m_PaddedResolutionID, m_PaddedScreenResolution);
-                    m_Material.SetVector(m_PaddedScaleID, m_PaddedScale);
-
-                    float cX = 1.0f / (512.0f * m_PaddedScreenResolution.x);
-                    float cY = 1.0f / (512.0f * m_PaddedScreenResolution.y);
-                    m_Material.SetVector(m_CrossEpsID, new Vector2(cX, cY));
-                }
-                else
-                {
-                    m_PaddedScale = Vector2.one;
-                    m_Material.SetVector(m_PaddedScaleID, m_PaddedScale);
-                }
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -102,18 +74,8 @@ namespace ArtSSR
                 desc.msaaSamples = 1;
                 desc.useMipMap = false;
 
-                int width = desc.width;
-                int height = desc.height;
-                int tx = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.width) : desc.width);
-                int ty = (int)(m_IsPadded ? Mathf.NextPowerOfTwo(desc.height) : desc.height);
-                desc.width = tx;
-                desc.height = ty;
-
                 RenderingUtils.ReAllocateIfNeeded(ref m_TempSceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRTempSceneColorTexture");
-                desc.width = width;
-                desc.height = height;
 
-                // Approximation mode
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
                 desc.useMipMap = false;
                 FilterMode filterMode = FilterMode.Point;
@@ -147,7 +109,8 @@ namespace ArtSSR
 
                     const int linearPass = 0;
                     const int hiZPass = 1;
-                    const int compositePass = 2;
+                    const int ssTracingPass = 2;
+                    const int compositePass = 3;
 
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
@@ -157,6 +120,10 @@ namespace ArtSSR
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: hiZPass);
+                    }
+                    else if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.ScreenSpaceTracing)
+                    {
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: ssTracingPass);
                     }
                     else
                     {
@@ -193,6 +160,7 @@ namespace ArtSSR
                 m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
                 m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
                 m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
+                m_Material.SetInt(m_ReflectSkyID, m_SSRVolume.m_ReflectSky.value ? 1 : 0);
             }
         }
 

@@ -57,3 +57,6 @@ MonoBehaviour:
   m_DownSample:
     m_OverrideState: 1
     m_Value: 0
+  m_ReflectSky:
+    m_OverrideState: 1
+    m_Value: 1

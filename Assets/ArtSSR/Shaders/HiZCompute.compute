@@ -29,6 +29,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
+    // float2 ratio = float2(_SrcSize) / float2(_DstSize);
     float minValue = -1;
     // 相当于对id.xy乘以2
     float2 prevPos = id.xy << 1;
@@ -52,17 +53,23 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     // 取所有深度值的最小值作为当前mip的深度值
     minValue = min(min(d0, d1), min(d2, d3));
 
+    // bool needExtraSampleX = ratio.x >= 2;
+    // bool needExtraSampleY = ratio.y >= 2;
+    // minValue = needExtraSampleX ? min(minValue, min(SampleSliceDepth(prevID + uint3(2, 0, 0)), SampleSliceDepth(prevID + uint3(2, 1, 0)))) : minValue;
+    // minValue = needExtraSampleY ? min(minValue, min(SampleSliceDepth(prevID + uint3(0, 2, 0)), SampleSliceDepth(prevID + uint3(1, 2, 0)))) : minValue;
+    // minValue = (needExtraSampleX && needExtraSampleY) ? min(minValue, SampleSliceDepth(prevID + uint3(2, 2, 0)).x) : minValue;
+
     _DepthPyramid[uint3(id.xy, _DstSlice)] = minValue;
 }
 
 [numthreads(THREADS, THREADS, 1)]
 void DepthCopy(uint3 id : SV_DispatchThreadID)
 {
-    UNITY_BRANCH
-    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+    // UNITY_BRANCH
+    // if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
-    // _DepthPyramid[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
-    _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
+    _DepthPyramid[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
+    // _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
 }
 
 // ==================== Debug ==================== //

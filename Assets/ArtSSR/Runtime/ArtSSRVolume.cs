@@ -8,7 +8,7 @@ namespace ArtSSR
     [Serializable, VolumeComponentMenuForRenderPipeline("Lighting/Art SSR", typeof(UniversalRenderPipeline))]
     public class ArtSSREffect : VolumeComponent, IPostProcessComponent
     {
-        [InspectorName("State (Opaque)"), Tooltip("When set to Enabled, URP processes SSR on opaque objects for Cameras in the influence of this effect's Volume.")]
+        [InspectorName("State"), Tooltip("When set to Enabled, URP processes SSR on opaque objects for Cameras in the influence of this effect's Volume.")]
         public ArtSSRStateParameter m_State = new(value: SSRState.Disabled, overrideState: true);
 
         [InspectorName("Tracing Mode")]
@@ -35,6 +35,7 @@ namespace ArtSSR
         public ClampedIntParameter m_MaxSteps = new(value: 64, min: 32, max: 512, overrideState: false);
         
         public ClampedIntParameter m_DownSample = new(value: 0, min: 0, max: 1, overrideState: false);
+        public BoolParameter m_ReflectSky = new(value: false, overrideState: true);
         
         public bool IsActive()
         {
@@ -66,7 +67,9 @@ namespace ArtSSR
             [Tooltip("Linear tracing mode.")]
             LinearTracing = 0,
             [Tooltip("Hi-Z tracing mode.")]
-            HiZTracing = 1
+            HiZTracing = 1,
+            [Tooltip("2D SS tracing mode.")]
+            ScreenSpaceTracing = 2
         }
         [Serializable]
         public sealed class ArtSSRMarchingModeParameter : VolumeParameter<RayMarchingMode>
