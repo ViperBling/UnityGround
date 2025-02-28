@@ -26,7 +26,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5907265fe2e703041aad343e9c2b1471, type: 3}
   m_Name: ScreenSpaceReflectionEffect
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   m_State:
     m_OverrideState: 1
     m_Value: 1

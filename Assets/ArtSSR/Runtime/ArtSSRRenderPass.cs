@@ -99,7 +99,7 @@ namespace ArtSSR
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
                 CommandBuffer cmd = CommandBufferPool.Get("ArtSSR");
-
+                if (m_Material == null) return;
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
                     SetMaterialProperties(ref renderingData);

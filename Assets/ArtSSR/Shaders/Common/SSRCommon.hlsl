@@ -240,7 +240,42 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
     return intersectionPos;
 }
 
-inline float3 HizTrace(float thickness, float3 positionTS, float3 reflectDirTS, float maxIterations, out float hit, out float iterations, out bool isSky)
+// Helper function to perform binary search refinement
+float2 BinarySearchRayHit(float2 startPos, float2 endPos, float rayDepthVS, float thickness)
+{
+    float2 currentPos = endPos;
+    
+    UNITY_UNROLL
+    for (int i = 0; i < 5; i++) // 5 refinement steps
+    {
+        float2 midPos = 0.5 * (startPos + currentPos);
+        
+        float sampledDepth = SampleDepth(midPos, 0);
+        
+        float4 hitPosNDC = float4(midPos * 2.0 - 1.0, sampledDepth, 1.0);
+        #ifdef UNITY_UV_STARTS_AT_TOP
+            hitPosNDC.y *= -1;
+        #endif
+        float4 hitPosVS = mul(UNITY_MATRIX_I_P, hitPosNDC);
+        hitPosVS /= hitPosVS.w;
+        
+        float depthDiff = rayDepthVS - (-hitPosVS.z);
+        
+        if (depthDiff >= 0 && depthDiff < thickness)
+            currentPos = midPos;
+        else
+            startPos = midPos;
+    }
+    
+    return currentPos;
+}
+
+inline float3 LinearTrace()
+{
+
+}
+
+inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, float maxIterations, out float hit, out float iterations, out bool isSky)
 {
     const int rootLevel = HIZ_MAX_LEVEL;
     const int endLevel = HIZ_STOP_LEVEL;
@@ -253,16 +288,16 @@ inline float3 HizTrace(float thickness, float3 positionTS, float3 reflectDirTS, 
 
     // TS下反射向量的z为负值时，说明反射光线朝着屏幕外部
     UNITY_BRANCH
-    if (reflectDirTS.z <= 0) return float3(0, 0, 0);
+    if (reflectDirSS.z <= 0) return float3(0, 0, 0);
 
-    float3 dirTS = reflectDirTS.xyz / reflectDirTS.z;
+    float3 dirTS = reflectDirSS.xyz / reflectDirSS.z;
 
     float2 crossStep = float2(dirTS.x >= 0.0f ? 1.0f : -1.0f, dirTS.y >= 0.0f ? 1.0f : -1.0f);
     float2 crossOffset = float2(crossStep.xy * GetCrossEps());
     crossStep.xy = saturate(crossStep.xy);
 
     // Set current ray to original screen coordinate and depth
-    float3 rayOrigin = positionTS.xyz;
+    float3 rayOrigin = positionSS.xyz;
 
     // 确定当前位置在哪个Cell，Cell是HiZ每层的最小单元，当在Level0的时候，就是屏幕上的像素
     float2 rayCell = GetCell(rayOrigin.xy, GetCellCount(level));
@@ -301,8 +336,8 @@ inline float3 HizTrace(float thickness, float3 positionTS, float3 reflectDirTS, 
         }
         else if (level == startLevel)
         {
-            float minZOffset = minZ + (1 - positionTS.z) * thickness;
-            // float minZOffset = (minZ + (_ProjectionParams.y * thickness) / LinearEyeDepth(1 - positionTS.z, _ZBufferParams));
+            float minZOffset = minZ + (1 - positionSS.z) * thickness;
+            // float minZOffset = (minZ + (_ProjectionParams.y * thickness) / LinearEyeDepth(1 - positionSS.z, _ZBufferParams));
             isSky = minZ == 1;
             
             UNITY_BRANCH

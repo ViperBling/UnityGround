@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace Art.FluidSim
+namespace Art.Fluid.Simulation
 {
-
-
     public class Emitter : MonoBehaviour
     {
         public struct EmitterData
@@ -49,7 +47,7 @@ namespace Art.FluidSim
             foreach (EmitterRegion region in m_EmitterRegions)
             {
                 int particlePerAxis = region.CalculateParticleCountPerAxis(m_EmitterDensity);
-                (float3[] positions, float3[] velocities) = EmitterCube(particlePerAxis, region.m_Center, Vector3.one * region.m_Size);
+                (float3[] positions, float3[] velocities) = EmitterCube(particlePerAxis, region.m_Center + this.transform.position, Vector3.one * region.m_Size);
                 allParticles.AddRange(positions);
                 allVelocities.AddRange(velocities);
             }
