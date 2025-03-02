@@ -170,7 +170,7 @@ float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
 
     float2 screenUV = fsIn.texcoord;
 
-    float rawDepth = 1 - SampleDepth(screenUV, 0);
+    float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
 
     UNITY_BRANCH
     if (rawDepth == 0) return float4(screenUV, 0, 0);
@@ -199,110 +199,20 @@ float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
     // Project the end point of reflection ray to get screen-space direction
     float3 rayEndVS = positionVS.xyz - reflectDirVS * positionVS.z;
     float4 rayEndCS = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
-    rayEndCS /= rayEndCS.w;
+    rayEndCS *= rcp(rayEndCS.w);
+    rayEndCS.z = 1 - rayEndCS.z;
+    positionNDC.z = 1 - positionNDC.z;
+    
+    // Convert to UV space for traversal
+    float2 rayStartUV = screenUV;
+    float2 rayEndUV = rayEndCS.xy * 0.5 + 0.5;
+    #ifdef UNITY_UV_STARTS_AT_TOP
+        rayEndUV.y *= -1.0;
+    #endif
 
-    float3 finalResult = rayEndCS;
+    float3 finalResult = positionNDC;
 
     return float4(finalResult, 1);
-    
-    // // Convert to UV space for traversal
-    // float2 rayStartUV = screenUV;
-    // float2 rayEndUV = rayEndCS.xy * 0.5 + 0.5;
-    // #ifdef UNITY_UV_STARTS_AT_TOP
-    //     rayEndUV.y = 1.0 - rayEndUV.y;
-    // #endif
-    
-    // // Initialize DDA variables
-    // float2 rayDir = rayEndUV - rayStartUV;
-    // float rayLength = length(rayDir);
-    // rayDir /= rayLength; // Normalize
-    
-    // // Get depth-based ray step size
-    // float depthVS = -positionVS.z; // Convert to positive value for easier comparison
-    // float rayStepSize = _StepStride / (_ScreenParams.x * max(abs(rayDir.x), abs(rayDir.y)));
-    
-    // // Add jitter to reduce banding artifacts
-    // // float jitter = IGN(screenUV.x * _ScreenParams.x, screenUV.y * _ScreenParams.y, _FrameCount) * _JitterAmount;
-    // float2 currentPos = rayStartUV + rayDir * rayStepSize * 1;
-    
-    // // Initialize hit detection variables
-    // bool hitFound = false;
-    // float2 hitPos = rayStartUV;
-    // float hitMask = 0;
-    
-    // // Adaptive ray step size based on reflection direction
-    // float VoR = saturate(dot(viewDirWS, reflectDirWS));
-    // float adaptiveStepSize = rayStepSize * lerp(1.0, 3.0, VoR * VoR);
-    
-    // // DDA ray marching loop
-    // UNITY_LOOP
-    // for (int i = 0; i < _MaxSteps && !hitFound; ++i)
-    // {
-    //     // March ray
-    //     currentPos += rayDir * adaptiveStepSize;
-        
-    //     // Skip if out of screen bounds
-    //     UNITY_BRANCH
-    //     if (any(currentPos < 0) || any(currentPos > 1))
-    //         break;
-            
-    //     // Sample depth at current position
-    //     float sampledDepth = SampleDepth(currentPos, 0);
-        
-    //     // Skip background
-    //     UNITY_BRANCH
-    //     if (sampledDepth == 0)
-    //         continue;
-        
-    //     // Convert to view space for depth comparison
-    //     float4 hitPosNDC = float4(currentPos * 2.0 - 1.0, sampledDepth, 1.0);
-    //     #ifdef UNITY_UV_STARTS_AT_TOP
-    //         hitPosNDC.y *= -1;
-    //     #endif
-    //     float4 hitPosVS = mul(UNITY_MATRIX_I_P, hitPosNDC);
-    //     hitPosVS /= hitPosVS.w;
-        
-    //     // Get interpolated ray depth at current position
-    //     float rayProgress = length(currentPos - rayStartUV) / rayLength;
-    //     float rayDepthVS = -lerp(depthVS, rayEndVS.z, rayProgress);
-        
-    //     // Check for intersection
-    //     float depthDiff = rayDepthVS - (-hitPosVS.z);
-        
-    //     // Hit detection with thickness factor
-    //     float thickness = _ThicknessScale * 0.01 * (1.0 + (i / _MaxSteps));
-        
-    //     UNITY_BRANCH
-    //     if (depthDiff >= 0 && depthDiff < thickness)
-    //     {
-    //         // Binary search refinement for more precise intersection
-    //         float2 prevPos = currentPos - rayDir * adaptiveStepSize;
-    //         float2 refinedPos = BinarySearchRayHit(prevPos, currentPos, rayDepthVS, thickness);
-            
-    //         // Get refined hit position
-    //         hitPos = refinedPos;
-    //         hitFound = true;
-            
-    //         // Calculate hit quality factors
-    //         float edgeFade = ScreenEdgeMask(hitPos);
-    //         float distanceFade = 1.0 - saturate(rayProgress * 2.0);
-            
-    //         // Check backface hit
-    //         float3 hitNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, hitPos).xyz);
-    //         float backfaceFactor = saturate(-dot(hitNormal, reflectDirWS)) * 2.0; // More weight for proper facing
-            
-    //         // Calculate final hit mask
-    //         hitMask = hitFound * edgeFade * distanceFade * backfaceFactor * smoothness;
-    //         break;
-    //     }
-        
-    //     // Adaptive step size increase for rays that travel far
-    //     adaptiveStepSize *= 1.05;
-    // }
-
-    // float3 finalResult = hitMask;
-
-    // return float4(finalResult, 1);
 }
 
 float4 HiZFragmentPass(Varyings fsIn) : SV_Target
