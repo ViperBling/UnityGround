@@ -3,7 +3,7 @@
 #define BINARY_STEP_COUNT 32
 
 #define HIZ_START_LEVEL 0
-#define HIZ_MAX_LEVEL 10
+#define HIZ_MAX_LEVEL 11
 #define HIZ_STOP_LEVEL 0
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
@@ -64,6 +64,11 @@ half3 UnpackNormal(half3 pn)
     return pn;
 }                            // values between [-1, +1]
 #endif
+
+float DistanceSquared(float2 a, float2 b)
+{
+    return dot(a - b, a - b);
+}
 
 float3 GetWorldPosition(float2 screenUV, float rawDepth)
 {

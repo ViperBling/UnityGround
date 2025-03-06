@@ -2,7 +2,7 @@
 
 #include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
 
-float4 LinearFragmentPass(Varyings fsIn) : SV_Target
+float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
@@ -23,9 +23,13 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
     float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        positionNDC.y *= -1;
-    #endif
+
+    // 等价
+    positionNDC.y *= _ProjectionParams.x;
+    // #ifdef UNITY_UV_STARTS_AT_TOP
+    //     positionNDC.y *= -1;
+    // #endif
+
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);
@@ -67,9 +71,8 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
 
         // 根据当前相机空间坐标计算投影坐标
         float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-        #ifdef UNITY_UV_STARTS_AT_TOP
-            curPositionCS.y *= -1;
-        #endif
+        // 替换UNITY_UV_STARTS_AT_TOP宏取反
+        curPositionCS.y *= _ProjectionParams.x;
         // 除以w得到归一化设备坐标
         curPositionCS *= rcp(curPositionCS.w);
         float2 texCoord = curPositionCS.xy;
@@ -120,9 +123,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
         else break;
             
         float4 curPositionCS = mul(GetViewToHClipMatrix(), float4(curPositionVS, 1.0));
-        #ifdef UNITY_UV_STARTS_AT_TOP
-            curPositionCS.y *= -1;
-        #endif
+        curPositionCS.y *= _ProjectionParams.x;
         // 除以w得到归一化设备坐标
         curPositionCS *= rcp(curPositionCS.w);
         float2 texCoord = curPositionCS.xy;
@@ -164,7 +165,7 @@ float4 LinearFragmentPass(Varyings fsIn) : SV_Target
     return half4(finalResult, 1);
 }
 
-float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
+float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
 
@@ -181,29 +182,134 @@ float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
     float3 normalVS = normalize(mul(UNITY_MATRIX_V, float4(normalWS, 0.0))).xyz;
 
     float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        positionNDC.y *= -1;
-    #endif
+    positionNDC.y *= _ProjectionParams.x;
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
-    half rayHitMask = 0.0, rayNumMarch = 0.0;
-    half2 hitUV = 0.0;
-    half3 hitPoint = 0.0;
+    float3 startPosVS = positionVS.xyz;
+    float3 endPosVS = startPosVS - reflectDirVS * positionVS.z;
 
-    float4 screenTexelSize = float4(1.0 / _ScreenResolution.xy, _ScreenResolution.xy);
-    float3 rayOriginVS = positionVS.xyz;
+    // H0
+    float4 startHCS = mul(UNITY_MATRIX_P, float4(startPosVS, 1.0));
+    startHCS.xy = (float2(startHCS.x, startHCS.y * _ProjectionParams.x) + startHCS.w) * 0.5;
+    // startHCS.xy = (float2(startHCS.x, startHCS.y * _ProjectionParams.x)) * 0.5 + 0.5;
+    startHCS.xy *= _ScreenResolution;
 
-    float3 finalResult = rayOriginVS;
+    // H1
+    float4 endHCS = mul(UNITY_MATRIX_P, float4(endPosVS, 1.0));
+    endHCS.xy = (float2(endHCS.x, endHCS.y * _ProjectionParams.x) + endHCS.w) * 0.5;
+    // endHCS.xy = (float2(endHCS.x, endHCS.y * _ProjectionParams.x)) * 0.5 + 0.5;
+    endHCS.xy *= _ScreenResolution;
 
-    return float4(finalResult, 1);
+    float startK = 1.0 / startHCS.w;        // K0
+    float endK = 1.0 / endHCS.w;            // K1
+
+    float2 startSS = startHCS.xy * startK;  // P0
+    float2 endSS = endHCS.xy * endK;        // P1
+
+    float3 startQ = startPosVS * startK;    // Q0
+    float3 endQ = endPosVS * endK;          // Q1
+
+    half xMax = _ScreenResolution.x - 0.5;
+    half xMin = 0.5;
+    half yMax = _ScreenResolution.y - 0.5;
+    half yMin = 0.5;
+    half alpha = 0.0;
+
+    if (endSS.x > xMax || endSS.x < xMin)
+    {
+        half xClip = (endSS.x > xMax) ? xMax : xMin;
+        half xAlpha = (endSS.x - xClip) / (endSS.x - startSS.x);
+        alpha = xAlpha;
+    }
+    if (endSS.y > yMax || endSS.y < yMin)
+    {
+        half yClip = (endSS.y > yMax) ? yMax : yMin;
+        half yAlpha = (endSS.y - yClip) / (endSS.y - startSS.y);
+        alpha = max(alpha, yAlpha);
+    }
+
+    endSS = (DistanceSquared(startSS, endSS) < 0.0001) ? startSS + half2(0.01, 0.01) : endSS;
+
+    float2 deltaSS = endSS - startSS;
+    bool permute = false;
+    if (abs(deltaSS.x) < abs(deltaSS.y))
+    {
+        permute = true;
+        deltaSS = deltaSS.yx;
+        startSS = startSS.yx;
+        endSS = endSS.yx;
+    }
+
+    half stepDirSS = sign(deltaSS.x);
+    half invDX = stepDirSS / deltaSS.x;
+    half2 dP = half2(stepDirSS, invDX * deltaSS.y);
+    half3 dQ = (endQ - startQ) * invDX;
+    half dK = (endK - startK) * invDX;
+
+    dP *= _StepStride;
+    dQ *= _StepStride;
+    dK *= _StepStride;
+
+    half2 P = startSS;
+    half3 Q = startQ;
+    half K = startK;
+    half preZMaxEstimate = positionVS.z;
+    half rayZMax = preZMaxEstimate;
+    half rayZMin = preZMaxEstimate;
+    half end = endSS.x * stepDirSS;
+
+    float stepTaked = 0;
+    float2 hitUV = screenUV;
+    half hit = 0;
+
+    UNITY_LOOP
+    for (int i = 0; i < _MaxSteps && (P.x * stepDirSS) <= end; i++)
+    {
+        rayZMin = preZMaxEstimate;
+        rayZMax = (dQ.z * 0.5 + Q.z) / (dK * 0.5 + K);
+        preZMaxEstimate = rayZMax;
+
+        if (rayZMin > rayZMax)
+        {
+            half temp = rayZMin;
+            rayZMin = rayZMax;
+            rayZMax = temp;
+        }
+
+        hitUV = permute ? P.yx : P;
+        float2 sampelUV = hitUV / _ScreenResolution;
+        float sampledDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, sampelUV).r;
+        float surfaceDepth = -LinearEyeDepth(sampledDepth, _ZBufferParams);
+
+        bool isBehind = rayZMin + 0.1 <= surfaceDepth;
+
+        hit = isBehind && (rayZMax >= surfaceDepth - _ThicknessScale);
+        if (hit) break;
+        
+        stepTaked++;
+        P += dP;
+        Q.z += dQ.z;
+        K += dK;
+    }
+    P -= dP;
+    Q.z -= dQ.z;
+    K -= dK;
+
+    Q.xy += dQ.xy * stepTaked;
+    hitUV = Q / K / _ScreenResolution;
+
+    half3 finalResult = half3(hitUV, hit);
+    return half4(finalResult, 1);
 }
 
-float4 HiZFragmentPass(Varyings fsIn) : SV_Target
+float4 HiZTracingPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
 
@@ -223,9 +329,7 @@ float4 HiZFragmentPass(Varyings fsIn) : SV_Target
     if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
 
     float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        positionNDC.y *= -1;
-    #endif
+    positionNDC.y *= _ProjectionParams.x;
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);

@@ -32,6 +32,11 @@ namespace ArtSSR
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
 
+            private const int m_LinearVSTracingPass = 0;
+            private const int m_LinearSSTracingPass = 1;
+            private const int m_HiZTracingPass = 2;
+            private const int m_CompositePass = 3;
+
             private bool m_IsPadded = false;
             private float m_Scale;
             private Vector2 m_ScreenResolution;
@@ -98,34 +103,29 @@ namespace ArtSSR
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
-                CommandBuffer cmd = CommandBufferPool.Get("ArtSSR");
+                CommandBuffer cmd = CommandBufferPool.Get();
                 if (m_Material == null) return;
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
                     SetMaterialProperties(ref renderingData);
 
-                    const int linearPass = 0;
-                    const int hiZPass = 1;
-                    const int ssTracingPass = 2;
-                    const int compositePass = 3;
-
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
                     cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
 
-                    if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing)
+                    if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearViewSpaceTracing)
                     {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: hiZPass);
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearVSTracingPass);
                     }
                     else if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearScreenSpaceTracing)
                     {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: ssTracingPass);
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearSSTracingPass);
                     }
                     else
                     {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: linearPass);
+                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_HiZTracingPass);
                     }
-                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: compositePass);
+                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
@@ -205,7 +205,7 @@ namespace ArtSSR
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
-                CommandBuffer cmd = CommandBufferPool.Get("ArtSSR");
+                CommandBuffer cmd = CommandBufferPool.Get();
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
                     // 只存Depth

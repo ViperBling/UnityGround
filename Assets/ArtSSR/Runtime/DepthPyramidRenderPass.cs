@@ -14,12 +14,11 @@ namespace ArtSSR
             private const string m_ProfilingTag = "ArtSSR_DepthPyramid";
 
             private readonly int m_NumThreads = 8;
-            private const int m_NumSlices = 11;
+            private const int m_NumSlices = 10 + 1;
 
             [SerializeField] internal ComputeShader m_DepthPyramidCS;
 
             private RTHandle m_DepthPyramidHandle;
-            private ComputeBuffer m_DepthSliceResolutionBuffer = null;
 
             internal struct TargetSlice
             {

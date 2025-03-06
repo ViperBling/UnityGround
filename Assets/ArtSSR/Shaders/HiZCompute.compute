@@ -1,9 +1,9 @@
 ﻿#pragma kernel CSMain
 #pragma kernel DepthCopy
 
-#pragma kernel DebugEdit
-#pragma kernel DebugCopyScale
-#pragma kernel DebugApplyBorders
+// #pragma kernel DebugEdit
+// #pragma kernel DebugCopyScale
+// #pragma kernel DebugApplyBorders
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
@@ -29,7 +29,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
-    // float2 ratio = float2(_SrcSize) / float2(_DstSize);
     float minValue = -1;
     // 相当于对id.xy乘以2
     float2 prevPos = id.xy << 1;
@@ -53,81 +52,75 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     // 取所有深度值的最小值作为当前mip的深度值
     minValue = min(min(d0, d1), min(d2, d3));
 
-    // bool needExtraSampleX = ratio.x >= 2;
-    // bool needExtraSampleY = ratio.y >= 2;
-    // minValue = needExtraSampleX ? min(minValue, min(SampleSliceDepth(prevID + uint3(2, 0, 0)), SampleSliceDepth(prevID + uint3(2, 1, 0)))) : minValue;
-    // minValue = needExtraSampleY ? min(minValue, min(SampleSliceDepth(prevID + uint3(0, 2, 0)), SampleSliceDepth(prevID + uint3(1, 2, 0)))) : minValue;
-    // minValue = (needExtraSampleX && needExtraSampleY) ? min(minValue, SampleSliceDepth(prevID + uint3(2, 2, 0)).x) : minValue;
-
     _DepthPyramid[uint3(id.xy, _DstSlice)] = minValue;
 }
 
 [numthreads(THREADS, THREADS, 1)]
 void DepthCopy(uint3 id : SV_DispatchThreadID)
 {
-    // UNITY_BRANCH
-    // if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+    UNITY_BRANCH
+    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
     _DepthPyramid[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
     // _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
 }
 
 // ==================== Debug ==================== //
-float _Low;
-float _High;
+// float _Low;
+// float _High;
 
-[numthreads(THREADS, THREADS, 1)]
-void DebugEdit(uint3 id : SV_DispatchThreadID)
-{
-    float r = _DepthPyramid[uint3(id.xy, _DstSlice)];
-    r = smoothstep(_Low, _High, r);
-    _DepthPyramid[uint3(id.xy, _DstSlice)] = r;
-}
+// [numthreads(THREADS, THREADS, 1)]
+// void DebugEdit(uint3 id : SV_DispatchThreadID)
+// {
+//     float r = _DepthPyramid[uint3(id.xy, _DstSlice)];
+//     r = smoothstep(_Low, _High, r);
+//     _DepthPyramid[uint3(id.xy, _DstSlice)] = r;
+// }
 
-[numthreads(THREADS, THREADS, 1)]
-void DebugCopyScale(uint3 id : SV_DispatchThreadID)
-{
-    // uint2 o0 = uint2(0, 1);
-    // uint2 o1 = uint2(1, 0);
+// [numthreads(THREADS, THREADS, 1)]
+// void DebugCopyScale(uint3 id : SV_DispatchThreadID)
+// {
+//     // uint2 o0 = uint2(0, 1);
+//     // uint2 o1 = uint2(1, 0);
 
-    uint2 pos = id.xy >> _DstSlice;
+//     uint2 pos = id.xy >> _DstSlice;
 
-    float r = _DepthPyramid[uint3(pos, _DstSlice)];
+//     float r = _DepthPyramid[uint3(pos, _DstSlice)];
 
-    // float r0 = _DepthPyramid[uint3(pos + o1, _DstSlice)];
-    // float r1 = _DepthPyramid[uint3(pos - o1, _DstSlice)];
-    // float ddx = abs(r0 - r1);
-    //
-    // float r2 = _DepthPyramid[uint3(pos + o0, _DstSlice)];
-    // float r3 = _DepthPyramid[uint3(pos - o0, _DstSlice)];
-    // float ddy = abs(r2 - r3);
+//     // float r0 = _DepthPyramid[uint3(pos + o1, _DstSlice)];
+//     // float r1 = _DepthPyramid[uint3(pos - o1, _DstSlice)];
+//     // float ddx = abs(r0 - r1);
+//     //
+//     // float r2 = _DepthPyramid[uint3(pos + o0, _DstSlice)];
+//     // float r3 = _DepthPyramid[uint3(pos - o0, _DstSlice)];
+//     // float ddy = abs(r2 - r3);
 
-    _DepthPyramid[uint3(id.xy, 0)] = r;
-}
+//     _DepthPyramid[uint3(id.xy, 0)] = r;
+// }
 
-[numthreads(THREADS, THREADS, 1)]
-void DebugApplyBorders(uint3 id : SV_DispatchThreadID)
-{
-    uint2 o0 = uint2(0, 1);
-    uint2 o1 = uint2(1, 0);
+// [numthreads(THREADS, THREADS, 1)]
+// void DebugApplyBorders(uint3 id : SV_DispatchThreadID)
+// {
+//     uint2 o0 = uint2(0, 1);
+//     uint2 o1 = uint2(1, 0);
 
-    uint2 pos = id.xy >> 0;
+//     uint2 pos = id.xy >> 0;
 
-    float r = _DepthPyramid[uint3(pos, 0)];
+//     float r = _DepthPyramid[uint3(pos, 0)];
 
-    float r0 = _DepthPyramid[uint3(pos + o1, 0)];
-    float r1 = _DepthPyramid[uint3(pos - o1, 0)];
-    float ddx = abs(r0 - r1);
+//     float r0 = _DepthPyramid[uint3(pos + o1, 0)];
+//     float r1 = _DepthPyramid[uint3(pos - o1, 0)];
+//     float ddx = abs(r0 - r1);
     
-    float r2 = _DepthPyramid[uint3(pos + o0, 0)];
-    float r3 = _DepthPyramid[uint3(pos - o0, 0)];
-    float ddy = abs(r2 - r3);
+//     float r2 = _DepthPyramid[uint3(pos + o0, 0)];
+//     float r3 = _DepthPyramid[uint3(pos - o0, 0)];
+//     float ddy = abs(r2 - r3);
 
-    float t = 1;
-    if (ddy > 0 || ddx > 0)
-    {
-        t = 0;
-    }
+//     float t = 1;
+//     if (ddy > 0 || ddx > 0)
+//     {
+//         t = 0;
+//     }
 
-    _DepthPyramid[uint3(pos, 0)] = r * t;
-}
+//     _DepthPyramid[uint3(pos, 0)] = r * t;
+// }

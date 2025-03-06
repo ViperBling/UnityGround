@@ -25,27 +25,7 @@
             #pragma enable_d3d11_debug_symbols
             #pragma target 3.5
             #pragma vertex Vert
-            #pragma fragment LinearFragmentPass
-
-            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
-            // 这个宏定义具体的解码方式
-            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
-            
-            ENDHLSL
-        }
-        
-        Pass
-        {
-            Name "HiZ SSR"
-            
-            HLSLPROGRAM
-
-            #pragma enable_d3d11_debug_symbols
-            #pragma target 3.5
-            #pragma vertex Vert
-            #pragma fragment HiZFragmentPass
+            #pragma fragment LinearVSTracingPass
 
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
@@ -65,7 +45,27 @@
             #pragma enable_d3d11_debug_symbols
             #pragma target 3.5
             #pragma vertex Vert
-            #pragma fragment SSTracingFragmentPass
+            #pragma fragment LinearSSTracingPass
+
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
+            
+            ENDHLSL
+        }
+        
+        Pass
+        {
+            Name "HiZ SSR"
+            
+            HLSLPROGRAM
+
+            #pragma enable_d3d11_debug_symbols
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment HiZTracingPass
 
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
