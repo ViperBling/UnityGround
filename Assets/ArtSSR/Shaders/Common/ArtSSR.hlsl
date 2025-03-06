@@ -181,6 +181,9 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
     float3 normalVS = normalize(mul(UNITY_MATRIX_V, float4(normalWS, 0.0))).xyz;
 
+    UNITY_BRANCH
+    if (smoothness < _MinSmoothness) return half4(screenUV, 0, 0);
+
     float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
     positionNDC.y *= _ProjectionParams.x;
     float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
@@ -234,6 +237,10 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
         half yAlpha = (endSS.y - yClip) / (endSS.y - startSS.y);
         alpha = max(alpha, yAlpha);
     }
+
+    endSS = lerp(endSS, startSS, alpha);
+    endK = lerp(endK, startK, alpha);
+    endQ = lerp(endQ, startQ, alpha);
 
     endSS = (DistanceSquared(startSS, endSS) < 0.0001) ? startSS + half2(0.01, 0.01) : endSS;
 
@@ -303,7 +310,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     K -= dK;
 
     Q.xy += dQ.xy * stepTaked;
-    hitUV = Q / K / _ScreenResolution;
+    hitUV /= _ScreenResolution;
 
     half3 finalResult = half3(hitUV, hit);
     return half4(finalResult, 1);
@@ -416,7 +423,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.z);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }
