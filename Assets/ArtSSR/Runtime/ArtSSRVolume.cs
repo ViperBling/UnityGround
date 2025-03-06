@@ -12,7 +12,7 @@ namespace ArtSSR
         public ArtSSRStateParameter m_State = new(value: SSRState.Disabled, overrideState: true);
 
         [InspectorName("Tracing Mode")]
-        public ArtSSRMarchingModeParameter m_MarchingMode = new(value: RayMarchingMode.LinearTracing, overrideState: false);
+        public ArtSSRMarchingModeParameter m_MarchingMode = new(value: RayMarchingMode.LinearViewSpaceTracing, overrideState: false);
         
         [InspectorName("Dither Mode")]
         public ArtSSRDitherModeParameter m_DitherMode = new(value: DitherMode.Disabled, overrideState: false);
@@ -65,11 +65,11 @@ namespace ArtSSR
         public enum RayMarchingMode
         {
             [Tooltip("Linear tracing mode.")]
-            LinearTracing = 0,
-            [Tooltip("Hi-Z tracing mode.")]
-            HiZTracing = 1,
+            LinearViewSpaceTracing = 0,
             [Tooltip("2D SS tracing mode.")]
-            ScreenSpaceTracing = 2
+            LinearScreenSpaceTracing = 1,
+            [Tooltip("Hi-Z tracing mode.")]
+            HiZTracing = 2
         }
         [Serializable]
         public sealed class ArtSSRMarchingModeParameter : VolumeParameter<RayMarchingMode>

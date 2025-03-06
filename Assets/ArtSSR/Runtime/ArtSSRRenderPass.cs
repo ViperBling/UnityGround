@@ -117,7 +117,7 @@ namespace ArtSSR
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: hiZPass);
                     }
-                    else if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.ScreenSpaceTracing)
+                    else if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearScreenSpaceTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: ssTracingPass);
                     }

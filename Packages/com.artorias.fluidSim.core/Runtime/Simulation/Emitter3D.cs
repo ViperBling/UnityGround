@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Art.Fluid.Simulation
 {
-    public class Emitter : MonoBehaviour
+    public class Emitter3D : MonoBehaviour
     {
         public struct EmitterData
         {

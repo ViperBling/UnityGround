@@ -178,10 +178,7 @@ float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
     float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
     float smoothness = normalGBuffer.w;
     float3 normalWS = UnpackNormal(normalGBuffer.xyz);
-
-    // Temp, return screenUV
-    // UNITY_BRANCH
-    // if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
+    float3 normalVS = normalize(mul(UNITY_MATRIX_V, float4(normalWS, 0.0))).xyz;
 
     float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
     #ifdef UNITY_UV_STARTS_AT_TOP
@@ -193,24 +190,15 @@ float4 SSTracingFragmentPass(Varyings fsIn) : SV_Target
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
-    // Project the end point of reflection ray to get screen-space direction
-    float3 rayEndVS = positionVS.xyz - reflectDirVS * positionVS.z;
-    float4 rayEndCS = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
-    rayEndCS *= rcp(rayEndCS.w);
-    rayEndCS.z = 1 - rayEndCS.z;
-    positionNDC.z = 1 - positionNDC.z;
-    
-    // Convert to UV space for traversal
-    float2 rayStartUV = screenUV;
-    float2 rayEndUV = rayEndCS.xy * 0.5 + 0.5;
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        rayEndUV.y *= -1.0;
-    #endif
+    half rayHitMask = 0.0, rayNumMarch = 0.0;
+    half2 hitUV = 0.0;
+    half3 hitPoint = 0.0;
 
-    float3 finalResult = positionNDC;
+    float4 screenTexelSize = float4(1.0 / _ScreenResolution.xy, _ScreenResolution.xy);
+    float3 rayOriginVS = positionVS.xyz;
+
+    float3 finalResult = rayOriginVS;
 
     return float4(finalResult, 1);
 }
