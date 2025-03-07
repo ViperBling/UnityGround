@@ -30,6 +30,7 @@ namespace ArtSSR
             private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
             private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
+            private static readonly int m_BlueNoiseTextureID = Shader.PropertyToID("_BlueNoiseTexture");
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
 
             private const int m_LinearVSTracingPass = 0;
@@ -58,6 +59,7 @@ namespace ArtSSR
                 base.Configure(cmd, cameraRTDesc);
 
                 m_Material.SetInt(m_FrameID, m_Frame);
+                m_Material.SetTexture(m_BlueNoiseTextureID, m_SSRVolume.m_BlueNoiseTexture.value);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
                 m_Scale = m_IsPadded ? 1 : m_SSRVolume.m_DownSample.value + 1.0f;

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "Assets/CommonResource/Shaders/Common/Sampling.hlsl"
 #include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
 
 float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
@@ -26,11 +25,8 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-    
-    float2 randomUV = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
     bool valid = false;
-    float3 reflectDirWS = ImportanceSampleGGX(randomUV, normalWS, viewDirWS, smoothness, valid);
-    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, valid);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
@@ -181,7 +177,8 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    bool valid = false;
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, valid);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     float3 startPosVS = positionVS.xyz;
@@ -342,7 +339,8 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    bool valid = false;
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, valid);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     // positionVS的z轴为负，所以要取反才能得到正确的反射位置

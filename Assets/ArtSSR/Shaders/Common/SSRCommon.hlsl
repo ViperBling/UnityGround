@@ -11,6 +11,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
+#include "Assets/CommonResource/Shaders/Common/Sampling.hlsl"
 
 TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
@@ -18,7 +19,9 @@ TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
 TEXTURE2D_X(_SSRSceneColorTexture);
+TEXTURE2D_X(_BlueNoiseTexture);
 
+SAMPLER(sampler_BlueNoiseTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
@@ -80,6 +83,30 @@ float DistanceSquared(float2 a, float2 b)
 inline float SampleDepth(float2 uv)
 {
     return SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, uv).r;
+}
+
+inline float3 TangentToWorld(float3 vec, float3 tangentZ)
+{
+    float3 upVector = abs(tangentZ.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
+    float3 tangentX = normalize(cross(upVector, tangentZ));
+    float3 tangentY = cross(tangentZ, tangentX);
+    float3x3 tangentToWorld = float3x3(tangentX, tangentY, tangentZ);
+
+    float3 T2W = mul(vec, tangentToWorld);
+    return T2W;
+}
+
+inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout bool valid)
+{
+    // float3 normalVS = normalize(mul(GetWorldToViewMatrix(), normalWS));
+    float2 randomUV = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
+    float3 reflectDirWS = ImportanceSampleGGX(randomUV, normalWS, viewDirWS, smoothness, valid);
+
+    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, screenUV).rg;
+    // float3 reflectDirWS = TangentToWorld(ImportanceSampleGGX(hash, smoothness), normalVS);
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+
+    return reflectDirWS;
 }
 
 inline float3 GetNormalWS(float2 uv, inout float smoothness)
