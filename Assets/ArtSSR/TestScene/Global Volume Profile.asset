@@ -18,22 +18,22 @@ MonoBehaviour:
     m_Value: 1
   m_MarchingMode:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   m_DitherMode:
     m_OverrideState: 1
     m_Value: 0
   m_ThicknessScale:
     m_OverrideState: 1
-    m_Value: 0.15
+    m_Value: 3
   m_MinSmoothness:
     m_OverrideState: 1
     m_Value: 0.5
   m_FadeSmoothness:
     m_OverrideState: 1
-    m_Value: 0.6
+    m_Value: 0.475
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.032
   m_EdgeFade:
     m_OverrideState: 1
     m_Value: 0.041

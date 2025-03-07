@@ -36,6 +36,7 @@ CBUFFER_START(UnityPerMaterial)
     float       _FadeSmoothness;
     float2      _ScreenResolution;
     int         _ReflectSky;
+    int         _RandomSeed;
 CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
@@ -65,23 +66,43 @@ half3 UnpackNormal(half3 pn)
 }                            // values between [-1, +1]
 #endif
 
+float GenerateRandomFloat(float2 screenUV)
+{
+    float time = unity_DeltaTime.y * _Time.y + _RandomSeed++;
+    return GenerateHashedRandomFloat(uint3(screenUV * _ScreenResolution.xy, time));
+}
+
 float DistanceSquared(float2 a, float2 b)
 {
     return dot(a - b, a - b);
 }
 
-float3 GetWorldPosition(float2 screenUV, float rawDepth)
+inline float SampleDepth(float2 uv)
 {
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    #ifdef UNITY_UV_STARTS_AT_TOP
-        positionNDC.y *= -1;
-    #endif
-    float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
+    return SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, uv).r;
+}
+
+inline float3 GetNormalWS(float2 uv, inout float smoothness)
+{
+    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, uv);
+    smoothness = normalGBuffer.a;
+    return UnpackNormal(normalGBuffer.xyz);
+}
+
+inline float4 ReconstructPositionWS(float2 screenUV, float rawDepth, inout float4 positionNDC, inout float4 positionVS)
+{
+    positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
+    // 等价
+    positionNDC.y *= _ProjectionParams.x;
+    // #ifdef UNITY_UV_STARTS_AT_TOP
+    //     positionNDC.y *= -1;
+    // #endif
+    positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
     // 后面会直接用到positionVS，所以要先除以w
     positionVS *= rcp(positionVS.w);
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
-    return positionWS.xyz;
+    return positionWS;
 }
 
 inline void HitDataFromGBuffer(float2 texCoord, inout half3 albedo, inout half3 specular, inout half occlusion, inout half3 normal, inout half smoothness)
@@ -162,18 +183,7 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
-inline uint NextPowerOfTwo(uint value)
-{
-    uint res = 2 << firstbithigh(value - 1);
-    return res;
-}
-
-inline bool FloatEqApprox(float a, float b)
-{
-    return abs(a - b) < 0.00001f;
-}
-
-// HiZ Tracing
+// =============== HiZ Tracing Start =============== //
 inline float2 GetScreenResolution()
 {
     return _ScreenResolution;
@@ -245,45 +255,10 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
     return intersectionPos;
 }
 
-// Helper function to perform binary search refinement
-float2 BinarySearchRayHit(float2 startPos, float2 endPos, float rayDepthVS, float thickness)
-{
-    float2 currentPos = endPos;
-    
-    UNITY_UNROLL
-    for (int i = 0; i < 5; i++) // 5 refinement steps
-    {
-        float2 midPos = 0.5 * (startPos + currentPos);
-        
-        float sampledDepth = SampleDepth(midPos, 0);
-        
-        float4 hitPosNDC = float4(midPos * 2.0 - 1.0, sampledDepth, 1.0);
-        #ifdef UNITY_UV_STARTS_AT_TOP
-            hitPosNDC.y *= -1;
-        #endif
-        float4 hitPosVS = mul(UNITY_MATRIX_I_P, hitPosNDC);
-        hitPosVS /= hitPosVS.w;
-        
-        float depthDiff = rayDepthVS - (-hitPosVS.z);
-        
-        if (depthDiff >= 0 && depthDiff < thickness)
-            currentPos = midPos;
-        else
-            startPos = midPos;
-    }
-    
-    return currentPos;
-}
-
-inline float3 LinearTrace()
-{
-
-}
-
 inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, float maxIterations, out float hit, out float iterations, out bool isSky)
 {
-    const int rootLevel = HIZ_MAX_LEVEL;
-    const int endLevel = HIZ_STOP_LEVEL;
+    const int maxLevel = HIZ_MAX_LEVEL;
+    const int stopLevel = HIZ_STOP_LEVEL;
     const int startLevel = HIZ_START_LEVEL;
     int level = HIZ_START_LEVEL;
 
@@ -301,7 +276,7 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
     float2 crossOffset = float2(crossStep.xy * GetCrossEps());
     crossStep.xy = saturate(crossStep.xy);
 
-    // Set current ray to original screen coordinate and depth
+    // 确定光线的起始位置
     float3 rayOrigin = positionSS.xyz;
 
     // 确定当前位置在哪个Cell，Cell是HiZ每层的最小单元，当在Level0的时候，就是屏幕上的像素
@@ -309,7 +284,7 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
     rayOrigin = IntersectCellBoundary(rayOrigin, dirTS, rayCell.xy, GetCellCount(level), crossStep.xy, crossOffset.xy);
 
     UNITY_LOOP
-    while (level >= endLevel && iterations < maxIterations 
+    while (level >= stopLevel && iterations < maxIterations 
         //    && rayOrigin.x >= 0 && rayOrigin.x < 1 
         //    && rayOrigin.y >= 0 && rayOrigin.y < 1 && rayOrigin.z > 0
            )
@@ -337,7 +312,7 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
         {
             // 交点不在当前的Cell，计算交点位置，然后进入下一层
             tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
-            level = min(rootLevel, level + 1.0f);
+            level = min(maxLevel, level + 1.0f);
         }
         else if (level == startLevel)
         {
@@ -360,9 +335,11 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
         rayOrigin.xyz = tmpRayPos.xyz;
         ++iterations;
     }
-    hit = level < endLevel ? 1 : 0;
+    hit = level < stopLevel ? 1 : 0;
     hit = iterations > 0 ? hit : 0;
 
     return rayOrigin;
 }
+
+// =============== HiZ Tracing End =============== //
 

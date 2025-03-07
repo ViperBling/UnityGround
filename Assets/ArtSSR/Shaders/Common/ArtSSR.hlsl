@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Assets/CommonResource/Shaders/Common/Sampling.hlsl"
 #include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
 
 float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
@@ -7,7 +8,7 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
     
-    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    float rawDepth = SampleDepth(screenUV);
 
     half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
     bool isBackground = rawDepth == 0.0;
@@ -15,28 +16,21 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (isBackground) return half4(screenUV.xy, 0, 1);
 
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
-    float smoothness = normalGBuffer.w;
-    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
     if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-
-    // 等价
-    positionNDC.y *= _ProjectionParams.x;
-    // #ifdef UNITY_UV_STARTS_AT_TOP
-    //     positionNDC.y *= -1;
-    // #endif
-
-    float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
-    // 后面会直接用到positionVS，所以要先除以w
-    positionVS *= rcp(positionVS.w);
-    float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    
+    float2 randomUV = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
+    bool valid = false;
+    float3 reflectDirWS = ImportanceSampleGGX(randomUV, normalWS, viewDirWS, smoothness, valid);
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
@@ -61,8 +55,6 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     // 步进方向
     float3 rayDir = reflectDirVS * scaledStepStride;
     float depthDelta = 0;
-
-    // float3 intersectPoint = LinearTrace(float3 positionVS, float3 reflectDir, float thickness, float numSteps, out float depthDelta, out float hit, out float2 hitUV, out float maskOut);
 
     UNITY_LOOP
     for (int i = 0; i < fixNumStep; i++)
@@ -171,43 +163,38 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 
     float2 screenUV = fsIn.texcoord;
 
-    float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    float rawDepth = SampleDepth(screenUV);
+
+    half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
+    bool isBackground = rawDepth == 0.0;
+    
+    UNITY_BRANCH
+    if (isBackground) return half4(screenUV.xy, 0, 1);
+
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
-    if (rawDepth == 0) return float4(screenUV, 0, 0);
+    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
-    float smoothness = normalGBuffer.w;
-    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
-    float3 normalVS = normalize(mul(UNITY_MATRIX_V, float4(normalWS, 0.0))).xyz;
-
-    UNITY_BRANCH
-    if (smoothness < _MinSmoothness) return half4(screenUV, 0, 0);
-
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    positionNDC.y *= _ProjectionParams.x;
-    float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
-    // 后面会直接用到positionVS，所以要先除以w
-    positionVS *= rcp(positionVS.w);
-    float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     float3 startPosVS = positionVS.xyz;
-    float3 endPosVS = startPosVS - reflectDirVS * positionVS.z;
+    float3 endPosVS = startPosVS - reflectDirVS * positionVS.z * 10;
 
     // H0
     float4 startHCS = mul(UNITY_MATRIX_P, float4(startPosVS, 1.0));
     startHCS.xy = (float2(startHCS.x, startHCS.y * _ProjectionParams.x) + startHCS.w) * 0.5;
-    // startHCS.xy = (float2(startHCS.x, startHCS.y * _ProjectionParams.x)) * 0.5 + 0.5;
     startHCS.xy *= _ScreenResolution;
 
     // H1
     float4 endHCS = mul(UNITY_MATRIX_P, float4(endPosVS, 1.0));
     endHCS.xy = (float2(endHCS.x, endHCS.y * _ProjectionParams.x) + endHCS.w) * 0.5;
-    // endHCS.xy = (float2(endHCS.x, endHCS.y * _ProjectionParams.x)) * 0.5 + 0.5;
     endHCS.xy *= _ScreenResolution;
 
     float startK = 1.0 / startHCS.w;        // K0
@@ -225,6 +212,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     half yMin = 0.5;
     half alpha = 0.0;
 
+    // 防止在屏幕边缘时出现拉伸
     if (endSS.x > xMax || endSS.x < xMin)
     {
         half xClip = (endSS.x > xMax) ? xMax : xMin;
@@ -237,7 +225,6 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
         half yAlpha = (endSS.y - yClip) / (endSS.y - startSS.y);
         alpha = max(alpha, yAlpha);
     }
-
     endSS = lerp(endSS, startSS, alpha);
     endK = lerp(endK, startK, alpha);
     endQ = lerp(endQ, startQ, alpha);
@@ -260,10 +247,6 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     half3 dQ = (endQ - startQ) * invDX;
     half dK = (endK - startK) * invDX;
 
-    dP *= _StepStride;
-    dQ *= _StepStride;
-    dK *= _StepStride;
-
     half2 P = startSS;
     half3 Q = startQ;
     half K = startK;
@@ -272,12 +255,28 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     half rayZMin = preZMaxEstimate;
     half end = endSS.x * stepDirSS;
 
+    float VoR = saturate(dot(viewDirWS, reflectDirWS));
+    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+    // 越界检测，超过thickness认为在物体内部
+    float thickness = _StepStride * _ThicknessScale;
+    float oneMinusVoR = sqrt(1 - VoR);
+    float scaledStepStride = _StepStride / oneMinusVoR;
+    thickness /= oneMinusVoR;
+
+    float maxRayLength = _MaxSteps * scaledStepStride;
+    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+    float fixNumStep = max(maxDist / scaledStepStride, 0);
+
+    dP *= scaledStepStride;
+    dQ *= scaledStepStride;
+    dK *= scaledStepStride;
+
     float stepTaked = 0;
     float2 hitUV = screenUV;
     half hit = 0;
 
     UNITY_LOOP
-    for (int i = 0; i < _MaxSteps && (P.x * stepDirSS) <= end; i++)
+    for (int i = 0; i < fixNumStep && (P.x * stepDirSS) <= end; i++)
     {
         rayZMin = preZMaxEstimate;
         rayZMax = (dQ.z * 0.5 + Q.z) / (dK * 0.5 + K);
@@ -292,12 +291,12 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 
         hitUV = permute ? P.yx : P;
         float2 sampelUV = hitUV / _ScreenResolution;
-        float sampledDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, sampelUV).r;
+        float sampledDepth = SampleDepth(sampelUV);
         float surfaceDepth = -LinearEyeDepth(sampledDepth, _ZBufferParams);
 
         bool isBehind = rayZMin + 0.1 <= surfaceDepth;
 
-        hit = isBehind && (rayZMax >= surfaceDepth - _ThicknessScale);
+        hit = isBehind && (rayZMax >= surfaceDepth - thickness);
         if (hit) break;
         
         stepTaked++;
@@ -305,14 +304,17 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
         Q.z += dQ.z;
         K += dK;
     }
-    P -= dP;
-    Q.z -= dQ.z;
-    K -= dK;
+    // P -= dP;
+    // Q.z -= dQ.z;
+    // K -= dK;
 
-    Q.xy += dQ.xy * stepTaked;
+    // Q.xy += dQ.xy * stepTaked;
     hitUV /= _ScreenResolution;
 
-    half3 finalResult = half3(hitUV, hit);
+    half maskOut = ScreenEdgeMask(hitUV);
+    maskOut *= hit;
+
+    half3 finalResult = half3(hitUV, maskOut);
     return half4(finalResult, 1);
 }
 
@@ -322,32 +324,29 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
 
     float2 screenUV = fsIn.texcoord;
 
-    float rawDepth = 1 - SampleDepth(screenUV, 0);
+    float rawDepth = SampleDepth(screenUV);
+
+    half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
+    bool isBackground = rawDepth == 0.0;
+    
+    UNITY_BRANCH
+    if (isBackground) return half4(screenUV.xy, 0, 1);
+
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
-    if (rawDepth == 0) return float4(screenUV, 0, 0);
+    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
 
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, screenUV);
-    float smoothness = normalGBuffer.w;
-    float3 normalWS = UnpackNormal(normalGBuffer.xyz);
-
-    // Temp, return screenUV
-    UNITY_BRANCH
-    if (smoothness < _MinSmoothness) return float4(0, 0, 0, 0);
-
-    float4 positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    positionNDC.y *= _ProjectionParams.x;
-    float4 positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
-    // 后面会直接用到positionVS，所以要先除以w
-    positionVS *= rcp(positionVS.w);
-    float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     float3 reflectDirWS = reflect(viewDirWS, normalWS);
     float3 reflectDirVS = normalize(mul(UNITY_MATRIX_V, float4(reflectDirWS, 0.0))).xyz;
 
     // positionVS的z轴为负，所以要取反才能得到正确的反射位置
-    float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z;
+    float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z * 10;
     float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
     reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
     reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
@@ -363,7 +362,15 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-    float thickness = (1 - camVoR) * 0.01 * _ThicknessScale;
+    // 越界检测，超过thickness认为在物体内部
+    float thickness = _StepStride * _ThicknessScale;
+    float oneMinusVoR = sqrt(1 - VoR);
+    float scaledStepStride = _StepStride / oneMinusVoR;
+    thickness /= oneMinusVoR;
+
+    float maxRayLength = _MaxSteps * scaledStepStride;
+    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+    float fixNumStep = max(maxDist / scaledStepStride, 0);
 
     float hit = 0;
     float mask = smoothstep(0, 0.1f, camVoR);

@@ -1,6 +1,9 @@
 ﻿Shader "Hidden/ArtSSRShader"
 {
-    Properties {}
+    Properties 
+    {
+        [HideInInspector] _RandomSeed("Random Seed", Float) = 0.0
+    }
     
     SubShader
     {
@@ -11,14 +14,14 @@
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareOpaqueTexture.hlsl"
-        // The Blit.hlsl file provides the vertex shader (Vert),
-        // input structure (Attributes) and output strucutre (Varyings)
         #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
+
+        #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
         ENDHLSL
         
         Pass
         {
-            Name "Linear SSR"
+            Name "Linear View Space Tracing"
             
             HLSLPROGRAM
 
@@ -30,15 +33,13 @@
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
         }
 
         Pass
         {
-            Name "SS Tracing SSR"
+            Name "Linear Screen Space Tracing"
             
             HLSLPROGRAM
 
@@ -50,15 +51,13 @@
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
         }
         
         Pass
         {
-            Name "HiZ SSR"
+            Name "HiZ Tracing"
             
             HLSLPROGRAM
 
@@ -71,8 +70,6 @@
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
-            
             ENDHLSL
         }
         
@@ -92,10 +89,7 @@
             // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
             // 这个宏定义具体的解码方式
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-
             #pragma multi_compile_fragment _ DITHER_8x8 DITHER_INTERLEAVED_GRADIENT
-
-            #include "Assets/ArtSSR/Shaders/Common/ArtSSR.hlsl"
             
             ENDHLSL
         }
