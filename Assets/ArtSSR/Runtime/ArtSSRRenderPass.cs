@@ -19,6 +19,7 @@ namespace ArtSSR
             private readonly Material m_Material;
             private RTHandle m_SceneColorHandle;
             private RTHandle m_ReflectColorHandle;
+            private RTHandle m_SpatioFilterHandle;
 
             private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
@@ -36,7 +37,8 @@ namespace ArtSSR
             private const int m_LinearVSTracingPass = 0;
             private const int m_LinearSSTracingPass = 1;
             private const int m_HiZTracingPass = 2;
-            private const int m_CompositePass = 3;
+            private const int m_SpatioFilterPass = 3;
+            private const int m_CompositePass = 4;
 
             private bool m_IsPadded = false;
             private float m_Scale;
@@ -69,7 +71,7 @@ namespace ArtSSR
                 m_ScreenResolution.x = cameraRTDesc.width * globalResolution;
                 m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
 
-                m_Material.SetVector(m_ScreenResolutionID, m_ScreenResolution);
+                m_Material.SetVector(m_ScreenResolutionID, new Vector4(m_ScreenResolution.x, m_ScreenResolution.y, 1.0f / m_ScreenResolution.x, 1.0f / m_ScreenResolution.y));
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -85,8 +87,9 @@ namespace ArtSSR
                 filterMode = FilterMode.Point;
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_SpatioFilterHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSpatioFilterTexture");
+                
                 ConfigureInput(ScriptableRenderPassInput.Depth);
-
                 ConfigureTarget(m_SceneColorHandle, m_SceneColorHandle);
             }
 
@@ -113,8 +116,6 @@ namespace ArtSSR
 
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
-                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
-
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearViewSpaceTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearVSTracingPass);
@@ -127,7 +128,11 @@ namespace ArtSSR
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_HiZTracingPass);
                     }
-                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+
+                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
+                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_SpatioFilterHandle, m_Material, pass: m_SpatioFilterPass);
+                    
+                    Blitter.BlitCameraTexture(cmd, m_SpatioFilterHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();

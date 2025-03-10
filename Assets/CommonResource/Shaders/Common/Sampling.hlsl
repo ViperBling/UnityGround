@@ -6,7 +6,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 
-float3 ImportanceSampleGGX(float2 random, float3 normalWS, float3 viewDirWS, float smoothness, out bool valid)
+float3 ImportanceSampleGGX_SSR(float2 random, float3 normalWS, float3 viewDirWS, float smoothness, out bool valid)
 {
     float roughness = 1.0 - smoothness;
     float alpha2 = roughness * roughness;
@@ -16,7 +16,7 @@ float3 ImportanceSampleGGX(float2 random, float3 normalWS, float3 viewDirWS, flo
     float VoH;
     float3 localV, localH;
     // SampleGGXVisibleNormal(random, -viewDirWS, locaToWorld, alpha2, localV, localH, VoH);
-    SampleAnisoGGXVisibleNormal(random, -viewDirWS, locaToWorld, alpha4, alpha2, localV, localH, VoH);
+    SampleAnisoGGXVisibleNormal(random, -viewDirWS, locaToWorld, alpha2, alpha2, localV, localH, VoH);
 
     float3 localL = 2.0 * VoH * localH - localV;
     float3 outDirWS = mul(localL, locaToWorld);
@@ -27,9 +27,9 @@ float3 ImportanceSampleGGX(float2 random, float3 normalWS, float3 viewDirWS, flo
     return outDirWS;
 }
 
-float4 ImportanceSampleGGX(float2 random, float smoothness)
+float4 ImportanceSampleGGX_SSR(float2 random, float smoothness)
 {
-    float roughness = 1.0 - smoothness;
+    float roughness = saturate(1.0 - smoothness);
     float m2 = roughness * roughness;
     float m4 = m2 * m2;
 

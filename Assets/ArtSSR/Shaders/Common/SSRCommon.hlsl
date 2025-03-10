@@ -12,6 +12,7 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonLighting.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 #include "Assets/CommonResource/Shaders/Common/Sampling.hlsl"
+#include "Assets/CommonResource/Shaders/Common/BSDFLibrary.hlsl"
 
 TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
@@ -22,6 +23,7 @@ TEXTURE2D_X(_SSRSceneColorTexture);
 TEXTURE2D_X(_BlueNoiseTexture);
 
 SAMPLER(sampler_BlueNoiseTexture);
+SAMPLER(sampler_SSRSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
@@ -37,7 +39,7 @@ CBUFFER_START(UnityPerMaterial)
     float       _MaxSteps;
     float       _MinSmoothness;
     float       _FadeSmoothness;
-    float2      _ScreenResolution;
+    float4      _ScreenResolution;
     int         _ReflectSky;
     int         _RandomSeed;
 CBUFFER_END
@@ -49,6 +51,13 @@ CBUFFER_END
 #ifndef kDielectricSpec
     #define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
 #endif
+
+static const int2 sampleOffsets[9] = 
+{ 
+    int2(-2.0, -2.0), int2(0.0, -2.0), int2(2.0, -2.0), 
+    int2(-2.0,  0.0), int2(0.0,  0.0), int2(2.0,  0.0), 
+    int2(-2.0,  2.0), int2(0.0,  2.0), int2(2.0,  2.0)
+};
 
 uint UnpackMaterialFlags(float packedMaterialFlags)
 {
@@ -85,26 +94,33 @@ inline float SampleDepth(float2 uv)
     return SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, uv).r;
 }
 
-inline float3 TangentToWorld(float3 vec, float3 tangentZ)
+float3x3 GetTangentBias(float3 tangentZ)
 {
     float3 upVector = abs(tangentZ.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
     float3 tangentX = normalize(cross(upVector, tangentZ));
     float3 tangentY = cross(tangentZ, tangentX);
-    float3x3 tangentToWorld = float3x3(tangentX, tangentY, tangentZ);
-
-    float3 T2W = mul(vec, tangentToWorld);
-    return T2W;
+    return float3x3(tangentX, tangentY, tangentZ);
 }
 
-inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout bool valid)
+inline float4 TangentToWorld(float4 vec, float4 tangentZ)
 {
-    // float3 normalVS = normalize(mul(GetWorldToViewMatrix(), normalWS));
-    float2 randomUV = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
-    float3 reflectDirWS = ImportanceSampleGGX(randomUV, normalWS, viewDirWS, smoothness, valid);
+    float3 T2W = mul(vec.xyz, GetTangentBias(tangentZ.xyz));
+    return float4(T2W, vec.w);
+}
 
-    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, screenUV).rg;
-    // float3 reflectDirWS = TangentToWorld(ImportanceSampleGGX(hash, smoothness), normalVS);
-    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout bool valid)
+{
+    // float2 randomOffset = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
+    float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, (screenUV) * _ScreenResolution.xy / 1024).rg;
+    float3 reflectDirWS = ImportanceSampleGGX_SSR(hash, normalWS, viewDirWS, smoothness, valid);
+    PDF = 1.0;
+
+    // float3x3 localToWorld = GetLocalFrame(normalWS);
+    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, (screenUV) * _ScreenResolution.xy / 1024).rg;
+    // float4 H = ImportanceSampleGGX_SSR(hash, smoothness);
+    // H.xyz = mul(H, localToWorld);
+    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
+    // PDF = H.w;
 
     return reflectDirWS;
 }
@@ -210,10 +226,24 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
+float SSRBRDF(float3 positionVS, float3 viewDirWS, float3 normalVS, float smoothness)
+{
+    float roughness = clamp(1.0 - smoothness, 0.01, 1);
+    float3 H = normalize(positionVS + viewDirWS);
+
+    float NoH = max(dot(normalVS, H), 0.0);
+    float NoL = max(dot(normalVS, viewDirWS), 0.0);
+    float NoV = max(dot(normalVS, positionVS), 0.0);
+
+    float D = D_GGX_SSR(NoH, roughness);
+    float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
+    return max(0, D * G);
+}
+
 // =============== HiZ Tracing Start =============== //
 inline float2 GetScreenResolution()
 {
-    return _ScreenResolution;
+    return _ScreenResolution.xy;
 }
 
 inline uint2 GetLevelResolution(uint index)

@@ -72,12 +72,30 @@
 
             ENDHLSL
         }
+
+        Pass
+        {
+            Name "Spatio Filter"
+            
+            HLSLPROGRAM
+
+            #pragma enable_d3d11_debug_symbols
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment SpatioFilterPass
+
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            ENDHLSL
+        }
         
         Pass
         {
             Name "Composite"
             
-            Blend SrcAlpha OneMinusSrcAlpha, SrcAlpha SrcAlpha
+            // Blend SrcAlpha OneMinusSrcAlpha, SrcAlpha SrcAlpha
             
             HLSLPROGRAM
 
