@@ -2,7 +2,7 @@
 {
     Properties 
     {
-        [HideInInspector] _RandomSeed("Random Seed", Float) = 0.0
+        [HideInInspector] _RandomSeed("Random Seed", int) = 0.0
     }
     
     SubShader
@@ -21,7 +21,7 @@
         
         Pass
         {
-            Name "Linear View Space Tracing"
+            Name "Linear View Space Tracing 0"
             
             HLSLPROGRAM
 
@@ -39,7 +39,7 @@
 
         Pass
         {
-            Name "Linear Screen Space Tracing"
+            Name "Linear Screen Space Tracing 1"
             
             HLSLPROGRAM
 
@@ -57,7 +57,7 @@
         
         Pass
         {
-            Name "HiZ Tracing"
+            Name "HiZ Tracing 2"
             
             HLSLPROGRAM
 
@@ -75,7 +75,7 @@
 
         Pass
         {
-            Name "Spatio Filter"
+            Name "Spatio Filter 3"
             
             HLSLPROGRAM
 
@@ -90,10 +90,28 @@
 
             ENDHLSL
         }
+
+        Pass
+        {
+            Name "Temporal Filter 4"
+
+            HLSLPROGRAM
+
+            #pragma enable_d3d11_debug_symbols
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment TemporalFilterPass
+
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+
+            ENDHLSL
+        }
         
         Pass
         {
-            Name "Composite"
+            Name "Composite 5"
             
             // Blend SrcAlpha OneMinusSrcAlpha, SrcAlpha SrcAlpha
             

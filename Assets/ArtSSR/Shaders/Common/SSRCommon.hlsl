@@ -13,6 +13,8 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
 #include "Assets/CommonResource/Shaders/Common/Sampling.hlsl"
 #include "Assets/CommonResource/Shaders/Common/BSDFLibrary.hlsl"
+#include "Assets/CommonResource/Shaders/Common/Random.hlsl"
+#include "Assets/CommonResource/Shaders/Common/FilterLibrary.hlsl"
 
 TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
@@ -21,6 +23,10 @@ TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
 TEXTURE2D_X(_SSRSceneColorTexture);
 TEXTURE2D_X(_BlueNoiseTexture);
+TEXTURE2D_X(_SSRReflectionColorTexture);
+TEXTURE2D_X(_SSRTemporalHistoryTexture);
+TEXTURE2D_X(_MotionVectorTexture);
+float4 _MotionVectorTexture_TexelSize;
 
 SAMPLER(sampler_BlueNoiseTexture);
 SAMPLER(sampler_SSRSceneColorTexture);
@@ -42,6 +48,7 @@ CBUFFER_START(UnityPerMaterial)
     float4      _ScreenResolution;
     int         _ReflectSky;
     int         _RandomSeed;
+    // float4x4    _PrevViewProjMatrix;
 CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
@@ -52,7 +59,14 @@ CBUFFER_END
     #define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
 #endif
 
-static const int2 sampleOffsets[9] = 
+static const int2 sampleOffsets1[9] = 
+{
+    int2(-1.0, -1.0), int2(0.0, -1.0), int2(1.0, -1.0),
+    int2(-1.0,  0.0), int2(0.0,  0.0), int2(1.0,  0.0),
+    int2(-1.0,  1.0), int2(0.0,  1.0), int2(1.0,  1.0)
+};
+
+static const int2 sampleOffsets2[9] = 
 { 
     int2(-2.0, -2.0), int2(0.0, -2.0), int2(2.0, -2.0), 
     int2(-2.0,  0.0), int2(0.0,  0.0), int2(2.0,  0.0), 
@@ -77,12 +91,6 @@ half3 UnpackNormal(half3 pn)
     return pn;
 }                            // values between [-1, +1]
 #endif
-
-float GenerateRandomFloat(float2 screenUV)
-{
-    float time = unity_DeltaTime.y * _Time.y + _RandomSeed++;
-    return GenerateHashedRandomFloat(uint3(screenUV * _ScreenResolution.xy, time));
-}
 
 float DistanceSquared(float2 a, float2 b)
 {
@@ -110,17 +118,17 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
 
 inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout bool valid)
 {
-    // float2 randomOffset = float2(GenerateRandomFloat(screenUV), GenerateRandomFloat(screenUV));
-    float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, (screenUV) * _ScreenResolution.xy / 1024).rg;
-    float3 reflectDirWS = ImportanceSampleGGX_SSR(hash, normalWS, viewDirWS, smoothness, valid);
-    PDF = 1.0;
+    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
+    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
+    // PDF = 1.0;
 
-    // float3x3 localToWorld = GetLocalFrame(normalWS);
-    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, (screenUV) * _ScreenResolution.xy / 1024).rg;
-    // float4 H = ImportanceSampleGGX_SSR(hash, smoothness);
-    // H.xyz = mul(H, localToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
-    // PDF = H.w;
+    float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
+    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, screenUV + random).rg;
+    float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    float3x3 localToWorld = GetLocalFrame(normalWS);
+    H.xyz = mul(H, localToWorld);
+    float3 reflectDirWS = reflect(viewDirWS, H.xyz);
+    PDF = H.w;
 
     return reflectDirWS;
 }
@@ -146,6 +154,39 @@ inline float4 ReconstructPositionWS(float2 screenUV, float rawDepth, inout float
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
     return positionWS;
+}
+
+float2 GetMotionVector(float2 uv, float depth)
+{
+    float4 hitPosNDC, hitPosVS;
+    float4 hitPosWS = ReconstructPositionWS(uv, depth, hitPosNDC, hitPosVS);
+
+    float4 prevClipPos = mul(_PrevViewProjMatrix, hitPosWS);
+    float4 curClipPos = mul(UNITY_MATRIX_VP, hitPosWS);
+
+    float2 prevHPos = prevClipPos.xy / prevClipPos.w;
+    float2 curHPos = curClipPos.xy / curClipPos.w;
+
+    float2 prevVPos = prevHPos * 0.5 + 0.5;
+    float2 curVPos = curHPos * 0.5 + 0.5;
+
+    float2 motionVector = curVPos - prevVPos;
+
+    return motionVector;
+}
+
+float4 Texture2DSampleBicubic(Texture2D tex, SamplerState texSampler, float2 uv, float2 texelSize, in float2 invSize)
+{
+    FCatmullRomSamples samples = GetBicubic2DCatmullRomSamples(uv, texelSize, invSize);
+
+    float4 outColor = 0;
+    for (uint i = 0; i < samples.Count; i++)
+    {
+        outColor += tex.SampleLevel(texSampler, samples.UV[i], 0) * samples.Weight[i];
+    }
+    outColor *= samples.FinalMultiplier;
+
+    return outColor;
 }
 
 inline void HitDataFromGBuffer(float2 texCoord, inout half3 albedo, inout half3 specular, inout half occlusion, inout half3 normal, inout half smoothness)

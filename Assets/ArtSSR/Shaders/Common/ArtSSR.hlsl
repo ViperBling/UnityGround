@@ -416,15 +416,20 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     float3 normalVS = normalize(mul(UNITY_MATRIX_V, float4(normalWS, 0.0))).xyz;
 
     UNITY_BRANCH
-    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
+    if (smoothness < _MinSmoothness || isBackground) return 0.0;
 
     float4 positionNDC, positionVS;
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
 
-    float2 blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, (screenUV) * _ScreenResolution.xy / 1024) * 2 - 1;
-    float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.x, -blueNoise.y);
+    // float2 noiseUV = screenUV * _ScreenResolution.xy % 1024 / 1024;
+    // noiseUV.y = frac(noiseUV.y + _Frame * 0.61803398875);
+    // float2 blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV) * 2 - 1;
+    // float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.x, -blueNoise.y);
+
+    float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
+    float2x2 offsetRotationMatrix = float2x2(cos(random.y), sin(random.y), -sin(random.y), cos(random.y));
 
     float numWeight = 0;
     float weight = 0;
@@ -435,31 +440,126 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
 
     for (int i = 0; i < 9; i++)
     {
-        offsetUV = mul(offsetRotationMatrix, sampleOffsets[i] * _ScreenResolution.zw);
+        offsetUV = mul(offsetRotationMatrix, sampleOffsets2[i] * _ScreenResolution.zw);
         neighborUV = screenUV + offsetUV;
 
         float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, neighborUV);
 
         float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, hitUV.xy).r;
-        float4 positionNDC = float4(hitUV.xy * 2 - 1, sampledDepth, 1.0);
-        positionNDC.y *= _ProjectionParams.x;
-        float4 hitPosVS = mul(UNITY_MATRIX_V, positionNDC);
-        hitPosVS *= rcp(hitPosVS.w);
+        float4 hitPosNDC, hitPosVS;
+        float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
 
         weight = SSRBRDF(normalize(-hitPosVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
         sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
-        sampleColor.rgb /= 1 + RGB2Lum(sampleColor.rgb);
-        sampleColor.a = hitUV.z;
+        sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
+        sampleColor.a += hitUV.z;
 
         reflectionColor += sampleColor * weight;
         numWeight += weight;
     }
 
     reflectionColor /= numWeight;
-    reflectionColor.rgb /= 1 - RGB2Lum(reflectionColor.rgb);
+    reflectionColor.rgb /= 1 - Luminance(reflectionColor.rgb);
+    reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
 
-    float3 result = weight;
-    // return float4(result, 1);
+    // float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    // float sampledDepth = SampleDepth(hitUV.xy);
+    // float4 hitPosNDC, hitPosVS;
+    // float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
+    // weight = SSRBRDF(normalize(-hitPosVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
+    // reflectionColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+
+    return reflectionColor;
+}
+
+float4 TemporalFilterPass(Varyings fsIn) : SV_Target
+{
+    UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
+    float2 screenUV = fsIn.texcoord;
+
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
+
+    float2 depthVelocity = SAMPLE_TEXTURE2D(_MotionVectorTexture, sampler_point_clamp, screenUV + _MotionVectorTexture_TexelSize.xy * 1.0).xy;;
+
+    float4 reflectUV = SAMPLE_TEXTURE2D(_SSRReflectionColorTexture, sampler_point_clamp, screenUV);
+    float hitDepth = SampleDepth(reflectUV.xy);
+    float2 motionVector = GetMotionVector(reflectUV.xy, hitDepth);
+
+    float velocityWeight = saturate(dot(normalWS, float3(0, 1, 0)));
+    float2 velocity = lerp(-depthVelocity, motionVector, velocityWeight);
+
+    float ssrVariance = 0;
+    float4 ssrCurColor = 0;
+    float4 colorMin = 0;
+    float4 colorMax = 0;
+
+    float4 sampledColors[9];
+
+    for (uint i = 0; i < 9; i++)
+    {
+        // sampledColors[i] = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV + sampleOffsets1[i] * _ScreenResolution.zw);
+        float4 bicubicSize = _ScreenResolution;
+        sampledColors[i] = Texture2DSampleBicubic(_BlitTexture, sampler_BlitTexture, screenUV + (sampleOffsets1[i] / _ScreenResolution), _ScreenResolution.xy, _ScreenResolution.zw);
+    }
+    
+    // float sampleWeights[9];
+    // for (uint j = 0; j < 9; j++)
+    // {
+    //     sampleWeights[j] = HDRWeight4(sampledColors[j].rgb, 0);
+    // }
+    // float totalWeight = 0;
+    // for (uint k = 0; k < 9; k++)
+    // {
+    //     totalWeight += sampleWeights[k];
+    // }
+    // sampledColors[4] = sampledColors[0] * sampledColors[0] + 
+    //                    sampledColors[1] * sampledColors[1] + 
+    //                    sampledColors[2] * sampledColors[2] + 
+    //                    sampledColors[3] * sampledColors[3] + 
+    //                    sampledColors[4] * sampledColors[4] + 
+    //                    sampledColors[5] * sampledColors[5] + 
+    //                    sampledColors[6] * sampledColors[6] + 
+    //                    sampledColors[7] * sampledColors[7] + 
+    //                    sampledColors[8] * sampledColors[8];
+    // sampledColors[4] /= totalWeight;
+
+    float4 m1 = 0.0;
+    float4 m2 = 0.0;
+    for (uint x = 0; x < 9; x++)
+    {
+        m1 += sampledColors[x];
+        m2 += sampledColors[x] * sampledColors[x];
+    }
+
+    float4 mean = m1 / 9.0;
+    float4 stdDev = sqrt(m2 / 9.0 - pow(mean, 2));
+
+    colorMin = mean - 1.25 * stdDev;
+    colorMax = mean + 1.25 * stdDev;
+
+    ssrCurColor = sampledColors[4];
+    colorMin = min(colorMin, ssrCurColor);
+    colorMax = max(colorMax, ssrCurColor);
+
+    float4 totalVariance = 0.0;
+    for (uint i = 0; i < 9; i++)
+    {
+        totalVariance += pow(Luminance(sampledColors[i]) - Luminance(mean), 2);
+    }
+    ssrVariance = saturate((totalVariance/ 9) * 256);
+    ssrVariance *= ssrCurColor.a;
+    
+    float4 prevColor = SAMPLE_TEXTURE2D(_SSRTemporalHistoryTexture, sampler_point_clamp, screenUV);
+    prevColor = clamp(prevColor, colorMin, colorMax);
+
+    float temporalBlendWeight = saturate(1 - length(velocity) * 8 * 0.9);
+    float4 reflectionColor = lerp(ssrCurColor, prevColor, temporalBlendWeight);
+
+    // float4 curColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    // float3 result = curColor.xyz;
+    // return float4(result, 1.0);
+
     return reflectionColor;
 }
 
@@ -483,14 +583,13 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     
     float4 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
 
-    half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
-
-    half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
-    reflectedColor = reflectedUV;
+    // half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
+    half3 reflectedColor = reflectedUV;
 
     reflectedColor *= occlusion;
     half reflectivity = ReflectivitySpecular(specular);
 
+    half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);

@@ -19,7 +19,9 @@ namespace ArtSSR
             private readonly Material m_Material;
             private RTHandle m_SceneColorHandle;
             private RTHandle m_ReflectColorHandle;
-            private RTHandle m_SpatioFilterHandle;
+            private RTHandle m_TemporalCurrentHandle;
+            private RTHandle m_TemporalHistoryHandle;
+            private RTHandle m_TempHandle;
 
             private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
             private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
@@ -33,16 +35,20 @@ namespace ArtSSR
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
             private static readonly int m_BlueNoiseTextureID = Shader.PropertyToID("_BlueNoiseTexture");
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
+            private static readonly int m_PrevViewProjMatrixID = Shader.PropertyToID("_PrevViewProjMatrix");
 
             private const int m_LinearVSTracingPass = 0;
             private const int m_LinearSSTracingPass = 1;
             private const int m_HiZTracingPass = 2;
             private const int m_SpatioFilterPass = 3;
-            private const int m_CompositePass = 4;
+            private const int m_TemporalFilterPass = 4;
+            private const int m_CompositePass = 5;
 
             private bool m_IsPadded = false;
             private float m_Scale;
             private Vector2 m_ScreenResolution;
+            private Matrix4x4 m_PrevViewProjMatrix = Matrix4x4.identity;
+            // private bool m_FirstFrame = true;
 
             public ArtSSRRenderPass(Material material)
             {
@@ -53,11 +59,14 @@ namespace ArtSSR
             {
                 m_SceneColorHandle?.Release();
                 m_ReflectColorHandle?.Release();
+                m_TemporalCurrentHandle?.Release();
+                m_TemporalHistoryHandle?.Release();
+                m_TempHandle?.Release();
             }
 
             public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraRTDesc)
             {
-                if (m_Material == null) return;
+                // if (m_Material == null) return;
                 base.Configure(cmd, cameraRTDesc);
 
                 m_Material.SetInt(m_FrameID, m_Frame);
@@ -87,9 +96,11 @@ namespace ArtSSR
                 filterMode = FilterMode.Point;
 
                 RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
-                RenderingUtils.ReAllocateIfNeeded(ref m_SpatioFilterHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSpatioFilterTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalCurrentHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalCurrentTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalHistoryHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalHistoryTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TempHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTempTexture");
                 
-                ConfigureInput(ScriptableRenderPassInput.Depth);
+                ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Motion);
                 ConfigureTarget(m_SceneColorHandle, m_SceneColorHandle);
             }
 
@@ -108,14 +119,21 @@ namespace ArtSSR
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
+                // if (m_Material == null) return;
+
                 CommandBuffer cmd = CommandBufferPool.Get();
-                if (m_Material == null) return;
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
                     SetMaterialProperties(ref renderingData);
 
+                    var renderCameraData = renderingData.cameraData;
+                    Matrix4x4 currVPMat = renderCameraData.GetGPUProjectionMatrix() * renderCameraData.GetViewMatrix();
+                    cmd.SetGlobalMatrix(m_PrevViewProjMatrixID, m_PrevViewProjMatrix);
+
+                    // 1. 获取SceneColor
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
+                    // 2. 利用SceneColor进行反射计算，得到HitUV、Mask
                     if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearViewSpaceTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearVSTracingPass);
@@ -129,10 +147,21 @@ namespace ArtSSR
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_HiZTracingPass);
                     }
 
+                    // 3. 利用Hit数据进行空间滤波
                     cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
-                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_SpatioFilterHandle, m_Material, pass: m_SpatioFilterPass);
+                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_TemporalCurrentHandle, m_Material, pass: m_SpatioFilterPass);
+
+                    // 4. Temporal Filter
+                    cmd.SetGlobalTexture(m_ReflectColorHandle.name, m_ReflectColorHandle);
+                    cmd.SetGlobalTexture(m_TemporalHistoryHandle.name, m_TemporalHistoryHandle);
+                    Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, m_TempHandle, m_Material, pass: m_TemporalFilterPass);
+                    cmd.CopyTexture(m_TempHandle, m_TemporalHistoryHandle);
                     
-                    Blitter.BlitCameraTexture(cmd, m_SpatioFilterHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    // 5. 合成
+                    Blitter.BlitCameraTexture(cmd, m_TempHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+
+                    m_PrevViewProjMatrix = currVPMat;
+                    // m_FirstFrame = false;
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();

@@ -9,6 +9,7 @@ namespace ArtSSR
     public partial class ArtSSRRenderFeature : ScriptableRendererFeature
     {
         private Shader m_SSRShader;
+        [SerializeField]
         private Material m_SSRMaterial;
         
         private ArtDepthPyramid m_DepthPyramidPass;
@@ -44,7 +45,7 @@ namespace ArtSSR
         {
             if (m_DepthPyramidPass != null) m_DepthPyramidPass.Dispose();
             if (m_SSRRenderPass != null) m_SSRRenderPass.Dispose();
-            CoreUtils.Destroy(m_SSRMaterial);
+            // CoreUtils.Destroy(m_SSRMaterial);
         }
 
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
