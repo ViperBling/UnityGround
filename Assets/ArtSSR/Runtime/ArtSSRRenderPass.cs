@@ -89,13 +89,14 @@ namespace ArtSSR
                 desc.depthBufferBits = 0;
                 desc.msaaSamples = 1;
                 desc.useMipMap = true;
+                desc.colorFormat = RenderTextureFormat.ARGBFloat;
 
                 FilterMode filterMode = FilterMode.Bilinear;
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
                 desc.useMipMap = false;
-                filterMode = FilterMode.Point;
-
                 RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
+                filterMode = FilterMode.Point;
+                
                 RenderingUtils.ReAllocateIfNeeded(ref m_TemporalCurrentHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalCurrentTexture");
                 RenderingUtils.ReAllocateIfNeeded(ref m_TemporalHistoryHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalHistoryTexture");
                 RenderingUtils.ReAllocateIfNeeded(ref m_TempHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTempTexture");
@@ -151,14 +152,21 @@ namespace ArtSSR
                     cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
                     Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_TemporalCurrentHandle, m_Material, pass: m_SpatioFilterPass);
 
+                    bool useTemporalFiltering = m_SSRVolume.m_UseTemporalFilter.value;
                     // 4. Temporal Filter
-                    cmd.SetGlobalTexture(m_ReflectColorHandle.name, m_ReflectColorHandle);
-                    cmd.SetGlobalTexture(m_TemporalHistoryHandle.name, m_TemporalHistoryHandle);
-                    Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, m_TempHandle, m_Material, pass: m_TemporalFilterPass);
-                    cmd.CopyTexture(m_TempHandle, m_TemporalHistoryHandle);
-                    
-                    // 5. 合成
-                    Blitter.BlitCameraTexture(cmd, m_TempHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    if (useTemporalFiltering)
+                    {
+                        cmd.SetGlobalTexture(m_ReflectColorHandle.name, m_ReflectColorHandle);
+                        cmd.SetGlobalTexture(m_TemporalHistoryHandle.name, m_TemporalHistoryHandle);
+                        Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, m_TempHandle, m_Material, pass: m_TemporalFilterPass);
+                        cmd.CopyTexture(m_TempHandle, m_TemporalHistoryHandle);
+
+                        Blitter.BlitCameraTexture(cmd, m_TempHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    }
+                    else
+                    {
+                        Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    }
 
                     m_PrevViewProjMatrix = currVPMat;
                     // m_FirstFrame = false;

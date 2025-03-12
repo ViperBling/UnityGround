@@ -19,7 +19,7 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
-    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
+    if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 1);
 
     float4 positionNDC, positionVS;
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
@@ -172,7 +172,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
-    if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
+    if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 1);
 
     float4 positionNDC, positionVS;
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
@@ -303,15 +303,29 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
         Q.z += dQ.z;
         K += dK;
     }
-    // P -= dP;
-    // Q.z -= dQ.z;
-    // K -= dK;
+    P -= dP;
+    Q.z -= dQ.z;
+    K -= dK;
 
-    // Q.xy += dQ.xy * stepTaked;
+    Q.xy += dQ.xy * stepTaked;
+    float3 hitPoint = Q * (1 / K);
+
     hitUV /= _ScreenResolution.xy;
 
-    half maskOut = ScreenEdgeMask(hitUV);
-    maskOut *= hit;
+    half maskOut = 0;
+
+    UNITY_BRANCH
+    if (hit)
+    {
+        maskOut = pow(1 - max(2 * stepTaked / fixNumStep - 1, 0), 2);
+        maskOut *= saturate(512 - dot(hitPoint - positionVS.xyz, reflectDirVS));
+
+        float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, hitUV).xyz);
+        float backFaceDot = dot(tNormal, reflectDirWS);
+        maskOut = backFaceDot > 0 ? 0 : maskOut;
+    }
+
+    maskOut *= ScreenEdgeMask(hitUV);
 
     float3 finalResult = float3(hitUV, maskOut);
     return float4(finalResult, PDF);
@@ -421,7 +435,7 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     float4 positionNDC, positionVS;
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
-    float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+    // float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
 
     // float2 noiseUV = screenUV * _ScreenResolution.xy % 1024 / 1024;
     // noiseUV.y = frac(noiseUV.y + _Frame * 0.61803398875);
@@ -445,14 +459,15 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
 
         float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, neighborUV);
 
-        float sampledDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, hitUV.xy).r;
+        float sampledDepth = SampleDepth(hitUV.xy);
         float4 hitPosNDC, hitPosVS;
         float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
 
-        weight = SSRBRDF(normalize(-hitPosVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
+        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
+        // weight = 50;
         sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
         sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
-        sampleColor.a += hitUV.z;
+        sampleColor.a = hitUV.z;
 
         reflectionColor += sampleColor * weight;
         numWeight += weight;
@@ -461,14 +476,14 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     reflectionColor /= numWeight;
     reflectionColor.rgb /= 1 - Luminance(reflectionColor.rgb);
     reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
+    reflectionColor.a = sampleColor.a;
 
     // float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
     // float sampledDepth = SampleDepth(hitUV.xy);
     // float4 hitPosNDC, hitPosVS;
     // float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
-    // weight = SSRBRDF(normalize(-hitPosVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
+    // weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.w);
     // reflectionColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
-
     return reflectionColor;
 }
 
@@ -542,24 +557,23 @@ float4 TemporalFilterPass(Varyings fsIn) : SV_Target
     colorMin = min(colorMin, ssrCurColor);
     colorMax = max(colorMax, ssrCurColor);
 
-    float4 totalVariance = 0.0;
-    for (uint i = 0; i < 9; i++)
-    {
-        totalVariance += pow(Luminance(sampledColors[i]) - Luminance(mean), 2);
-    }
-    ssrVariance = saturate((totalVariance/ 9) * 256);
-    ssrVariance *= ssrCurColor.a;
+    // float4 totalVariance = 0.0;
+    // for (uint i = 0; i < 9; i++)
+    // {
+    //     totalVariance += pow(Luminance(sampledColors[i]) - Luminance(mean), 2);
+    // }
+    // ssrVariance = saturate((totalVariance/ 9) * 256);
+    // ssrVariance *= ssrCurColor.a;
     
-    float4 prevColor = SAMPLE_TEXTURE2D(_SSRTemporalHistoryTexture, sampler_point_clamp, screenUV);
+    float4 prevColor = SAMPLE_TEXTURE2D(_SSRTemporalHistoryTexture, sampler_point_clamp, screenUV - velocity);
     prevColor = clamp(prevColor, colorMin, colorMax);
 
     float temporalBlendWeight = saturate(1 - length(velocity) * 8 * 0.9);
     float4 reflectionColor = lerp(ssrCurColor, prevColor, temporalBlendWeight);
 
-    // float4 curColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
-    // float3 result = curColor.xyz;
+    float4 curColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    float3 result = curColor.xyz;
     // return float4(result, 1.0);
-
     return reflectionColor;
 }
 
@@ -584,7 +598,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float4 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
 
     // half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
-    half3 reflectedColor = reflectedUV;
+    half3 reflectedColor = reflectedUV.xyz;
 
     reflectedColor *= occlusion;
     half reflectivity = ReflectivitySpecular(specular);
@@ -593,7 +607,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

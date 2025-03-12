@@ -118,17 +118,19 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
 
 inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout bool valid)
 {
-    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
-    // PDF = 1.0;
-
     float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    // float2 hash = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, screenUV + random).rg;
-    float4 H = ImportanceSampleGGX_SSR(random, smoothness);
-    float3x3 localToWorld = GetLocalFrame(normalWS);
-    H.xyz = mul(H, localToWorld);
-    float3 reflectDirWS = reflect(viewDirWS, H.xyz);
-    PDF = H.w;
+    float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
+    PDF = 1.0;
+
+    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
+    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // float3x3 localToWorld = GetLocalFrame(normalWS);
+    // H.xyz = mul(H, localToWorld);
+    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
+    // PDF = H.w;
+
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    // PDF = 1.0;
 
     return reflectDirWS;
 }
@@ -267,14 +269,14 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
-float SSRBRDF(float3 positionVS, float3 viewDirWS, float3 normalVS, float smoothness)
+float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness)
 {
-    float roughness = clamp(1.0 - smoothness, 0.01, 1);
-    float3 H = normalize(positionVS + viewDirWS);
+    float roughness = clamp(1.0 - smoothness, 0.02, 1);
+    float3 H = normalize(viewDirVS + reflectDirVS);
 
     float NoH = max(dot(normalVS, H), 0.0);
-    float NoL = max(dot(normalVS, viewDirWS), 0.0);
-    float NoV = max(dot(normalVS, positionVS), 0.0);
+    float NoL = max(dot(normalVS, reflectDirVS), 0.0);
+    float NoV = max(dot(normalVS, viewDirVS), 0.0);
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
