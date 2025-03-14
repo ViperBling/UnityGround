@@ -48,7 +48,8 @@ CBUFFER_START(UnityPerMaterial)
     float4      _ScreenResolution;
     int         _ReflectSky;
     int         _RandomSeed;
-    // float4x4    _PrevViewProjMatrix;
+    float4      _SSRJitter;
+    float       _BRDFBias;
 CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
@@ -59,18 +60,11 @@ CBUFFER_END
     #define kDielectricSpec half4(0.04, 0.04, 0.04, 1.0 - 0.04) // standard dielectric reflectivity coef at incident angle (= 4%)
 #endif
 
-static const int2 sampleOffsets1[9] = 
+static const int2 sampleOffsets[9] = 
 {
     int2(-1.0, -1.0), int2(0.0, -1.0), int2(1.0, -1.0),
     int2(-1.0,  0.0), int2(0.0,  0.0), int2(1.0,  0.0),
     int2(-1.0,  1.0), int2(0.0,  1.0), int2(1.0,  1.0)
-};
-
-static const int2 sampleOffsets2[9] = 
-{ 
-    int2(-2.0, -2.0), int2(0.0, -2.0), int2(2.0, -2.0), 
-    int2(-2.0,  0.0), int2(0.0,  0.0), int2(2.0,  0.0), 
-    int2(-2.0,  2.0), int2(0.0,  2.0), int2(2.0,  2.0)
 };
 
 uint UnpackMaterialFlags(float packedMaterialFlags)
@@ -116,21 +110,31 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
     return float4(T2W, vec.w);
 }
 
-inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout bool valid)
+inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout float jitter, inout bool valid)
 {
-    float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
-    PDF = 1.0;
-
     // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
+    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    // random = random * 2.0 - 1.0;
+    // random.y = lerp(random.y, 0.0, _BRDFBias);
+    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
+    // PDF = 1.0;
+
+    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    random.y = lerp(random.y, 0.0, _BRDFBias);
     // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // // float3x3 tangentToWorld = GetTangentBias(normalWS);
+    // // H.xyz = TransformTangentToWorldDir(H.xyz, tangentToWorld);
     // float3x3 localToWorld = GetLocalFrame(normalWS);
     // H.xyz = mul(H, localToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
     // PDF = H.w;
 
-    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    // PDF = 1.0;
+    jitter = random.x + random.y;
+
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    PDF = 1.0;
 
     return reflectDirWS;
 }
@@ -269,7 +273,7 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
-float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness)
+float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness, inout float PDF)
 {
     float roughness = clamp(1.0 - smoothness, 0.02, 1);
     float3 H = normalize(viewDirVS + reflectDirVS);
@@ -280,6 +284,7 @@ float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoo
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
+    PDF = D * NoH / (4 * NoV);
     return max(0, D * G);
 }
 

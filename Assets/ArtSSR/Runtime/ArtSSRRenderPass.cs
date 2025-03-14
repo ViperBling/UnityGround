@@ -31,11 +31,12 @@ namespace ArtSSR
             private static readonly int m_StepStrideID = Shader.PropertyToID("_StepStride");
             private static readonly int m_MaxStepsID = Shader.PropertyToID("_MaxSteps");
             private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
-            private static readonly int m_DownSampleID = Shader.PropertyToID("_DownSample");
+            private static readonly int m_SSRJitterID = Shader.PropertyToID("_SSRJitter");
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
             private static readonly int m_BlueNoiseTextureID = Shader.PropertyToID("_BlueNoiseTexture");
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
             private static readonly int m_PrevViewProjMatrixID = Shader.PropertyToID("_PrevViewProjMatrix");
+            private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
 
             private const int m_LinearVSTracingPass = 0;
             private const int m_LinearSSTracingPass = 1;
@@ -48,7 +49,10 @@ namespace ArtSSR
             private float m_Scale;
             private Vector2 m_ScreenResolution;
             private Matrix4x4 m_PrevViewProjMatrix = Matrix4x4.identity;
-            // private bool m_FirstFrame = true;
+        
+            private int m_SampleIndex = 0;
+            private const int k_SampleCount = 64;
+            private Vector2 m_RandomSample;
 
             public ArtSSRRenderPass(Material material)
             {
@@ -74,6 +78,7 @@ namespace ArtSSR
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
                 m_Scale = m_IsPadded ? 1 : m_SSRVolume.m_DownSample.value + 1.0f;
+                m_RandomSample = GenerateRandomOffset();
 
                 float globalResolution = 1.0f / m_Scale;
 
@@ -81,6 +86,8 @@ namespace ArtSSR
                 m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
 
                 m_Material.SetVector(m_ScreenResolutionID, new Vector4(m_ScreenResolution.x, m_ScreenResolution.y, 1.0f / m_ScreenResolution.x, 1.0f / m_ScreenResolution.y));
+
+                SetMaterialProperties();
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -125,7 +132,7 @@ namespace ArtSSR
                 CommandBuffer cmd = CommandBufferPool.Get();
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
-                    SetMaterialProperties(ref renderingData);
+                    m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
 
                     var renderCameraData = renderingData.cameraData;
                     Matrix4x4 currVPMat = renderCameraData.GetGPUProjectionMatrix() * renderCameraData.GetViewMatrix();
@@ -167,17 +174,16 @@ namespace ArtSSR
                     {
                         Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
                     }
-
-                    m_PrevViewProjMatrix = currVPMat;
                     // m_FirstFrame = false;
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
                     CommandBufferPool.Release(cmd);
+                    m_PrevViewProjMatrix = currVPMat;
                 }
             }
 
-            private void SetMaterialProperties(ref RenderingData renderingData)
+            private void SetMaterialProperties()
             {
                 if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Disabled)
                 {
@@ -199,8 +205,33 @@ namespace ArtSSR
                 m_Material.SetFloat(m_ThicknessScaleID, m_SSRVolume.m_ThicknessScale.value);
                 m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
                 m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
-                m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
+                m_Material.SetFloat(m_BRDFBiasID, m_SSRVolume.m_BRDFBias.value);
                 m_Material.SetInt(m_ReflectSkyID, m_SSRVolume.m_ReflectSky.value ? 1 : 0);
+                m_Material.SetVector(m_SSRJitterID, new Vector4(m_ScreenResolution.x / 1024.0f, m_ScreenResolution.y / 1024.0f, m_RandomSample.x, m_RandomSample.y));
+            }
+
+            private float GetHaltonValue(int index, int radix)
+            {
+                float result = 0.0f;
+                float fraction = 1.0f / radix;
+                while (index > 0)
+                {
+                    result += (index % radix) * fraction;
+                    index /= radix;
+                    fraction /= radix;
+                }
+                return result;
+            }
+
+            private Vector2 GenerateRandomOffset()
+            {
+                float u = GetHaltonValue(m_SampleIndex % 1023, 2);
+                float v = GetHaltonValue(m_SampleIndex % 1023, 3);
+                if (m_SampleIndex++ >= k_SampleCount)
+                {
+                    m_SampleIndex = 0;
+                }
+                return new Vector2(u, v);
             }
         }
 
