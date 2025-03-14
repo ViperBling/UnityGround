@@ -96,7 +96,7 @@ inline float SampleDepth(float2 uv)
     return SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, uv).r;
 }
 
-float3x3 GetTangentBias(float3 tangentZ)
+float3x3 GetTangentBasis(float3 tangentZ)
 {
     float3 upVector = abs(tangentZ.z) < 0.999 ? float3(0, 0, 1) : float3(1, 0, 0);
     float3 tangentX = normalize(cross(upVector, tangentZ));
@@ -106,7 +106,7 @@ float3x3 GetTangentBias(float3 tangentZ)
 
 inline float4 TangentToWorld(float4 vec, float4 tangentZ)
 {
-    float3 T2W = mul(vec.xyz, GetTangentBias(tangentZ.xyz));
+    float3 T2W = mul(vec.xyz, GetTangentBasis(tangentZ.xyz));
     return float4(T2W, vec.w);
 }
 
@@ -120,21 +120,19 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
     // PDF = 1.0;
 
-    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    float2 noiseUV = (screenUV + 0) * _ScreenResolution.xy / 1024;
+    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_point_clamp, noiseUV).xy;
     random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
-    // // float3x3 tangentToWorld = GetTangentBias(normalWS);
-    // // H.xyz = TransformTangentToWorldDir(H.xyz, tangentToWorld);
-    // float3x3 localToWorld = GetLocalFrame(normalWS);
-    // H.xyz = mul(H, localToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
-    // PDF = H.w;
+    float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    float3x3 tangentToWorld = GetTangentBasis(normalWS);
+    H.xyz = mul(H.xyz, tangentToWorld);
+    PDF = H.w;
+    float3 reflectDirWS = reflect(viewDirWS, H.xyz);
 
     jitter = random.x + random.y;
 
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    PDF = 1.0;
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    // PDF = 1.0;
 
     return reflectDirWS;
 }

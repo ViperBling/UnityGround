@@ -13,13 +13,13 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     bool isBackground = rawDepth == 0.0;
     
     UNITY_BRANCH
-    if (isBackground) return half4(screenUV.xy, 0, 1);
+    if (isBackground) return half4(0, 0, 0, 1);
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
 
     UNITY_BRANCH
-    if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 1);
+    if (smoothness < _MinSmoothness) return half4(0, 0, 0, 1);
 
     float4 positionNDC, positionVS;
     float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
@@ -28,7 +28,20 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     bool valid = false;
     float PDF, jitter;
     float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
-    float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
+    float3 reflectDirVS = mul(UNITY_MATRIX_V, float4(reflectDirWS, 0)).xyz;
+
+    // float2 noiseUV = (screenUV + 0) * _ScreenResolution.xy / 1024;
+    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_point_clamp, noiseUV).xy;
+    // // random.y = lerp(random.y, 0.0, _BRDFBias);
+    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // float3x3 tangentToWorld = GetTangentBasis(normalWS);
+    // H.xyz = mul(H.xyz, tangentToWorld);
+    // // float3x3 localToWorld = GetLocalFrame(normalWS);
+    // // H.xyz = mul(H, localToWorld);
+    // // reflectDirWS = reflect(viewDirWS, H.xyz);
+    // // reflectDirVS = mul(UNITY_MATRIX_V, float4(reflectDirWS, 0)).xyz;
+
+    // return half4(reflectDirVS.xyz, 1);
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
@@ -487,8 +500,8 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     // return reflectionColor;
 
     float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
-    half4 reflectionColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
-    return reflectionColor;
+    // float4 reflectionColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+    return hitUV;
 
     // float3 finalResult = normalVS;
     // return float4(finalResult, 1.0);
@@ -614,7 +627,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    // finalColor = reflectedUV.xyz;
+    finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

@@ -39,7 +39,7 @@ namespace ArtSSR
         public BoolParameter m_UseTemporalFilter = new(value: false, overrideState: true);
         public ClampedFloatParameter m_BRDFBias = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: true);
         [InspectorName("Blue Noise Texture")]
-        public TextureParameter m_BlueNoiseTexture = new TextureParameter(null, true);
+        public Texture2DParameter m_BlueNoiseTexture = new Texture2DParameter(null, true);
 
         public BoolParameter m_ReflectSky = new(value: false, overrideState: true);
         

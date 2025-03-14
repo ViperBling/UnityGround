@@ -9,7 +9,7 @@
     {
         Cull Off
         ZWrite Off
-        ZTest Never
+        ZTest Always
         
         HLSLINCLUDE
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"

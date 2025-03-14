@@ -100,10 +100,9 @@ namespace ArtSSR
 
                 FilterMode filterMode = FilterMode.Bilinear;
                 RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
+                filterMode = FilterMode.Point;
                 desc.useMipMap = false;
                 RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
-                filterMode = FilterMode.Point;
-                
                 RenderingUtils.ReAllocateIfNeeded(ref m_TemporalCurrentHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalCurrentTexture");
                 RenderingUtils.ReAllocateIfNeeded(ref m_TemporalHistoryHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalHistoryTexture");
                 RenderingUtils.ReAllocateIfNeeded(ref m_TempHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTempTexture");
