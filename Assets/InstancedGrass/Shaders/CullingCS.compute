@@ -1,0 +1,19 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+float4x4 _VPMatrix;
+float _MaxDrawDistance;
+uint _StartOffset;
+StructuredBuffer<float3> _InstancePositionBuffer;
+AppendStructuredBuffer<uint> _VisibleInstanceIndexBuffer;
+
+[numthreads(64, 1, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    float4 absPosCS = abs(mul(_VPMatrix, float4(_InstancePositionBuffer[id.x + _StartOffset], 1.0)));
+
+    if (absPosCS.z <= absPosCS.w && absPosCS.y <= absPosCS.w * 1.5 && absPosCS.x <= absPosCS.w * 1.1 && absPosCS.w <= _MaxDrawDistance)
+    {
+        _VisibleInstanceIndexBuffer.Append(id.x + _StartOffset);
+    }
+}

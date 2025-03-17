@@ -120,19 +120,20 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
     // PDF = 1.0;
 
-    float2 noiseUV = (screenUV + 0) * _ScreenResolution.xy / 1024;
-    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_point_clamp, noiseUV).xy;
+    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
     random.y = lerp(random.y, 0.0, _BRDFBias);
     float4 H = ImportanceSampleGGX_SSR(random, smoothness);
     float3x3 tangentToWorld = GetTangentBasis(normalWS);
     H.xyz = mul(H.xyz, tangentToWorld);
-    PDF = H.w;
     float3 reflectDirWS = reflect(viewDirWS, H.xyz);
 
+    PDF = H.w;
     jitter = random.x + random.y;
 
     // float3 reflectDirWS = reflect(viewDirWS, normalWS);
     // PDF = 1.0;
+    // jitter = 0;
 
     return reflectDirWS;
 }
@@ -271,7 +272,7 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
-float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness, inout float PDF)
+float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness)
 {
     float roughness = clamp(1.0 - smoothness, 0.02, 1);
     float3 H = normalize(viewDirVS + reflectDirVS);
@@ -282,7 +283,6 @@ float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoo
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
-    PDF = D * NoH / (4 * NoV);
     return max(0, D * G);
 }
 

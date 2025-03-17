@@ -30,19 +30,6 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
     float3 reflectDirVS = mul(UNITY_MATRIX_V, float4(reflectDirWS, 0)).xyz;
 
-    // float2 noiseUV = (screenUV + 0) * _ScreenResolution.xy / 1024;
-    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_point_clamp, noiseUV).xy;
-    // // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
-    // float3x3 tangentToWorld = GetTangentBasis(normalWS);
-    // H.xyz = mul(H.xyz, tangentToWorld);
-    // // float3x3 localToWorld = GetLocalFrame(normalWS);
-    // // H.xyz = mul(H, localToWorld);
-    // // reflectDirWS = reflect(viewDirWS, H.xyz);
-    // // reflectDirVS = mul(UNITY_MATRIX_V, float4(reflectDirWS, 0)).xyz;
-
-    // return half4(reflectDirVS.xyz, 1);
-
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
     float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
 
@@ -162,9 +149,9 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
 
     maskOut *= hit * progress;
 
-    half3 finalResult = half3(curScreenTexCoord.xy, maskOut);
+    float3 finalResult = float3(curScreenTexCoord.xy, PDF);
     
-    return half4(finalResult, PDF);
+    return float4(finalResult, maskOut);
 }
 
 float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
@@ -345,8 +332,8 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 
     maskOut *= ScreenEdgeMask(hitUV);
 
-    float3 finalResult = float3(hitUV, maskOut);
-    return float4(finalResult, PDF);
+    float3 finalResult = float3(hitUV, PDF);
+    return float4(finalResult, maskOut);
 }
 
 float4 HiZTracingPass(Varyings fsIn) : SV_Target
@@ -406,10 +393,10 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
     float fixNumStep = max(maxDist / scaledStepStride, 0);
 
     float hit = 0;
-    float mask = smoothstep(0, 0.1f, camVoR);
+    float maskOut = smoothstep(0, 0.1f, camVoR);
 
     UNITY_BRANCH
-    if (mask == 0) return float4(screenUV, 0, 0);
+    if (maskOut == 0) return float4(screenUV, 0, 0);
 
     float iterations;
     bool isSky;
@@ -419,18 +406,18 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
 
     float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, intersectPoint.xy).xyz);
     float backFaceDot = dot(tNormal, reflectDirWS);
-    mask = backFaceDot > 0 && !isSky ? 0 : mask;
+    maskOut = backFaceDot > 0 && !isSky ? 0 : maskOut;
 
-    mask *= hit * edgeMask;
+    maskOut *= hit * edgeMask;
 
     // float smoothnessPow4 = Pow4(smoothness);
     // float stepS = smoothstep(_MinSmoothness, 1, smoothness);
     // float fresnel = lerp(smoothnessPow4, 1.0, pow(VoR, 1.0 / smoothnessPow4));
     // float alpha = stepS;
 
-    float3 finalResult = float3(intersectPoint.xy, mask);
+    float3 finalResult = float3(intersectPoint.xy, PDF);
 
-    return half4(finalResult, PDF);
+    return half4(finalResult, maskOut);
 }
 
 float4 SpatioFilterPass(Varyings fsIn) : SV_Target
@@ -438,73 +425,67 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
 
-    // float rawDepth = SampleDepth(screenUV);
+    float rawDepth = SampleDepth(screenUV);
 
-    // half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
-    // bool isBackground = rawDepth == 0.0;
+    half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
+    bool isBackground = rawDepth == 0.0;
 
-    // float smoothness;
-    // float3 normalWS = GetNormalWS(screenUV, smoothness);
-    // float3 normalVS = TransformWorldToViewNormal(normalWS);
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
+    float3 normalVS = TransformWorldToViewNormal(normalWS);
 
-    // UNITY_BRANCH
-    // if (smoothness < _MinSmoothness || isBackground) return 0.0;
+    UNITY_BRANCH
+    if (smoothness < _MinSmoothness || isBackground) return 0.0;
 
-    // float4 positionNDC, positionVS;
-    // float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
-    // // float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
-
-    // // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    // // float2 blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV) * 2.0 - 1.0;
-    // // float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, -blueNoise.x);
+    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    float2 blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV) * 2.0 - 1.0;
+    float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, -blueNoise.x);
 
     // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
     // float2x2 offsetRotationMatrix = float2x2(cos(random.x), sin(random.y), -sin(random.x), cos(random.y));
 
-    // float numWeight = 0;
-    // float weight = 0;
-    // float2 offsetUV = 0;
-    // float2 neighborUV = 0;
-    // float4 sampleColor = 0;
-    // float4 reflectionColor = 0;
+    float numWeight = 0;
+    float weight = 0;
+    float2 offsetUV = 0;
+    float2 neighborUV = 0;
+    float4 sampleColor = 0;
+    float4 reflectionColor = 0;
 
-    // for (int i = 0; i < 9; i++)
-    // {
-    //     offsetUV = mul(offsetRotationMatrix, 2 * sampleOffsets[i] * _ScreenResolution.zw);
-    //     neighborUV = screenUV + offsetUV;
+    for (int i = 0; i < 9; i++)
+    {
+        offsetUV = mul(offsetRotationMatrix, 2 * sampleOffsets[i] * _ScreenResolution.zw);
+        neighborUV = screenUV + offsetUV;
 
-    //     float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, neighborUV);
+        float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, neighborUV);
 
-    //     float sampledDepth = SampleDepth(hitUV.xy);
-    //     float4 hitPosNDC, hitPosVS;
-    //     float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
+        float sampledDepth = SampleDepth(hitUV.xy);
+        float4 hitPosNDC, hitPosVS;
+        float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
 
-    //     float PDF = 1.0;
-    //     weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness, PDF);
-    //     weight /= max(1e-5, PDF);
-    //     // weight = 50;
-    //     sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
-    //     sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
-    //     sampleColor.a = hitUV.z;
+        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.z);
+        // weight = 50;
+        sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+        sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
+        sampleColor.a = hitUV.w;
 
-    //     reflectionColor += sampleColor * weight;
-    //     numWeight += weight;
-    // }
+        reflectionColor += sampleColor * weight;
+        numWeight += weight;
+    }
 
-    // reflectionColor /= numWeight;
-    // reflectionColor.rgb /= 1 - Luminance(reflectionColor.rgb);
-    // reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
-    // reflectionColor.a = sampleColor.a;
+    reflectionColor /= numWeight;
+    reflectionColor.rgb /= 1 - Luminance(reflectionColor.rgb);
+    reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
+    reflectionColor.a = sampleColor.a;
 
-    // return reflectionColor;
+    return reflectionColor;
 
-    float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
-    // float4 reflectionColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
-    return hitUV;
-
-    // float3 finalResult = normalVS;
-    // return float4(finalResult, 1.0);
+    // float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    // float4 finalResult = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+    
+    // return float4(finalResult.rgb, hitUV.z);
 }
 
 float4 TemporalFilterPass(Varyings fsIn) : SV_Target
@@ -627,7 +608,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }
