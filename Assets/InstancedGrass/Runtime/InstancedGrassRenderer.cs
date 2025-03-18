@@ -27,6 +27,7 @@ namespace InstancedGrass
         public static InstancedIndirectGrassRenderer m_Instance;
 
         // public List<Mesh> m_GrassMeshList = new List<Mesh>();
+        public GameObject m_GrassMesh;
 
         private int m_CellCountX = -1;
         private int m_CellCountZ = -1;
@@ -77,12 +78,12 @@ namespace InstancedGrass
             m_Instance = null;
         }
 
-        private void LateUpdate() 
+        private void LateUpdate()
         {
             UpdateAllInstanceTransformBufferIfNeeded();
 
             m_VisibleCellIDList.Clear();
-            Camera camera = Camera.main;
+            Camera camera = GetSceneViewCamera();
 
             float cameraOriginalFarPlane = camera.farClipPlane;
             camera.farClipPlane = m_DrawDistance;
@@ -157,24 +158,74 @@ namespace InstancedGrass
             m_ShouldBatchDispatch = GUI.Toggle(new Rect(10, 300, 200, 100), m_ShouldBatchDispatch, "ShouldBatchDispatch");
         }
 
+        private Camera GetSceneViewCamera()
+        {
+            // 运行时优先使用主相机
+            if (Application.isPlaying && Camera.main != null)
+            {
+                return Camera.main;
+            }
+
+            // 编辑器模式下使用SceneView相机
+#if UNITY_EDITOR
+            if (UnityEditor.SceneView.lastActiveSceneView != null)
+            {
+                return UnityEditor.SceneView.lastActiveSceneView.camera;
+            }
+#endif
+
+            // 回退方案
+            return Camera.current != null ? Camera.current : Camera.main;
+        }
+
         Mesh GetGrassMeshCache()
         {
+            // if (!m_CachedMesh)
+            // {
+            //     //if not exist, create a 3 vertices hardcode triangle grass mesh
+            //     m_CachedMesh = new Mesh();
+
+            //     //single grass (vertices)
+            //     Vector3[] verts = new Vector3[3];
+            //     verts[0] = new Vector3(-0.1f, 0);
+            //     verts[1] = new Vector3(+0.1f, 0);
+            //     verts[2] = new Vector3(-0.0f, 1);
+            //     //single grass (Triangle index)
+            //     int[] trinagles = new int[3] { 2, 1, 0, }; //order to fit Cull Back in grass shader
+
+            //     m_CachedMesh.SetVertices(verts);
+            //     m_CachedMesh.SetTriangles(trinagles, 0);
+            // }
+            // return m_CachedMesh;
+
             if (!m_CachedMesh)
             {
-                //if not exist, create a 3 vertices hardcode triangle grass mesh
-                m_CachedMesh = new Mesh();
+                MeshFilter meshFilter = m_GrassMesh.GetComponent<MeshFilter>();
+                Mesh originMesh = meshFilter.sharedMesh;
 
-                //single grass (vertices)
-                Vector3[] verts = new Vector3[3];
-                verts[0] = new Vector3(-0.15f, 0);
-                verts[1] = new Vector3(+0.15f, 0);
-                verts[2] = new Vector3(-0.0f, 1);
-                //single grass (Triangle index)
-                int[] trinagles = new int[3] { 2, 1, 0, }; //order to fit Cull Back in grass shader
+                Mesh mesh = new Mesh();
+                Transform meshTransform = m_GrassMesh.transform;
+                Vector3[] vertices = originMesh.vertices;
+                Vector3[] transformedVertices = new Vector3[vertices.Length];
 
-                m_CachedMesh.SetVertices(verts);
-                m_CachedMesh.SetTriangles(trinagles, 0);
+                var scale = Vector3.one * 50.0f;
+
+                Matrix4x4 transformMatrix = Matrix4x4.TRS(Vector3.zero, meshTransform.localRotation, scale);
+                for (int i = 0; i < vertices.Length; i++)
+                {
+                    transformedVertices[i] = transformMatrix.MultiplyPoint3x4(vertices[i]);
+                }
+
+                mesh.SetVertices(transformedVertices);
+                mesh.SetTriangles(originMesh.triangles, 0);
+                mesh.normals = originMesh.normals;
+                mesh.uv = originMesh.uv;
+                mesh.RecalculateNormals();
+                mesh.RecalculateBounds();
+
+                m_CachedMesh = mesh;
             }
+
             return m_CachedMesh;
         }
 
@@ -195,7 +246,7 @@ namespace InstancedGrass
             m_InstancePositionBuffer = new ComputeBuffer(m_GrassPositions.Count, sizeof(float) * 3);
 
             if (m_VisibleInstanceIndexBuffer != null) m_VisibleInstanceIndexBuffer.Release();
-            m_VisibleInstanceIndexBuffer = new ComputeBuffer(m_GrassPositions.Count, sizeof(int), ComputeBufferType.Append);
+            m_VisibleInstanceIndexBuffer = new ComputeBuffer(m_GrassPositions.Count, sizeof(uint), ComputeBufferType.Append);
 
             m_MinX = float.MaxValue;
             m_MinZ = float.MaxValue;
