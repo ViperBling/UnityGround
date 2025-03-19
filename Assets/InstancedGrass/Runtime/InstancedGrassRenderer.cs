@@ -5,6 +5,7 @@ using Unity.Jobs;
 using UnityEditor.Graphs;
 using UnityEngine;
 using UnityEngine.Profiling;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace InstancedGrass
@@ -12,6 +13,9 @@ namespace InstancedGrass
     [ExecuteAlways]
     public class InstancedIndirectGrassRenderer : MonoBehaviour
     {
+        [Header("Rendering Settings")]
+        public ClampedFloatParameter m_RandomNormal = new ClampedFloatParameter(0.1f, -1.0f, 1.0f);
+
         [Header("Settings")]
         public float m_DrawDistance = 125.0f;
 
@@ -187,8 +191,8 @@ namespace InstancedGrass
 
             //     //single grass (vertices)
             //     Vector3[] verts = new Vector3[3];
-            //     verts[0] = new Vector3(-0.1f, 0);
-            //     verts[1] = new Vector3(+0.1f, 0);
+            //     verts[0] = new Vector3(-0.4f, 0);
+            //     verts[1] = new Vector3(+0.4f, 0);
             //     verts[2] = new Vector3(-0.0f, 1);
             //     //single grass (Triangle index)
             //     int[] trinagles = new int[3] { 2, 1, 0, }; //order to fit Cull Back in grass shader
@@ -196,9 +200,8 @@ namespace InstancedGrass
             //     m_CachedMesh.SetVertices(verts);
             //     m_CachedMesh.SetTriangles(trinagles, 0);
             // }
-            // return m_CachedMesh;
 
-            if (!m_CachedMesh)
+            if (!m_CachedMesh || m_CachedMesh != m_GrassMesh.GetComponent<MeshFilter>().sharedMesh)
             {
                 MeshFilter meshFilter = m_GrassMesh.GetComponent<MeshFilter>();
                 Mesh originMesh = meshFilter.sharedMesh;
@@ -233,6 +236,7 @@ namespace InstancedGrass
         {
             m_GrassMaterial.SetVector("_PivotPosWS", transform.position);
             m_GrassMaterial.SetVector("_BoundSize", new Vector2(transform.localScale.x, transform.localScale.z));
+            m_GrassMaterial.SetFloat("_RandomNormal", m_RandomNormal.value);
 
             if (m_InstanceCountCache == m_GrassPositions.Count
                 && m_ArgsBuffer != null

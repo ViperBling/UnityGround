@@ -2,9 +2,20 @@ Shader "InstancedGrass/MeshGrass"
 {
     Properties
     {
+        [Header(BaseSettings)]
         _MainTex ("Texture", 2D) = "white" { }
         _TopColor ("Top Color", Color) = (1, 1, 1, 1)
         _BottomColor ("Bottom Color", Color) = (1, 1, 1, 1)
+
+        [Header(LightingSettings)]
+        _RandomNormal ("Random Normal", Range(-1, 1)) = 0.1
+        _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
+        _SpecularShininess ("Specular Shininess", Range(0, 100)) = 50
+        _SpecularIntensity ("Specular Intensity", Range(0, 10)) = 1
+
+        [Header(WindSettings)]
+        _WindNoiseTexture ("Wind Noise Texture", 2D) = "white" { }
+        _WindNoiseParam ("Wind Noise Parameters", Vector) = (1, 1, 0, 0)
     }
     SubShader
     {
@@ -14,6 +25,7 @@ Shader "InstancedGrass/MeshGrass"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
+        #include "Assets/InstancedGrass/Shaders/InstancedGrassCommon.hlsl"
         ENDHLSL
 
         Pass
@@ -28,39 +40,12 @@ Shader "InstancedGrass/MeshGrass"
 
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
-            #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
-            #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
-            #pragma multi_compile _ _SHADOWS_SOFT
+            // #pragma multi_compile _ _ADDITIONAL_LIGHTS_VERTEX _ADDITIONAL_LIGHTS
+            // #pragma multi_compile _ _ADDITIONAL_LIGHT_SHADOWS
+            // #pragma multi_compile _ _SHADOWS_SOFT
             // -------------------------------------
             // Unity defined keywords
-            #pragma multi_compile_fog
-
-            TEXTURE2D(_MainTex);    SAMPLER(sampler_MainTex);
-
-            CBUFFER_START(UnityPerMaterial)
-                float4 _MainTex_ST;
-                half4 _TopColor;
-                half4 _BottomColor;
-                StructuredBuffer<float3> _InstancePositionBuffer;
-                StructuredBuffer<uint> _VisibleInstanceIndexBuffer;
-            CBUFFER_END
-
-            struct Attributes
-            {
-                float4 positionOS : POSITION;
-                float3 normalOS   : NORMAL;
-                float2 texCoord : TEXCOORD0;
-                UNITY_VERTEX_INPUT_INSTANCE_ID
-            };
-
-            struct Varyings
-            {
-                float4 positionCS : SV_POSITION;
-                float2 texCoord : TEXCOORD0;
-                float3 positionWS : TEXCOORD1;
-                float3 normalWS : NORMAL;
-                float3 color : COLOR;
-            };
+            #pragma multi_compile_fog 
 
             Varyings VertexPass(Attributes vsIn, uint instanceID : SV_InstanceID)
             {
@@ -83,7 +68,7 @@ Shader "InstancedGrass/MeshGrass"
                 float randomRotation = randomVal1 * TWO_PI;
                 
                 // 随机缩放 (0.8-1.2)
-                float randomScale = lerp(0.8, 1.2, randomVal2);
+                float randomScale = lerp(0.7, 1.4, randomVal2);
                 
                 // 随机倾斜量
                 float randomTilt = lerp(-0.2, 0.2, randomVal3);
@@ -111,30 +96,62 @@ Shader "InstancedGrass/MeshGrass"
 
                 float3 positionWS = transformedPos + perGrassPivotPosWS;
 
+                float2 windUV = positionWS.zx * _WindTilling + _Time.y * _WindIntensity;
+                // 顶点着色器内采样贴图，必须使用SAMPLE_TEXTURE_LOD函数，否则会报错
+                float wind = SAMPLE_TEXTURE2D_LOD(_WindNoiseTexture, sampler_WindNoiseTexture, windUV, 0).r;
+                wind *= vsIn.positionOS.y;
+
+                float3 windOffset = cameraTransformRightWS * wind; //swing using billboard left right direction
+                positionWS.xyz += windOffset;
+
+                half3 randomAddToN = (_RandomNormal * sin(perGrassPivotPosWS.x * 82.32523 + perGrassPivotPosWS.z) + wind * - 0.25) * cameraTransformRightWS;
+                half3 flattenNormal = normalize(half3(0, 1, 0) + randomAddToN - cameraTransformForwardWS * 0.5);
+                half3 normalWS = TransformObjectToWorldNormal(vsIn.normalOS);
+                normalWS = BlendNormalWorldspaceRNM(flattenNormal, normalWS, vsIn.normalOS.xyz);
+                // normalWS = flattenNormal;
+
                 vsOut.positionCS = TransformWorldToHClip(positionWS);
                 vsOut.texCoord = vsIn.texCoord;
-                vsOut.normalWS = TransformObjectToWorldNormal(vsIn.normalOS);
                 vsOut.positionWS = positionWS;
-                vsOut.color = positionWS.xyz;
+                vsOut.perGrassPivotPosWS = perGrassPivotPosWS;
+                vsOut.normalWS = normalWS;
+                vsOut.windFactor = wind;
+                vsOut.color = vsIn.positionOS.xyz;
                 return vsOut;
             }
 
             float4 FragmentPass(Varyings fsIn) : SV_Target
             {
                 half4 mainTexVal = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, fsIn.texCoord);
-                half grassRamp = mainTexVal.g;
-
                 clip(mainTexVal.r - 0.5);
 
+                half grassRamp = mainTexVal.g;
+                float3 perGrassPivotPosWS = fsIn.perGrassPivotPosWS;
+
+                float3 cameraTransformRightWS = UNITY_MATRIX_V[0].xyz;          //UNITY_MATRIX_V[0].xyz == world space camera Right unit vector
+                float3 cameraTransformUpWS = UNITY_MATRIX_V[1].xyz;             //UNITY_MATRIX_V[1].xyz == world space camera Up unit vector
+                float3 cameraTransformForwardWS = -UNITY_MATRIX_V[2].xyz;       //UNITY_MATRIX_V[2].xyz == -1 * world space camera Forward unit vector
+
+                half colorRamp = fsIn.texCoord.y;
+
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(fsIn.positionWS));
+                half3 lightDir = mainLight.direction;
+                half3 lightColor = mainLight.color.rgb;
+                half attenuation = mainLight.distanceAttenuation * mainLight.shadowAttenuation;
+                half3 lighting = lightColor * attenuation;
 
-                half NoL = max(0.0, dot(mainLight.direction, fsIn.normalWS));
-
-                half3 finalColor = lerp(_BottomColor.rgb, _TopColor.rgb, mainTexVal.g);
+                half3 albedo = lerp(_BottomColor.rgb, _TopColor.rgb, grassRamp);
                 
-                finalColor = NoL;
-                // float fogFactor = ComputeFogFactor(fsIn.positionCS.z);
-                // finalColor = MixFog(finalColor, fogFactor);
+                half3 normalWS = fsIn.normalWS;
+                half3 viewDirWS = normalize(_WorldSpaceCameraPos - fsIn.positionWS);
+
+                half3 color = SimpleLit(albedo, normalWS, viewDirWS, lightDir, lighting, colorRamp);
+                // half3 color = StylizedGrassLit(
+                //     albedo, normalWS, viewDirWS, lightDir, lighting, colorRamp,
+                //     0.05, colorRamp
+                // );
+
+                half3 finalColor = color;
 
                 return float4(finalColor.xyz, 1.0);
             }

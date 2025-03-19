@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7867635484814195969
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3766686023257022048}
+  - component: {fileID: 3077766144790020066}
+  - component: {fileID: 1916106855214474980}
+  m_Layer: 0
+  m_Name: InstancedGrass
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3766686023257022048
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7867635484814195969}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.34, z: 0}
+  m_LocalScale: {x: 564.7825, y: 1, z: 564.7825}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3077766144790020066
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7867635484814195969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bea50a699e3ecb84ab22f8eb30ce4f37, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_InstanceCount: 95695
+  m_DrawDistance: 125
+  m_BoxSize: {x: 10, y: 2, z: 10}
+  m_BoxCenter: {x: 0, y: 0, z: 0}
+  m_DensityFactor: 0.5
+--- !u!114 &1916106855214474980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7867635484814195969}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a182cc671f3ba4f4da634705fffb1d16, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_DrawDistance: 125
+  m_GrassMaterial: {fileID: 2100000, guid: 7e703fb719b8cda439d9bdfee35a3790, type: 2}
+  m_CullingComputeShader: {fileID: 7200000, guid: 759aee0df6c37e440b370e8cb2238cc7,
+    type: 3}
+  m_GrassMesh: {fileID: 0}

@@ -7,8 +7,8 @@ namespace InstancedGrass
     [ExecuteAlways]
     public class InstancedGrassGenerator : MonoBehaviour
     {
-        [Range(1, 50000000)]
-        public int m_InstanceCount = 10000;
+        [Range(1, 1000000)]
+        public int m_InstanceCount = 100000;
         public float m_DrawDistance = 125.0f;
 
         [Header("Distribution Box")]
@@ -16,7 +16,7 @@ namespace InstancedGrass
         public Vector3 m_BoxCenter = new Vector3(0, 0, 0);
 
         [Range(0.1f, 5.0f)]
-        public float m_DensityFactor = 1.0f;
+        public float m_DensityFactor = 0.5f;
 
         private Vector3 m_LastBoxSize;
         private Vector3 m_LastBoxCenter;
@@ -51,24 +51,24 @@ namespace InstancedGrass
 
         private void OnGUI()
         {
-            GUI.Label(new Rect(10, 50, 200, 30), "Instance Count: " + m_InstanceCount / 1000000 + "Million");
-            m_InstanceCount = Mathf.Max(1, (int)(GUI.HorizontalSlider(new Rect(10, 100, 200, 30), m_InstanceCount / 1000000f, 1, 10)) * 1000000);
+            // GUI.Label(new Rect(10, 50, 200, 30), "Instance Count: " + m_InstanceCount / 1000000 + "Million");
+            // m_InstanceCount = Mathf.Max(1, (int)(GUI.HorizontalSlider(new Rect(10, 100, 200, 30), m_InstanceCount / 10000f, 1, 10)) * 1000000);
 
-            GUI.Label(new Rect(10, 150, 200, 30), "Draw Distance: " + m_DrawDistance);
-            m_DrawDistance = Mathf.Max(1, (int)(GUI.HorizontalSlider(new Rect(10, 200, 200, 30), m_DrawDistance / 25f, 1, 8)) * 25);
+            // GUI.Label(new Rect(10, 150, 200, 30), "Draw Distance: " + m_DrawDistance);
+            // m_DrawDistance = Mathf.Max(1, (int)(GUI.HorizontalSlider(new Rect(10, 200, 200, 30), m_DrawDistance / 25f, 1, 8)) * 25);
             // 添加密度控制
-            GUI.Label(new Rect(10, 250, 200, 30), "Density: " + m_DensityFactor.ToString("F1"));
-            float newDensity = GUI.HorizontalSlider(new Rect(10, 300, 200, 30), m_DensityFactor, 0.1f, 5.0f);
-            if (newDensity != m_DensityFactor)
-            {
-                m_DensityFactor = newDensity;
-                m_CurrentCacheCount = -1; // 强制更新
-            }
+            // GUI.Label(new Rect(10, 250, 200, 30), "Density: " + m_DensityFactor.ToString("F1"));
+            // float newDensity = GUI.HorizontalSlider(new Rect(10, 300, 200, 30), m_DensityFactor, 0.1f, 5.0f);
+            // if (newDensity != m_DensityFactor)
+            // {
+            //     m_DensityFactor = newDensity;
+            //     m_CurrentCacheCount = -1; // 强制更新
+            // }
             
-            if (InstancedIndirectGrassRenderer.m_Instance != null)
-            {
-                InstancedIndirectGrassRenderer.m_Instance.m_DrawDistance = m_DrawDistance;
-            }
+            // if (InstancedIndirectGrassRenderer.m_Instance != null)
+            // {
+            //     InstancedIndirectGrassRenderer.m_Instance.m_DrawDistance = m_DrawDistance;
+            // }
         }
 
         private void OnDrawGizmos()
@@ -161,7 +161,6 @@ namespace InstancedGrass
                     positions.Add(pos);
                 }
             }
-
 
             //send all posWS to renderer
             InstancedIndirectGrassRenderer.m_Instance.m_GrassPositions = positions;
