@@ -4,8 +4,10 @@ Shader "InstancedGrass/MeshGrass"
     {
         [Header(BaseSettings)]
         _MainTex ("Texture", 2D) = "white" { }
-        _TopColor ("Top Color", Color) = (1, 1, 1, 1)
-        _BottomColor ("Bottom Color", Color) = (1, 1, 1, 1)
+        _ColorBlendingTex ("Color Blending", 2D) = "white" { }
+        _GrassTopColor ("Top Color", Color) = (1, 1, 1, 1)
+        _GrassBottomColor ("Bottom Color", Color) = (1, 1, 1, 1)
+        _GrassBaseColor ("Grass Base Color", Color) = (1, 1, 1, 1)
 
         [Header(LightingSettings)]
         _RandomNormal ("Random Normal", Range(-1, 1)) = 0.1
@@ -16,6 +18,7 @@ Shader "InstancedGrass/MeshGrass"
         [Header(WindSettings)]
         _WindNoiseTexture ("Wind Noise Texture", 2D) = "white" { }
         _WindNoiseParam ("Wind Noise Parameters", Vector) = (1, 1, 0, 0)
+        _WindBending ("Wind Bending", Vector) = (0.1, 1.0, 0, 0)
     }
     SubShader
     {
@@ -25,7 +28,6 @@ Shader "InstancedGrass/MeshGrass"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
         #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/GlobalIllumination.hlsl"
-        #include "Assets/InstancedGrass/Shaders/InstancedGrassCommon.hlsl"
         ENDHLSL
 
         Pass
@@ -45,7 +47,9 @@ Shader "InstancedGrass/MeshGrass"
             // #pragma multi_compile _ _SHADOWS_SOFT
             // -------------------------------------
             // Unity defined keywords
-            #pragma multi_compile_fog 
+            #pragma multi_compile_fog
+
+            #include "Assets/InstancedGrass/Shaders/InstancedGrassCommon.hlsl"
 
             Varyings VertexPass(Attributes vsIn, uint instanceID : SV_InstanceID)
             {
@@ -71,7 +75,7 @@ Shader "InstancedGrass/MeshGrass"
                 float randomScale = lerp(0.7, 1.4, randomVal2);
                 
                 // 随机倾斜量
-                float randomTilt = lerp(-0.2, 0.2, randomVal3);
+                float randomTilt = lerp(-0.1, 0.1, randomVal3);
                 
                 // 构建旋转矩阵 (Y轴旋转)
                 float sinR = sin(randomRotation);
@@ -96,27 +100,27 @@ Shader "InstancedGrass/MeshGrass"
 
                 float3 positionWS = transformedPos + perGrassPivotPosWS;
 
-                float2 windUV = positionWS.zx * _WindTilling + _Time.y * _WindIntensity;
+                half windDistortion = SAMPLE_TEXTURE2D_LOD(_ColorBlendingTex, sampler_ColorBlendingTex, positionWS.xz * 0.01, 0.0).r;
+                float2 windUV = positionWS.xz * _WindTilling + _Time.y * _WindIntensity + windDistortion;
                 // 顶点着色器内采样贴图，必须使用SAMPLE_TEXTURE_LOD函数，否则会报错
                 float wind = SAMPLE_TEXTURE2D_LOD(_WindNoiseTexture, sampler_WindNoiseTexture, windUV, 0).r;
-                wind *= vsIn.positionOS.y;
+                wind *= Smootherstep(_WindBendingLow, _WindBendingHigh, vsIn.positionOS.y);
 
-                float3 windOffset = cameraTransformRightWS * wind; //swing using billboard left right direction
-                positionWS.xyz += windOffset;
+                // float3 windOffset = cameraTransformRightWS * wind; //swing using billboard left right direction
+                positionWS.xyz += wind;
 
                 half3 randomAddToN = (_RandomNormal * sin(perGrassPivotPosWS.x * 82.32523 + perGrassPivotPosWS.z) + wind * - 0.25) * cameraTransformRightWS;
                 half3 flattenNormal = normalize(half3(0, 1, 0) + randomAddToN - cameraTransformForwardWS * 0.5);
-                half3 normalWS = TransformObjectToWorldNormal(vsIn.normalOS);
-                normalWS = BlendNormalWorldspaceRNM(flattenNormal, normalWS, vsIn.normalOS.xyz);
+                half3 normalWS = /* TransformObjectToWorldNormal(vsIn.normalOS) */flattenNormal;
+                // normalWS = BlendNormalWorldspaceRNM(flattenNormal, normalWS, vsIn.normalOS.xyz);
                 // normalWS = flattenNormal;
 
                 vsOut.positionCS = TransformWorldToHClip(positionWS);
                 vsOut.texCoord = vsIn.texCoord;
                 vsOut.positionWS = positionWS;
+                vsOut.positionOS = vsIn.positionOS.xyz;
                 vsOut.perGrassPivotPosWS = perGrassPivotPosWS;
                 vsOut.normalWS = normalWS;
-                vsOut.windFactor = wind;
-                vsOut.color = vsIn.positionOS.xyz;
                 return vsOut;
             }
 
@@ -140,12 +144,15 @@ Shader "InstancedGrass/MeshGrass"
                 half attenuation = mainLight.distanceAttenuation * mainLight.shadowAttenuation;
                 half3 lighting = lightColor * attenuation;
 
-                half3 albedo = lerp(_BottomColor.rgb, _TopColor.rgb, grassRamp);
+                half3 albedo = lerp(_GrassBottomColor.rgb, _GrassTopColor.rgb, grassRamp);
+                float2 blendingUV = fsIn.positionWS.xz * 0.1;
+                half colorBlending = SAMPLE_TEXTURE2D(_ColorBlendingTex, sampler_ColorBlendingTex, blendingUV).r;
+                albedo = lerp(albedo, _GrassBaseColor.rgb, colorBlending * colorRamp);
                 
                 half3 normalWS = fsIn.normalWS;
                 half3 viewDirWS = normalize(_WorldSpaceCameraPos - fsIn.positionWS);
 
-                half3 color = SimpleLit(albedo, normalWS, viewDirWS, lightDir, lighting, colorRamp);
+                half3 color = SimpleLit(albedo, normalWS, viewDirWS, lightDir, lightColor, attenuation, colorRamp);
                 // half3 color = StylizedGrassLit(
                 //     albedo, normalWS, viewDirWS, lightDir, lighting, colorRamp,
                 //     0.05, colorRamp
@@ -156,6 +163,35 @@ Shader "InstancedGrass/MeshGrass"
                 return float4(finalColor.xyz, 1.0);
             }
 
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name "ShadowCaster"
+            Tags { "LightMode" = "ShadowCaster" }
+
+            // -------------------------------------
+            // Render State Commands
+            Cull Back
+
+            HLSLPROGRAM
+            #pragma target 3.0
+
+            // -------------------------------------
+            // Shader Stages
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
+
+            //--------------------------------------
+            // GPU Instancing
+            #pragma multi_compile_instancing
+            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"
+
+            // -------------------------------------
+            // Includes
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/Shaders/ShadowCasterPass.hlsl"
             ENDHLSL
         }
     }

@@ -1,12 +1,15 @@
 #pragma once
 
 TEXTURE2D(_MainTex);             SAMPLER(sampler_MainTex);
+TEXTURE2D(_ColorBlendingTex);    SAMPLER(sampler_ColorBlendingTex);
 TEXTURE2D(_WindNoiseTexture);    SAMPLER(sampler_WindNoiseTexture);
 
 CBUFFER_START(UnityPerMaterial)
     float4 _MainTex_ST;
-    half4 _TopColor;
-    half4 _BottomColor;
+    float4 _ColorBlendingTex_ST;
+    half4 _GrassTopColor;
+    half4 _GrassBottomColor;
+    half4 _GrassBaseColor;
 
     half _RandomNormal;
     half _WrapValue;
@@ -14,6 +17,7 @@ CBUFFER_START(UnityPerMaterial)
     half _SpecularIntensity;
 
     half4 _WindNoiseParam;
+    half4 _WindBending;
 
     StructuredBuffer<float3> _InstancePositionBuffer;
     StructuredBuffer<uint> _VisibleInstanceIndexBuffer;
@@ -21,6 +25,9 @@ CBUFFER_END
 
 #define _WindTilling    _WindNoiseParam.xy
 #define _WindIntensity  _WindNoiseParam.zw
+
+#define _WindBendingLow _WindBending.x
+#define _WindBendingHigh _WindBending.y
 
 struct Attributes
 {
@@ -34,13 +41,12 @@ struct Varyings
     float4 positionCS : SV_POSITION;
     float2 texCoord : TEXCOORD0;
     float3 positionWS : TEXCOORD1;
-    float3 perGrassPivotPosWS : TEXCOORD2;
-    float windFactor : TEXCOORD3;
+    float3 positionOS : TEXCOORD2;
+    float3 perGrassPivotPosWS : TEXCOORD3;
     float3 normalWS : NORMAL;
-    float3 color : COLOR;
 };
 
-half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, half3 lighting, half occlusion)
+half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, half3 lightColor, half attenuation, half occlusion)
 {
     float NoV = saturate(dot(normalWS, viewDirWS));
     float NoL = saturate(dot(normalWS, lightDir));
@@ -49,14 +55,17 @@ half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, h
     float VoH = saturate(dot(viewDirWS, H));
     half3 reflectDirWS = reflect(-viewDirWS, normalWS);
 
-    half colorRemap = smoothstep(0.6, 1.0, occlusion);
+    half3 lighting = lightColor * attenuation;
+
+    half tipMask = smoothstep(0.6, 1.0, occlusion);
     
-    half backTranslucency = pow(saturate(dot(-lightDir, viewDirWS)), 1.5) * 1 * colorRemap;
+    half backTranslucency = pow(saturate(dot(-lightDir, viewDirWS)), 1.5) * 1 * tipMask;
 
     half wrapValue = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
     half3 directDiffuse = (wrapValue + backTranslucency) * albedo;
+    directDiffuse *= tipMask;
     half directSpecular = pow(NoH, _SpecularShininess) * _SpecularIntensity;
-    directSpecular *= colorRemap;
+    directSpecular *= tipMask;
     half3 directColor = lighting * (directDiffuse + directSpecular);
 
     half3 indirectDiffuse = SampleSH(normalWS);
@@ -64,13 +73,15 @@ half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, h
     //     floor(indirectDiffuse * 3) / 3,
     //     0.1);
     // indirectDiffuse = lerp(0, indirectDiffuse, occlusion);
-    indirectDiffuse *= colorRemap;
+    indirectDiffuse = indirectDiffuse * saturate(1 - attenuation) * tipMask + indirectDiffuse;
     half3 indirectSpecular = GlossyEnvironmentReflection(reflectDirWS, 0.05, occlusion);
-    indirectSpecular *= colorRemap;
+    // indirectSpecular *= tipMask;
     half3 indirectColor = (indirectDiffuse + indirectSpecular) * albedo;
-    // indirectColor = lerp(0, indirectColor, occlusion);
 
-    half3 color = directColor + indirectColor;
-    // color = directDiffuse;
+    half rim = pow(1.0 - NoV, 7) * 2 * tipMask;
+    half3 rimLight = lighting * rim;
+
+    half3 color = directColor + indirectColor + rimLight;
+    // color = indirectDiffuse;
     return color;
 }
