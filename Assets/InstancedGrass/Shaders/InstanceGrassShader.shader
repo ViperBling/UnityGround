@@ -12,6 +12,8 @@ Shader "InstancedGrass/MeshGrass"
         [Header(LightingSettings)]
         _RandomNormal ("Random Normal", Range(-1, 1)) = 0.1
         _WrapValue ("Wrap Value", Range(0, 1)) = 0.5
+        _GrassRoughness ("Grass Roughness", Range(0, 1)) = 0.1
+        _SpecularColor ("Specular Color", Color) = (1, 1, 1, 1)
         _SpecularShininess ("Specular Shininess", Range(0, 100)) = 50
         _SpecularIntensity ("Specular Intensity", Range(0, 10)) = 1
 
@@ -104,9 +106,8 @@ Shader "InstancedGrass/MeshGrass"
                 float2 windUV = positionWS.xz * _WindTilling + _Time.y * _WindIntensity + windDistortion;
                 // 顶点着色器内采样贴图，必须使用SAMPLE_TEXTURE_LOD函数，否则会报错
                 float wind = SAMPLE_TEXTURE2D_LOD(_WindNoiseTexture, sampler_WindNoiseTexture, windUV, 0).r;
-                wind *= Smootherstep(_WindBendingLow, _WindBendingHigh, vsIn.positionOS.y);
-
-                // float3 windOffset = cameraTransformRightWS * wind; //swing using billboard left right direction
+                wind *= smoothstep(_WindBendingLow, _WindBendingHigh, vsIn.positionOS.y);
+                // wind *= vsIn.positionOS.y;
                 positionWS.xyz += wind;
 
                 half3 randomAddToN = (_RandomNormal * sin(perGrassPivotPosWS.x * 82.32523 + perGrassPivotPosWS.z) + wind * - 0.25) * cameraTransformRightWS;
@@ -119,7 +120,7 @@ Shader "InstancedGrass/MeshGrass"
                 vsOut.texCoord = vsIn.texCoord;
                 vsOut.positionWS = positionWS;
                 vsOut.positionOS = vsIn.positionOS.xyz;
-                vsOut.perGrassPivotPosWS = perGrassPivotPosWS;
+                vsOut.windFactor = wind;
                 vsOut.normalWS = normalWS;
                 return vsOut;
             }
@@ -130,7 +131,7 @@ Shader "InstancedGrass/MeshGrass"
                 clip(mainTexVal.r - 0.5);
 
                 half grassRamp = mainTexVal.g;
-                float3 perGrassPivotPosWS = fsIn.perGrassPivotPosWS;
+                float3 windFactor = fsIn.windFactor;
 
                 float3 cameraTransformRightWS = UNITY_MATRIX_V[0].xyz;          //UNITY_MATRIX_V[0].xyz == world space camera Right unit vector
                 float3 cameraTransformUpWS = UNITY_MATRIX_V[1].xyz;             //UNITY_MATRIX_V[1].xyz == world space camera Up unit vector
@@ -147,16 +148,12 @@ Shader "InstancedGrass/MeshGrass"
                 half3 albedo = lerp(_GrassBottomColor.rgb, _GrassTopColor.rgb, grassRamp);
                 float2 blendingUV = fsIn.positionWS.xz * 0.1;
                 half colorBlending = SAMPLE_TEXTURE2D(_ColorBlendingTex, sampler_ColorBlendingTex, blendingUV).r;
-                albedo = lerp(albedo, _GrassBaseColor.rgb, colorBlending * colorRamp);
+                albedo = lerp(albedo, _GrassBaseColor.rgb * colorRamp, colorBlending * 1);
                 
                 half3 normalWS = fsIn.normalWS;
                 half3 viewDirWS = normalize(_WorldSpaceCameraPos - fsIn.positionWS);
 
                 half3 color = SimpleLit(albedo, normalWS, viewDirWS, lightDir, lightColor, attenuation, colorRamp);
-                // half3 color = StylizedGrassLit(
-                //     albedo, normalWS, viewDirWS, lightDir, lighting, colorRamp,
-                //     0.05, colorRamp
-                // );
 
                 half3 finalColor = color;
 

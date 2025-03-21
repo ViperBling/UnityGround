@@ -466,7 +466,7 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
         float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
 
         weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.z);
-        // weight = 50;
+        weight = 1;
         sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
         sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
         sampleColor.a = hitUV.w;
@@ -608,7 +608,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    // finalColor = reflectedUV.xyz;
+    finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }

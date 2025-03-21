@@ -121,6 +121,7 @@ Material:
     - _Glossiness: 0
     - _GlossyReflections: 0
     - _GrassFlowIntensity: 0
+    - _GrassRoughness: 0.124
     - _Metallic: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.005
@@ -131,8 +132,8 @@ Material:
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
-    - _SpecularIntensity: 0.95
-    - _SpecularShininess: 46.1
+    - _SpecularIntensity: 0.55
+    - _SpecularShininess: 85.4
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
     - _StylizeIntensity: 0
@@ -142,7 +143,7 @@ Material:
     - _WindIntensity: 0.01
     - _WindTilling: 0.23
     - _WorkflowMode: 1
-    - _WrapValue: 0.927
+    - _WrapValue: 0.632
     - _ZWrite: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
@@ -150,13 +151,14 @@ Material:
     - _BoundSize: {r: 564.7825, g: 564.7825, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
-    - _GrassBaseColor: {r: 0.9925282, g: 1, b: 0, a: 1}
-    - _GrassBottomColor: {r: 0, g: 0.20754719, b: 0.032647863, a: 1}
-    - _GrassTopColor: {r: 0.031372547, g: 1, b: 0, a: 1}
+    - _GrassBaseColor: {r: 0.9909091, g: 1, b: 0, a: 1}
+    - _GrassBottomColor: {r: 0.043441102, g: 0.24528301, b: 0.008098972, a: 1}
+    - _GrassTopColor: {r: 1, g: 0, b: 0.13820696, a: 1}
     - _MainColor: {r: 0.29063714, g: 1, b: 0, a: 1}
     - _PivotPosWS: {r: 0, g: 0.34, b: 0, a: 0}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
+    - _SpecularColor: {r: 0.18084168, g: 0.8396226, b: 0, a: 1}
     - _TopColor: {r: 0.45292267, g: 1, b: 0.2028302, a: 1}
-    - _WindBending: {r: 0.08, g: 0.97, b: 0, a: 0}
-    - _WindNoiseParam: {r: 0.06, g: 0.04, b: 0.1, a: 0}
+    - _WindBending: {r: 0, g: 2, b: 0, a: 0}
+    - _WindNoiseParam: {r: 0.01, g: 0.2, b: 0.01, a: 0}
   m_BuildTextureStacks: []

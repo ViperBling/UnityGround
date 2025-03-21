@@ -13,6 +13,8 @@ CBUFFER_START(UnityPerMaterial)
 
     half _RandomNormal;
     half _WrapValue;
+    half _GrassRoughness;
+    half4 _SpecularColor;
     half _SpecularShininess;
     half _SpecularIntensity;
 
@@ -42,7 +44,7 @@ struct Varyings
     float2 texCoord : TEXCOORD0;
     float3 positionWS : TEXCOORD1;
     float3 positionOS : TEXCOORD2;
-    float3 perGrassPivotPosWS : TEXCOORD3;
+    float3 windFactor : TEXCOORD3;
     float3 normalWS : NORMAL;
 };
 
@@ -55,11 +57,13 @@ half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, h
     float VoH = saturate(dot(viewDirWS, H));
     half3 reflectDirWS = reflect(-viewDirWS, normalWS);
 
+    half roughness = _GrassRoughness;
+
     half3 lighting = lightColor * attenuation;
 
     half tipMask = smoothstep(0.6, 1.0, occlusion);
     
-    half backTranslucency = pow(saturate(dot(-lightDir, viewDirWS)), 1.5) * 1 * tipMask;
+    half backTranslucency = pow(saturate(dot(-lightDir, viewDirWS)), 2) * 4 * tipMask;
 
     half wrapValue = max(0, (NoL + _WrapValue) / (1 + _WrapValue));
     half3 directDiffuse = (wrapValue + backTranslucency) * albedo;
@@ -68,20 +72,19 @@ half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, h
     directSpecular *= tipMask;
     half3 directColor = lighting * (directDiffuse + directSpecular);
 
-    half3 indirectDiffuse = SampleSH(normalWS);
-    // indirectDiffuse = lerp(indirectDiffuse,
-    //     floor(indirectDiffuse * 3) / 3,
-    //     0.1);
-    // indirectDiffuse = lerp(0, indirectDiffuse, occlusion);
-    indirectDiffuse = indirectDiffuse * saturate(1 - attenuation) * tipMask + indirectDiffuse;
-    half3 indirectSpecular = GlossyEnvironmentReflection(reflectDirWS, 0.05, occlusion);
-    // indirectSpecular *= tipMask;
-    half3 indirectColor = (indirectDiffuse + indirectSpecular) * albedo;
+    half3 indirectDiffuse = SampleSH(normalWS) * albedo;
+    half3 indirectSpecular = GlossyEnvironmentReflection(reflectDirWS, roughness, occlusion);
+    half envTerm = 1.0 - max(0.01, NoV);
+    envTerm *= envTerm;
+    half3 envZioma = envTerm * envTerm + _SpecularColor.rgb;
+    half surfaceReduction = saturate(1.08 - 0.58 * (1 - roughness));
+    indirectSpecular = indirectSpecular * envZioma * surfaceReduction;
+    half3 indirectColor = indirectDiffuse + indirectSpecular;
 
     half rim = pow(1.0 - NoV, 7) * 2 * tipMask;
     half3 rimLight = lighting * rim;
 
     half3 color = directColor + indirectColor + rimLight;
-    // color = indirectDiffuse;
+    // color = backTranslucency;
     return color;
 }

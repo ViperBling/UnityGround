@@ -130,6 +130,23 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
 
     PDF = H.w;
     jitter = random.x + random.y;
+    
+    // float3 viewDirTS = mul(tangentToWorld, viewDirWS);
+    // float3 viewDirRough = normalize(float3(a * viewDirTS.x, a * viewDirTS.y, viewDirTS.z));
+    // float lenSq = viewDirRough.x * viewDirRough.x + viewDirRough.y * viewDirRough.y;
+    // float3 T1 = lenSq > 0 ? float3(-viewDirRough.y, viewDirRough.x, 0) * rsqrt(lenSq) : float3(1, 0, 0);
+    // float3 T2 = cross(viewDirRough, T1);
+
+    // float r = sqrt(random.x);
+    // float phi = 2.0 * PI * random.y;
+    // float t1 = r * cos(phi);
+    // float t2 = r * sin(phi);
+    // float s = 0.5 * (1.0 + viewDirRough.z);
+    // t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+    // float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * viewDirRough;
+    // float3 H = normalize(float3(a * Nh.x, a * Nh.y, max(0, Nh.z)));
+    // H = mul(H, tangentToWorld);
+    // float3 reflectDirWS = reflect(viewDirWS, H);
 
     // float3 reflectDirWS = reflect(viewDirWS, normalWS);
     // PDF = 1.0;

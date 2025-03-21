@@ -831,13 +831,13 @@ MonoBehaviour:
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 0
   m_Cameras: []
-  m_RendererIndex: 2
+  m_RendererIndex: -1
   m_VolumeLayerMask:
     serializedVersion: 2
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -905,7 +905,7 @@ PrefabInstance:
         type: 3}
       propertyPath: m_GrassMesh
       value: 
-      objectReference: {fileID: 919132149155446097, guid: 6dec042a81ee4374da504c2e0b5badc8,
+      objectReference: {fileID: 919132149155446097, guid: 956ac5c68ee287b4a888152d81e150a7,
         type: 3}
     - target: {fileID: 1916106855214474980, guid: f34af583a77d9a6449a9609bb29150ec,
         type: 3}
@@ -935,7 +935,7 @@ PrefabInstance:
     - target: {fileID: 3077766144790020066, guid: f34af583a77d9a6449a9609bb29150ec,
         type: 3}
       propertyPath: m_InstanceCount
-      value: 52633
+      value: 90910
       objectReference: {fileID: 0}
     - target: {fileID: 3766686023257022048, guid: f34af583a77d9a6449a9609bb29150ec,
         type: 3}

@@ -48,7 +48,7 @@ MonoBehaviour:
     m_Value: 0
   m_BRDFBias:
     m_OverrideState: 1
-    m_Value: 0.307
+    m_Value: 0.499
   m_BlueNoiseTexture:
     m_OverrideState: 1
     m_Value: {fileID: 2800000, guid: 75211e26fad3d75408c944a166204150, type: 3}
