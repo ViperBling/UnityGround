@@ -2,120 +2,85 @@
 
 #include "Assets/SSR/Resources/SSRCommon.hlsl"
 
-half4 SSRFragment(Varyings fsIn) : SV_Target
+half4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
-
     float2 screenUV = fsIn.texcoord;
 
-    float rawDepth = SAMPLE_TEXTURE2D_X_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV, 0).r;
-    
-    // #if !UNITY_REVERSED_Z
-    // rawDepth = lerp(UNITY_NEAR_CLIP_VALUE, 1, rawDepth);
-    // #endif
-    
-    bool isBackground = rawDepth == 0.0 ? true : false;
-    
-    // #if (UNITY_REVERSED_Z == 1)
-        // isBackground = rawDepth == 0.0 ? true : false;
-    // #else
-    //     isBackground = rawDepth == 1.0 ? true : false;
-    // #endif
+    float rawDepth = SampleDepth(screenUV);
 
-    half4 sceneColor = half4(SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0).rgb, 0.0);
-
-    UNITY_BRANCH
-    if (isBackground)
-    {
-        return sceneColor;
-    }
-
-    half4 normalGBuffer = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, screenUV, 0);
-    half smoothness = normalGBuffer.w;
-    half3 normalWS = UnpackNormal(normalGBuffer.xyz);
-
-    UNITY_BRANCH
-    if (smoothness < _MinSmoothness)
-    {
-        return sceneColor;
-    }
-
-    float3 positionWS = ComputeWorldSpacePosition(screenUV, rawDepth, UNITY_MATRIX_I_VP);
-
-    half3 invViewDirWS;
-    if (unity_OrthoParams.w == 0.0)
-    {
-        invViewDirWS = normalize(positionWS - _WorldSpaceCameraPos);
-    }
-    else
-    {
-        invViewDirWS = -normalize(UNITY_MATRIX_V[2].xyz);
-    }
-
-    FRay ray = (FRay)0;
-    ray.Position = positionWS;
-    ray.Direction = reflect(invViewDirWS, normalWS);
-
-    FHitPoint hitPoint = SSRRayMarching(ray, 0.0, length(rawDepth));
-
-    half3 finalColor;
+    half4 sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
+    bool isBackground = rawDepth == 0.0;
     
     UNITY_BRANCH
-    if (hitPoint.TravelDist > REAL_EPS)
-    {
-        FHitPoint screenHit = (FHitPoint)0;
-        HitSurfaceDataFromGBuffer(screenUV, screenHit.Albedo, screenHit.Specular, screenHit.Occlusion, screenHit.Normal, screenHit.Smoothness);
+    if (isBackground) return half4(0, 0, 0, 1);
 
-        half3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, hitPoint.TexCoord, 0.0).rgb;
+    float smoothness;
+    float3 normalWS = GetNormalWS(screenUV, smoothness);
 
-        sceneColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0);
+    // UNITY_BRANCH if (smoothness < _MinSmoothness) return half4(0, 0, 0, 1);
 
-        half fresnel = (max(screenHit.Smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(screenHit.Normal, -invViewDirWS))) + 0.04;
-        // reflectColor *= screenHit.Occlusion;
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
 
-        half reflectivity = ReflectivitySpecular(screenHit.Specular);
-        // reflectColor = lerp(reflectColor, reflectColor * screenHit.Specular, saturate(reflectivity - fresnel));
+    float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+    bool valid = false;
+    float PDF, jitter;
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
+    float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
 
-        half smoothnessLerp = saturate(reflectivity + fresnel);
-        smoothnessLerp = 1.0;
-        
-        finalColor = lerp(sceneColor, reflectColor, smoothnessLerp * ScreenEdgeMask(screenUV));
-    }
-    else
-    {
-        finalColor = sceneColor;
-    }
     
-    return half4(finalColor, 1.0);
+    
+    return half4(positionVS.xyz, 1.0);
 }
 
-half4 CompositeFragment(Varyings fsIn) : SV_Target
+half4 HiZTracingPass(Varyings fsIn) : SV_Target
+{
+    return 1.0;
+}
+
+half4 SpatioFilterPass(Varyings fsIn) : SV_Target
+{
+    return 1.0;
+}
+
+half4 TemporalFilterPass(Varyings fsIn) : SV_Target
+{
+    return 1.0;
+}
+
+half4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 {
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
-
     float2 screenUV = fsIn.texcoord;
-
-    float deviceDepth = SAMPLE_TEXTURE2D_X_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV, 0).r;
-
-    bool isBackground = deviceDepth == 0.0;
-
-    // if (isBackground) return 0.0;
-
-    half4 normalGBuffer = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, screenUV, 0);
-    half smoothness = normalGBuffer.w;
-    half3 normalWS = UnpackNormal(normalGBuffer.xyz);
     
-    half fadeSmoothness = (_FadeSmoothness < smoothness) ? 1.0 : (smoothness - _MinSmoothness) * rcp(_FadeSmoothness - _MinSmoothness);
+    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
+    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
 
-    half smoothness2 = smoothness * smoothness;
-    half smoothness4 = smoothness2 * smoothness2;
+    // UNITY_BRANCH
+    // if (rawDepth == 0.0) return sceneColor;
 
-#if defined(_SSR_APPROX_COLOR_MIPMAP)
-    half oneMinusSmoothness4 = 1.0 - smoothness4;
-    half3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, oneMinusSmoothness4 * 1.0).rgb;
-#else
-    half3 reflectColor = SAMPLE_TEXTURE2D_X_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0).rgb;
-#endif
+    // half3 albedo;
+    // half3 specular;
+    // half occlusion;
+    // half3 normal;
+    // half smoothness;
+    // HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
     
-    return half4(reflectColor, 1.0);
+    float4 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+
+    // half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
+    // half3 reflectedColor = reflectedUV.xyz;
+
+    // reflectedColor *= occlusion;
+    // half reflectivity = ReflectivitySpecular(specular);
+
+    // half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
+    // reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
+    
+    half3 finalColor = 0.0;
+
+    finalColor = reflectedUV.xyz;
+    
+    return half4(finalColor, 1.0);
 }
