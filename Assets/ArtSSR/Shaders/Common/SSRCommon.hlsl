@@ -115,21 +115,20 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
     // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    // random = random * 2.0 - 1.0;
     // random.y = lerp(random.y, 0.0, _BRDFBias);
     // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
     // PDF = 1.0;
 
-    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    random.y = lerp(random.y, 0.0, _BRDFBias);
-    float4 H = ImportanceSampleGGX_SSR(random, smoothness);
-    float3x3 tangentToWorld = GetTangentBasis(normalWS);
-    H.xyz = mul(H.xyz, tangentToWorld);
-    float3 reflectDirWS = reflect(viewDirWS, H.xyz);
+    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    // random.y = lerp(random.y, 0.0, _BRDFBias);
+    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // float3x3 tangentToWorld = GetTangentBasis(normalWS);
+    // H.xyz = mul(H.xyz, tangentToWorld);
+    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
 
-    PDF = H.w;
-    jitter = random.x + random.y;
+    // PDF = H.w;
+    // jitter = random.x + random.y;
     
     // float3 viewDirTS = mul(tangentToWorld, viewDirWS);
     // float3 viewDirRough = normalize(float3(a * viewDirTS.x, a * viewDirTS.y, viewDirTS.z));
@@ -148,11 +147,11 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // H = mul(H, tangentToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H);
 
-    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    // PDF = 1.0;
-    // jitter = 0;
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    PDF = 1.0;
+    jitter = 0;
 
-    return reflectDirWS;
+    return normalize(reflectDirWS);
 }
 
 inline float3 GetNormalWS(float2 uv, inout float smoothness)

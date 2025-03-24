@@ -12,7 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 17a336f2c3614ee4b4c22cebee82c924, type: 3}
   m_Name: ArtSSRRenderFeature
   m_EditorClassIdentifier: 
+  m_Active: 0
+  m_SSRMaterial: {fileID: 0}
+--- !u!114 &-1789078155334709764
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dcc1578985ddea4695ea5830e0eb4bf, type: 3}
+  m_Name: SSRFeature
+  m_EditorClassIdentifier: 
   m_Active: 1
+  m_Resolution: 4
+  m_MipmapMode: 1
+  m_EnableInSceneView: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31,7 +48,8 @@ MonoBehaviour:
     hdrDebugViewPS: {fileID: 4800000, guid: 573620ae32aec764abd4d728906d2587, type: 3}
   m_RendererFeatures:
   - {fileID: -6870003462917881313}
-  m_RendererFeatureMap: 1f8213d33fd8a8a0
+  - {fileID: -1789078155334709764}
+  m_RendererFeatureMap: 1f8213d33fd8a8a0fc0ddd8be5ea2be7
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}

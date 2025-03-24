@@ -457,7 +457,7 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     for (int i = 0; i < 9; i++)
     {
         offsetUV = mul(offsetRotationMatrix, 2 * sampleOffsets[i] * _ScreenResolution.zw);
-        neighborUV = screenUV + offsetUV;
+        neighborUV = screenUV + 0;
 
         float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, neighborUV);
 
@@ -465,8 +465,8 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
         float4 hitPosNDC, hitPosVS;
         float4 hitPosWS = ReconstructPositionWS(hitUV.xy, sampledDepth, hitPosNDC, hitPosVS);
 
-        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness) / max(1e-5, hitUV.z);
-        weight = 1;
+        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness);
+        // weight = 1;
         sampleColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
         sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
         sampleColor.a = hitUV.w;
@@ -480,12 +480,12 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
     reflectionColor.a = sampleColor.a;
 
-    return reflectionColor;
+    // return reflectionColor;
 
-    // float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
-    // float4 finalResult = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+    float4 hitUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    float4 finalResult = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
     
-    // return float4(finalResult.rgb, hitUV.z);
+    return float4(finalResult.rgb, hitUV.w);
 }
 
 float4 TemporalFilterPass(Varyings fsIn) : SV_Target
@@ -608,7 +608,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
     half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    finalColor = reflectedUV.xyz;
+    // finalColor = reflectedUV.xyz;
     
     return half4(finalColor.xyz, 1.0);
 }
