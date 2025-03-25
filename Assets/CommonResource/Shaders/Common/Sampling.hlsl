@@ -26,9 +26,8 @@ struct FCatmullRomSamples
     float FinalMultiplier;
 };
 
-float3 ImportanceSampleGGX_SSR(float2 random, float3 normalWS, float3 viewDirWS, float smoothness, out bool valid)
+float3 ImportanceSampleGGX_SSR(float2 random, float3 normalWS, float3 viewDirWS, float roughness, out bool valid)
 {
-    float roughness = clamp(1.0 - smoothness, 0.02, 1.0);
     float alpha2 = roughness * roughness;
     float alpha4 = alpha2 * alpha2;
 
@@ -47,9 +46,8 @@ float3 ImportanceSampleGGX_SSR(float2 random, float3 normalWS, float3 viewDirWS,
     return outDirWS;
 }
 
-float4 ImportanceSampleGGX_SSR(float2 random, float smoothness)
+float4 ImportanceSampleGGX_SSR(float2 random, float roughness)
 {
-    float roughness = clamp(1.0 - smoothness, 0.02, 1.0);
     float m2 = roughness * roughness;
     float m4 = m2 * m2;
 

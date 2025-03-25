@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Assets/ArtSSR/Shaders/Common/SSRCommon.hlsl"
+#include "Assets/ArtSSR/Shaders/Common/ArtSSRCommon.hlsl"
 
 float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
 {
@@ -170,6 +170,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
+    float roughness = clamp(1.0 - smoothness, 0.02, 1.0);
 
     UNITY_BRANCH
     if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 1);
@@ -181,7 +182,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     bool valid = false;
     float PDF = 1.0;
     float jitter = 0.0;
-    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, roughness, PDF, jitter, valid);
     float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
 
     float3 startPosVS = positionVS.xyz;

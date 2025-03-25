@@ -10,7 +10,8 @@ namespace SSR
     public partial class SSRFeature : ScriptableRendererFeature
     {
         private Shader m_SSRShader;
-        [SerializeField]
+
+        // [SerializeField]
         private Material m_SSRMaterial;
 
         // private ArtDepthPyramid m_DepthPyramidPass;

@@ -102,19 +102,19 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
     return float4(T2W, vec.w);
 }
 
-inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout float jitter, inout bool valid)
+inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float roughness, inout float PDF, inout float jitter, inout bool valid)
 {
     // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
     // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
     // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
+    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, roughness, valid);
     // PDF = 1.0;
 
     // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
     // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // float4 H = ImportanceSampleGGX_SSR(random, roughness);
     // float3x3 tangentToWorld = GetTangentBasis(normalWS);
     // H.xyz = mul(H.xyz, tangentToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
@@ -169,66 +169,6 @@ inline float4 ReconstructPositionWS(float2 screenUV, float rawDepth, inout float
     return positionWS;
 }
 
-
-struct FRay
-{
-    float3 Position;
-    float3 Direction;
-};
-
-struct FHitPoint
-{
-    float3 Position;
-    float TravelDist;
-    float2 TexCoord;
-    half3 Albedo;
-    half3 Specular;
-    half Occlusion;
-    half3 Normal;
-    half Smoothness;
-};
-
-FHitPoint InitializeHitPoint()
-{
-    FHitPoint hitPoint = (FHitPoint)0;
-    hitPoint.Position = float3(0, 0, 0);
-    hitPoint.TravelDist = REAL_EPS;
-    hitPoint.TexCoord = float2(0, 0);
-    hitPoint.Albedo = half3(0, 0, 0);
-    hitPoint.Specular = half3(0, 0, 0);
-    hitPoint.Occlusion = 1.0;
-    hitPoint.Normal = half3(0, 0, 0);
-    hitPoint.Smoothness = 0.0;
-    return hitPoint;
-}
-
-float ConvertLinearEyeDepth(float deviceDepth)
-{
-    UNITY_BRANCH
-    if (unity_OrthoParams.w == 0.0)
-    {
-        return LinearEyeDepth(deviceDepth, _ZBufferParams);
-    }
-    else
-    {
-        deviceDepth = 1.0 - deviceDepth;
-        return lerp(_ProjectionParams.y, _ProjectionParams.z, deviceDepth);
-    }
-}
-
-void HitSurfaceDataFromGBuffer(float2 screenUV, inout half3 albedo, inout half3 specular, inout half occlusion, inout half3 normal, inout half smoothness)
-{
-    half4 gBuffer0 = SAMPLE_TEXTURE2D_X_LOD(_GBuffer0, sampler_point_clamp, screenUV, 0);
-    half4 gBuffer1 = SAMPLE_TEXTURE2D_X_LOD(_GBuffer1, sampler_point_clamp, screenUV, 0);
-    half4 gBuffer2 = SAMPLE_TEXTURE2D_X_LOD(_GBuffer2, sampler_point_clamp, screenUV, 0);
-
-    albedo = gBuffer0.rgb;
-    specular = (UnpackMaterialFlags(gBuffer0.a) == kMaterialFlagSpecularSetup) ? gBuffer1.rgb : lerp(kDielectricSpec.rgb, max(albedo.rgb, kDielectricSpec.rgb), gBuffer1.r);
-    occlusion = gBuffer1.a;
-    normal = UnpackNormal(gBuffer2.rgb);
-    smoothness = gBuffer2.a;
-}
-
 float ScreenEdgeMask(float2 screenUV)
 {
     UNITY_BRANCH
@@ -243,4 +183,19 @@ float ScreenEdgeMask(float2 screenUV)
         float2 t = Remap10(abs(coordCS.xy), fadeRcpLength, fadeRcpLength);
         return Smoothstep01(t.x) * Smoothstep01(t.y);
     }
+}
+
+inline float DistanceSquared(float2 a, float2 b)
+{
+    return dot(a - b, a - b);
+}
+
+inline float DistanceSquared(float3 a, float3 b)
+{
+    return dot(a - b, a - b);
+}
+
+bool LinearSSTrace(float3 rayOriginCS, float3 reflectDirVS, float jitter, int stepSize, in out float2 hitUV, in out float3 hitPosition, in out float totalStep)
+{
+    
 }
