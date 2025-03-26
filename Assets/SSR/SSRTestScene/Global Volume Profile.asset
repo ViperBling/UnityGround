@@ -39,22 +39,22 @@ MonoBehaviour:
     m_Value: 0
   m_ThicknessScale:
     m_OverrideState: 1
-    m_Value: 2
+    m_Value: 1.3
   m_MinSmoothness:
     m_OverrideState: 1
-    m_Value: 0.2
+    m_Value: 0.1
   m_FadeSmoothness:
     m_OverrideState: 1
-    m_Value: 0.138
+    m_Value: 0.249
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 0.03
+    m_Value: 1.4
   m_EdgeFade:
     m_OverrideState: 1
-    m_Value: 0.194
+    m_Value: 0.236
   m_MaxSteps:
     m_OverrideState: 1
-    m_Value: 64
+    m_Value: 512
   m_DownSample:
     m_OverrideState: 1
     m_Value: 0
@@ -63,7 +63,7 @@ MonoBehaviour:
     m_Value: 0
   m_BRDFBias:
     m_OverrideState: 1
-    m_Value: 0.5
+    m_Value: 0.463
   m_BlueNoiseTexture:
     m_OverrideState: 1
     m_Value: {fileID: 2800000, guid: 75211e26fad3d75408c944a166204150, type: 3}
