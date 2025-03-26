@@ -63,6 +63,13 @@ static const int2 sampleOffsets[9] = {
     int2(-1.0, 1.0), int2(0.0, 1.0), int2(1.0, 1.0)
 };
 
+// void Swap(inout float a, inout float b)
+// {
+//     float temp = a;
+//     a = b;
+//     b = temp;
+// }
+
 uint UnpackMaterialFlags(float packedMaterialFlags)
 {
     return uint((packedMaterialFlags * 255.0h) + 0.5h);
@@ -195,11 +202,17 @@ inline float DistanceSquared(float3 a, float3 b)
     return dot(a - b, a - b);
 }
 
-bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int stepSize, in out float2 hitUV, in out float3 hitPoint, in out float totalStep)
+bool IntersectsDepthBuffer(float rayZMin, float rayZMax, float sceneZ, float thickness)
+{
+    return (rayZMax >= sceneZ - thickness) && (rayZMin <= sceneZ);
+}
+
+bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int stepSize, inout float2 hitUV, inout float3 hitPoint, inout float totalStep)
 {
     float2 invSize = _ScreenResolution.zw;
     hitUV = -1.0;
 
+    float thickness = _ThicknessScale * 1;
     float traceDistance = 512;
     float nearPlaneZ = -0.01;
     float rayLength = (rayOriginVS.z + reflectDirVS.z * traceDistance) > nearPlaneZ ? (nearPlaneZ - rayOriginVS.z) / reflectDirVS.z : traceDistance;
@@ -224,7 +237,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     {
         float xClip = P1.x > xMax ? xMax : xMin;
         float xAlpha = (P1.x - xClip) / (P1.x - P0.x);
-        alpha = max(alpha, xAlpha);
+        alpha = xAlpha;
     }
     if (P1.y > yMax || P1.y < yMin)
     {
@@ -235,6 +248,76 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
 
     P1 = lerp(P1, P0, alpha);
     K1 = lerp(K1, K0, alpha);
+    Q1 = lerp(Q1, Q0, alpha);
 
-    return false;
+    P1 = DistanceSquared(P0, P1) < 0.0001 ? P0 + float2(0.01, 0.01) : P1;
+    float2 delta = P1 - P0;
+    bool permute = false;
+
+    if (abs(delta.x) < abs(delta.y))
+    {
+        permute = true;
+        delta = delta.yx;
+        P1 = P1.yx;
+        P0 = P0.yx;
+    }
+
+    float stepDirection = sign(delta.x);
+    float invDx = stepDirection / delta.x;
+    float2 dP = float2(stepDirection, invDx * delta.y);
+    float3 dQ = (Q1 - Q0) * invDx;
+    float dK = (K1 - K0) * invDx;
+
+    dP *= stepSize;
+    dQ *= stepSize;
+    dK *= stepSize;
+    P0 += dP * jitter;
+    Q0 += dQ * jitter;
+    K0 += dK * jitter;
+
+    float3 Q = Q0;
+    float K = K0;
+    float prevZMaxEstimate = rayOriginVS.z;
+    float rayZMax = prevZMaxEstimate;
+    float rayZMin = prevZMaxEstimate;
+    float sceneZ = 1e+5;
+    float end = P1.x * stepDirection;
+    
+    bool intersecting = IntersectsDepthBuffer(rayZMin, rayZMax, sceneZ, thickness);
+    float2 P = P0;
+    int originStepCount = 0;
+
+    for (totalStep = 0; totalStep < _MaxSteps; totalStep++)
+    {
+        rayZMin = prevZMaxEstimate;
+        rayZMax = (dQ.z * 0.5 + Q.z) / (dK * 0.5 + K);
+        prevZMaxEstimate = rayZMax;
+
+        if (rayZMin > rayZMax)
+        {
+            Swap(rayZMin, rayZMax);
+        }
+
+        hitUV = permute ? P.yx : P;
+        sceneZ = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, hitUV * invSize, 0.0).r;
+        sceneZ = -LinearEyeDepth(sceneZ, _ZBufferParams);
+        
+        bool isBehind = rayZMin <= sceneZ;
+        intersecting = isBehind && (rayZMax >= sceneZ - thickness);
+
+        if (intersecting && (P.x * stepDirection) <= end) break;
+
+        P += dP;
+        Q.z += dQ.z;
+        K += dK;
+    }
+    P -= dP;
+    Q.z -= dQ.z;
+    K -= dK;
+
+    totalStep = originStepCount;
+    Q.xy += dQ.xy * totalStep;
+    hitPoint = Q * (1 / K);
+
+    return intersecting;
 }

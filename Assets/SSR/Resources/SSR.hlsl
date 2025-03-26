@@ -39,14 +39,14 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float jitter = random.x + random.y;
 
     float4 H = 0.0;
-    if (roughness > 0.1)
-    {
-        H = TangentToWorld(ImportanceSampleGGX_SSR(random, roughness), float4(normalVS, 1.0));
-    }
-    else
-    {
+    // if (roughness > 0.1)
+    // {
+    //     H = TangentToWorld(ImportanceSampleGGX_SSR(random, roughness), float4(normalVS, 1.0));
+    // }
+    // else
+    // {
         H = float4(normalVS, 1.0);
-    }
+    // }
     float3 reflectDirVS = reflect(normalize(positionVS.xyz), H.xyz);
 
     UNITY_BRANCH
@@ -56,9 +56,11 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float hitMask = 0.0;
     float2 hitUV = 0.0;
     float3 hitPoint = 0.0;
-    bool hit = LinearSSTrace(rayOriginVS + rayBump * normalVS, reflectDirVS, jitter, _StepStride, hitUV, hitPoint, totalStep);
+    bool hit = LinearSSTrace(rayOriginVS/*  + rayBump * normalVS */, reflectDirVS, jitter, _StepStride, hitUV, hitPoint, totalStep);
+    hitUV *= _ScreenResolution.zw;
 
     float3 finalResult = float3(hitUV, hitMask);
+    finalResult = hit;
     return float4(finalResult, 1.0);
 }
 

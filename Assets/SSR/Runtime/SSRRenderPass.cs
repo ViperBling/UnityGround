@@ -40,8 +40,8 @@ namespace SSR
             private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
             private const int m_LinearSSTracingPass = 0;
             private const int m_HiZTracingPass = 1;
-            private const int m_SpatioFilterPass = 2;
-            private const int m_TemporalFilterPass = 3;
+            // private const int m_SpatioFilterPass = 2;
+            // private const int m_TemporalFilterPass = 3;
             private const int m_CompositePass = 2;
 
             private bool m_IsPadded = false;
