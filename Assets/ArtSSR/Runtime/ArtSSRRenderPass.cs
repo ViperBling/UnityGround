@@ -34,6 +34,7 @@ namespace ArtSSR
             private static readonly int m_SSRJitterID = Shader.PropertyToID("_SSRJitter");
             private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
             private static readonly int m_BlueNoiseTextureID = Shader.PropertyToID("_BlueNoiseTexture");
+            private static readonly int m_BRDFLUTID = Shader.PropertyToID("_BRDFLUT");
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
             private static readonly int m_PrevViewProjMatrixID = Shader.PropertyToID("_PrevViewProjMatrix");
             private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
@@ -75,6 +76,7 @@ namespace ArtSSR
 
                 m_Material.SetInt(m_FrameID, m_Frame);
                 m_Material.SetTexture(m_BlueNoiseTextureID, m_SSRVolume.m_BlueNoiseTexture.value);
+                m_Material.SetTexture(m_BRDFLUTID, m_SSRVolume.m_BRDFLUT.value);
 
                 m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
                 m_Scale = m_IsPadded ? 1 : m_SSRVolume.m_DownSample.value + 1.0f;

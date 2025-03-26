@@ -17,6 +17,7 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
+    float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
 
     UNITY_BRANCH
     if (smoothness < _MinSmoothness) return half4(0, 0, 0, 1);
@@ -27,7 +28,7 @@ float4 LinearVSTracingPass(Varyings fsIn) : SV_Target
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     bool valid = false;
     float PDF, jitter;
-    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, roughness, PDF, jitter, valid);
     float3 reflectDirVS = mul(UNITY_MATRIX_V, float4(reflectDirWS, 0)).xyz;
 
     float VoR = saturate(dot(viewDirWS, reflectDirWS));
@@ -170,7 +171,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
-    float roughness = clamp(1.0 - smoothness, 0.02, 1.0);
+    float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
 
     UNITY_BRANCH
     if (smoothness < _MinSmoothness) return half4(screenUV.xy, 0, 1);
@@ -256,21 +257,23 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     half rayZMin = preZMaxEstimate;
     half end = endSS.x * stepDirSS;
 
-    float VoR = saturate(dot(viewDirWS, reflectDirWS));
-    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-    // 越界检测，超过thickness认为在物体内部
-    float thickness = _StepStride * _ThicknessScale;
-    float oneMinusVoR = sqrt(1 - VoR);
-    float scaledStepStride = _StepStride / oneMinusVoR;
-    thickness /= oneMinusVoR;
+    // float VoR = saturate(dot(viewDirWS, reflectDirWS));
+    // float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+    // // 越界检测，超过thickness认为在物体内部
+    // float thickness = _StepStride * _ThicknessScale;
+    // float oneMinusVoR = sqrt(1 - VoR);
+    // float scaledStepStride = _StepStride / oneMinusVoR;
+    // thickness /= oneMinusVoR;
+    float thickness = _ThicknessScale * 0.1;
 
-    float maxRayLength = _MaxSteps * scaledStepStride;
-    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
-    float fixNumStep = max(maxDist / scaledStepStride, 0);
+    // float maxRayLength = _MaxSteps * scaledStepStride;
+    // float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+    // float fixNumStep = max(maxDist / scaledStepStride, 0);
+    float fixNumStep = _MaxSteps;
 
-    dP *= scaledStepStride;
-    dQ *= scaledStepStride;
-    dK *= scaledStepStride;
+    // dP *= _StepStride;
+    // dQ *= _StepStride;
+    // dK *= _StepStride;
 
     startSS += dP * jitter;
     startQ += dQ * jitter;
@@ -323,7 +326,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (hit)
     {
-        maskOut = pow(1 - max(2 * stepTaked / fixNumStep - 1, 0), 2);
+        maskOut = pow(1 - max(2 * stepTaked / fixNumStep - 2, 0), 2);
         maskOut *= saturate(512 - dot(hitPoint - positionVS.xyz, reflectDirVS));
 
         float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, hitUV).xyz);
@@ -332,6 +335,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     }
 
     maskOut *= ScreenEdgeMask(hitUV);
+    maskOut *= maskOut;
 
     float3 finalResult = float3(hitUV, PDF);
     return float4(finalResult, maskOut);
@@ -353,6 +357,7 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
+    float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
 
     UNITY_BRANCH
     if (smoothness < _MinSmoothness || isBackground) return half4(screenUV.xy, 0, 1);
@@ -363,7 +368,7 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
     float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
     bool valid = false;
     float PDF, jitter;
-    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, roughness, PDF, jitter, valid);
     float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
 
     // positionVS的z轴为负，所以要取反才能得到正确的反射位置
@@ -584,32 +589,40 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(fsIn);
     float2 screenUV = fsIn.texcoord;
     
-    float rawDepth = SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, screenUV).r;
-    half4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
+    float rawDepth = SampleDepth(screenUV);
+    float4 sceneColor = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_point_clamp, screenUV);
 
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
 
-    half3 albedo;
-    half3 specular;
-    half occlusion;
-    half3 normal;
-    half smoothness;
-    HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
+    float3 albedo;
+    float3 specularColor;
+    float occlusion;
+    float3 normalWS;
+    float smoothness;
+    HitDataFromGBuffer(screenUV, albedo, specularColor, occlusion, normalWS, smoothness);
+    float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
+
+    float4 positionNDC, positionVS;
+    float4 positionWS = ReconstructPositionWS(screenUV, rawDepth, positionNDC, positionVS);
+    float3 viewDirWS = normalize(positionWS.xyz - _WorldSpaceCameraPos);
+
+    float NoV = saturate(dot(-viewDirWS, normalWS.xyz));
+    float3 eneryCompensation;
+    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV);
     
-    float4 reflectedUV = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
+    float4 reflectedColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
 
-    // half3 reflectedColor = SAMPLE_TEXTURE2D_LOD(_SSRSceneColorTexture, sampler_point_clamp, reflectedUV.xy, 0.0).rgb;
-    half3 reflectedColor = reflectedUV.xyz;
+    // reflectedColor *= occlusion;
+    // half reflectivity = ReflectivitySpecular(specular);
 
-    reflectedColor *= occlusion;
-    half reflectivity = ReflectivitySpecular(specular);
-
-    half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
-    reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
+    // half fresnel = (max(smoothness, 0.04) - 0.04) * Pow4(1.0 - saturate(dot(normal, _WorldSpaceViewDir))) + 0.04;
+    // reflectedColor = lerp(reflectedColor, reflectedColor * specular, saturate(reflectivity - fresnel));
     
-    half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz, saturate(reflectivity + fresnel) * reflectedUV.w);
-    // finalColor = reflectedUV.xyz;
+    // float3 finalColor = /* sceneColor.rgb +  */reflectedColor.rgb * reflectedColor.a/*  * preintegrateDFG.rgb * occlusion */;
+    // finalColor = specularColor.rgb;
+    half3 finalColor = lerp(sceneColor.xyz, reflectedColor.xyz,/*  saturate(reflectivity + fresnel) *  */reflectedColor.w);
+    // finalColor = reflectedUV.xyz * reflectedUV.w;
     
     return half4(finalColor.xyz, 1.0);
 }

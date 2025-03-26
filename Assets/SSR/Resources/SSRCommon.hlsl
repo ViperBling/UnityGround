@@ -195,7 +195,46 @@ inline float DistanceSquared(float3 a, float3 b)
     return dot(a - b, a - b);
 }
 
-bool LinearSSTrace(float3 rayOriginCS, float3 reflectDirVS, float jitter, int stepSize, in out float2 hitUV, in out float3 hitPosition, in out float totalStep)
+bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int stepSize, in out float2 hitUV, in out float3 hitPoint, in out float totalStep)
 {
+    float2 invSize = _ScreenResolution.zw;
+    hitUV = -1.0;
+
+    float traceDistance = 512;
+    float nearPlaneZ = -0.01;
+    float rayLength = (rayOriginVS.z + reflectDirVS.z * traceDistance) > nearPlaneZ ? (nearPlaneZ - rayOriginVS.z) / reflectDirVS.z : traceDistance;
+    float3 rayEndVS = rayOriginVS + rayLength * reflectDirVS;
     
+    float4 H0 = mul(UNITY_MATRIX_P, float4(rayOriginVS, 1.0));
+    float4 H1 = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
+    float K0 = 1.0 / H0.w;
+    float K1 = 1.0 / H1.w;
+    float2 P0 = H0.xy * K0;
+    float2 P1 = H1.xy * K1;
+    float3 Q0 = rayOriginVS * K0;
+    float3 Q1 = rayEndVS * K1;
+
+    float xMax = _ScreenResolution.x - 0.5;
+    float yMax = _ScreenResolution.y - 0.5;
+    float xMin = 0.5;
+    float yMin = 0.5;
+    float alpha = 0;
+
+    if (P1.x > xMax || P1.x < xMin)
+    {
+        float xClip = P1.x > xMax ? xMax : xMin;
+        float xAlpha = (P1.x - xClip) / (P1.x - P0.x);
+        alpha = max(alpha, xAlpha);
+    }
+    if (P1.y > yMax || P1.y < yMin)
+    {
+        float yClip = P1.y > yMax ? yMax : yMin;
+        float yAlpha = (P1.y - yClip) / (P1.y - P0.y);
+        alpha = max(alpha, yAlpha);
+    }
+
+    P1 = lerp(P1, P0, alpha);
+    K1 = lerp(K1, K0, alpha);
+
+    return false;
 }

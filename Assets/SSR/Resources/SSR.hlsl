@@ -52,9 +52,14 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (reflectDirVS.z > 0) return 0.0;
 
-    
+    float totalStep = 0;
+    float hitMask = 0.0;
+    float2 hitUV = 0.0;
+    float3 hitPoint = 0.0;
+    bool hit = LinearSSTrace(rayOriginVS + rayBump * normalVS, reflectDirVS, jitter, _StepStride, hitUV, hitPoint, totalStep);
 
-    return float4(reflectDirVS.xyz, 1.0);
+    float3 finalResult = float3(hitUV, hitMask);
+    return float4(finalResult, 1.0);
 }
 
 float4 HiZTracingPass(Varyings fsIn) : SV_Target

@@ -23,12 +23,14 @@ TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
 TEXTURE2D_X(_SSRSceneColorTexture);
 TEXTURE2D_X(_BlueNoiseTexture);
+TEXTURE2D_X(_BRDFLUT);
 TEXTURE2D_X(_SSRReflectionColorTexture);
 TEXTURE2D_X(_SSRTemporalHistoryTexture);
 TEXTURE2D_X(_MotionVectorTexture);
 float4 _MotionVectorTexture_TexelSize;
 
 SAMPLER(sampler_BlueNoiseTexture);
+SAMPLER(sampler_BRDFLUT);
 SAMPLER(sampler_SSRSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
@@ -110,19 +112,19 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
     return float4(T2W, vec.w);
 }
 
-inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float smoothness, inout float PDF, inout float jitter, inout bool valid)
+inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float roughness, inout float PDF, inout float jitter, inout bool valid)
 {
-    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, smoothness, valid);
-    // PDF = 1.0;
+    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    random.y = lerp(random.y, 0.0, _BRDFBias);
+    float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, roughness, valid);
+    PDF = 1.0;
+    jitter = random.x + random.y;
 
     // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
     // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, smoothness);
+    // float4 H = ImportanceSampleGGX_SSR(random, roughness);
     // float3x3 tangentToWorld = GetTangentBasis(normalWS);
     // H.xyz = mul(H.xyz, tangentToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
@@ -147,11 +149,21 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // H = mul(H, tangentToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H);
 
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    PDF = 1.0;
-    jitter = 0;
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    // PDF = 1.0;
+    // jitter = 0;
 
     return normalize(reflectDirWS);
+}
+
+float4 PreintegrateDFGLUT(inout float3 energyCompensation, float3 specularColor, float roughness, float NoV)
+{
+    float3 envFilterDFG = SAMPLE_TEXTURE2D_LOD(_BRDFLUT, sampler_BRDFLUT, float2(roughness, NoV), 0.0).rgb;
+    float3 reflectionDFG = lerp(saturate(50.0 * specularColor.g) * envFilterDFG.ggg, envFilterDFG.rrr, specularColor);
+
+    energyCompensation = 1.0 + specularColor * (1.0 / envFilterDFG.r - 1.0);
+
+    return float4(reflectionDFG, envFilterDFG.b);
 }
 
 inline float3 GetNormalWS(float2 uv, inout float smoothness)

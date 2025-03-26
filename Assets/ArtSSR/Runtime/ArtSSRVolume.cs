@@ -13,33 +13,35 @@ namespace ArtSSR
         public ArtSSRStateParameter m_State = new(value: SSRState.Disabled, overrideState: true);
 
         [InspectorName("Tracing Mode")]
-        public ArtSSRMarchingModeParameter m_MarchingMode = new(value: RayMarchingMode.LinearViewSpaceTracing, overrideState: false);
+        public ArtSSRMarchingModeParameter m_MarchingMode = new(value: RayMarchingMode.LinearViewSpaceTracing, overrideState: true);
         
         [InspectorName("Dither Mode")]
-        public ArtSSRDitherModeParameter m_DitherMode = new(value: DitherMode.Disabled, overrideState: false);
+        public ArtSSRDitherModeParameter m_DitherMode = new(value: DitherMode.Disabled, overrideState: true);
         
         [InspectorName("Thickness Scale")]
-        public ClampedFloatParameter m_ThicknessScale = new(value: 2.0f, min: 0.001f, max: 30.0f, overrideState: false);
+        public ClampedFloatParameter m_ThicknessScale = new(value: 2.0f, min: 0.001f, max: 30.0f, overrideState: true);
         
         [InspectorName("Minimum Smoothness")]
-        public ClampedFloatParameter m_MinSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: false);
+        public ClampedFloatParameter m_MinSmoothness = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: true);
         
         [InspectorName("Smoothness Fade Start")]
-        public ClampedFloatParameter m_FadeSmoothness = new(value: 0.6f, min: 0.0f, max: 1.0f, overrideState: false);
+        public ClampedFloatParameter m_FadeSmoothness = new(value: 0.6f, min: 0.0f, max: 1.0f, overrideState: true);
 
-        [InspectorName("Ray Step Length")]
-        public ClampedFloatParameter m_StepStrideLength = new(value: 0.03f, min: 0.001f, max: 1.0f, overrideState: false);
+        [InspectorName("Step Stride")]
+        public ClampedFloatParameter m_StepStrideLength = new(value: 0.03f, min: 0.001f, max: 50.0f, overrideState: true);
         
         [InspectorName("Screen Edge Fade Distance"), Tooltip("The distance from the edge of the screen where SSR fades out.")]
         public ClampedFloatParameter m_EdgeFade = new(value: 0.1f, min: 0.0f, max: 1.0f, overrideState: true);
         
-        public ClampedIntParameter m_MaxSteps = new(value: 64, min: 32, max: 512, overrideState: false);
+        public ClampedIntParameter m_MaxSteps = new(value: 64, min: 32, max: 512, overrideState: true);
         
-        public ClampedIntParameter m_DownSample = new(value: 0, min: 0, max: 1, overrideState: false);
+        public ClampedIntParameter m_DownSample = new(value: 0, min: 0, max: 1, overrideState: true);
         public BoolParameter m_UseTemporalFilter = new(value: false, overrideState: true);
         public ClampedFloatParameter m_BRDFBias = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: true);
         [InspectorName("Blue Noise Texture")]
         public Texture2DParameter m_BlueNoiseTexture = new Texture2DParameter(null, true);
+        [InspectorName("BRDF LUT")]
+        public Texture2DParameter m_BRDFLUT = new Texture2DParameter(null, true);
 
         public BoolParameter m_ReflectSky = new(value: false, overrideState: true);
         
