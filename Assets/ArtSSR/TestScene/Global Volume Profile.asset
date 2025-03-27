@@ -18,22 +18,22 @@ MonoBehaviour:
     m_Value: 1
   m_MarchingMode:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 2
   m_DitherMode:
     m_OverrideState: 1
     m_Value: 0
   m_ThicknessScale:
     m_OverrideState: 1
-    m_Value: 1.9
+    m_Value: 1.53
   m_MinSmoothness:
     m_OverrideState: 1
-    m_Value: 0.02
+    m_Value: 0.022
   m_FadeSmoothness:
     m_OverrideState: 1
     m_Value: 0.135
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 1.6
+    m_Value: 7
   m_EdgeFade:
     m_OverrideState: 1
     m_Value: 0.1
@@ -54,7 +54,7 @@ MonoBehaviour:
     m_Value: {fileID: 2800000, guid: 75211e26fad3d75408c944a166204150, type: 3}
   m_BRDFLUT:
     m_OverrideState: 1
-    m_Value: {fileID: 0}
+    m_Value: {fileID: 2800000, guid: 69924c4ea75875f44b0f5ec95cdfaa5d, type: 3}
   m_ReflectSky:
     m_OverrideState: 1
     m_Value: 0

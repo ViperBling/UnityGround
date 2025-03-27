@@ -3,7 +3,7 @@
 #define BINARY_STEP_COUNT 32
 
 #define HIZ_START_LEVEL 0
-#define HIZ_MAX_LEVEL 11
+#define HIZ_MAX_LEVEL 10
 #define HIZ_STOP_LEVEL 0
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
@@ -35,7 +35,7 @@ SAMPLER(sampler_SSRSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
-TEXTURE2D_ARRAY(_DepthPyramid);
+TEXTURE2D_X(_DepthPyramid);
 SAMPLER(sampler_DepthPyramid);
 
 CBUFFER_START(UnityPerMaterial)
@@ -384,6 +384,180 @@ inline float3 IntersectCellBoundary(float3 origin, float3 dir, float2 cellIndex,
     intersectionPos.xy += (solutions.x < solutions.y) ? float2(crossOffset.x, 0.0) : float2(0.0, crossOffset.y);
 
     return intersectionPos;
+}
+
+bool IntersectsDepthBuffer(float rayZMin, float rayZMax, float sceneZ, float thickness)
+{
+    return (rayZMax >= sceneZ - thickness) && (rayZMin <= sceneZ);
+}
+
+bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int stepSize, inout float2 hitUV, inout float3 hitPoint, inout float totalStep)
+{
+    float2 invSize = _ScreenResolution.zw;
+    hitUV = -1.0;
+
+    float thickness = _ThicknessScale * 1;
+    float traceDistance = 512;
+    float nearPlaneZ = -0.01;
+    float rayLength = (rayOriginVS.z + reflectDirVS.z * traceDistance) > nearPlaneZ ? (nearPlaneZ - rayOriginVS.z) / reflectDirVS.z : traceDistance;
+    float3 rayEndVS = rayOriginVS + rayLength * reflectDirVS;
+    
+    float4 H0 = mul(UNITY_MATRIX_P, float4(rayOriginVS, 1.0));
+    H0.xy = (float2(H0.x, H0.y * _ProjectionParams.x) + H0.w) * 0.5;
+    H0.xy *= _ScreenResolution.xy;
+    float4 H1 = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
+    H1.xy = (float2(H1.x, H1.y * _ProjectionParams.x) + H1.w) * 0.5;
+    H1.xy *= _ScreenResolution.xy;
+
+    float K0 = 1.0 / H0.w;
+    float K1 = 1.0 / H1.w;
+    float2 P0 = H0.xy * K0;
+    float2 P1 = H1.xy * K1;
+    float3 Q0 = rayOriginVS * K0;
+    float3 Q1 = rayEndVS * K1;
+
+    float xMax = _ScreenResolution.x - 0.5;
+    float yMax = _ScreenResolution.y - 0.5;
+    float xMin = 0.5;
+    float yMin = 0.5;
+    float alpha = 0;
+
+    UNITY_BRANCH
+    if (P1.x > xMax || P1.x < xMin)
+    {
+        float xClip = P1.x > xMax ? xMax : xMin;
+        float xAlpha = (P1.x - xClip) / (P1.x - P0.x);
+        alpha = xAlpha;
+    }
+    UNITY_BRANCH
+    if (P1.y > yMax || P1.y < yMin)
+    {
+        float yClip = P1.y > yMax ? yMax : yMin;
+        float yAlpha = (P1.y - yClip) / (P1.y - P0.y);
+        alpha = max(alpha, yAlpha);
+    }
+
+    P1 = lerp(P1, P0, alpha);
+    K1 = lerp(K1, K0, alpha);
+    Q1 = lerp(Q1, Q0, alpha);
+
+    P1 = DistanceSquared(P0, P1) < 0.0001 ? P0 + float2(0.01, 0.01) : P1;
+    float2 delta = P1 - P0;
+    bool permute = false;
+    if (abs(delta.x) < abs(delta.y))
+    {
+        permute = true;
+        delta = delta.yx;
+        P1 = P1.yx;
+        P0 = P0.yx;
+    }
+
+    float stepDirection = sign(delta.x);
+    float invDx = stepDirection / delta.x;
+    float2 dP = float2(stepDirection, invDx * delta.y);
+    float3 dQ = (Q1 - Q0) * invDx;
+    float dK = (K1 - K0) * invDx;
+
+    dP *= stepSize;
+    dQ *= stepSize;
+    dK *= stepSize;
+    P0 += dP * jitter;
+    Q0 += dQ * jitter;
+    K0 += dK * jitter;
+
+    float3 Q = Q0;
+    float K = K0;
+    float prevZMaxEstimate = rayOriginVS.z;
+    float rayZMax = prevZMaxEstimate;
+    float rayZMin = prevZMaxEstimate;
+    float sceneZ = 1e+5;
+    float end = P1.x * stepDirection;
+    
+    bool intersecting = IntersectsDepthBuffer(rayZMin, rayZMax, sceneZ, thickness);
+    float2 P = P0;
+    int originStepCount = 0;
+
+    UNITY_LOOP
+    for (totalStep = 0; totalStep < _MaxSteps; totalStep++)
+    {
+        rayZMin = prevZMaxEstimate;
+        rayZMax = (dQ.z * 0.5 + Q.z) / (dK * 0.5 + K);
+        prevZMaxEstimate = rayZMax;
+
+        if (rayZMin > rayZMax)
+        {
+            Swap(rayZMin, rayZMax);
+        }
+
+        hitUV = permute ? P.yx : P;
+        sceneZ = SampleDepth(hitUV * invSize);
+        sceneZ = -LinearEyeDepth(sceneZ, _ZBufferParams);
+        
+        bool isBehind = rayZMin <= sceneZ;
+        intersecting = isBehind && (rayZMax >= sceneZ - thickness);
+
+        if (intersecting && (P.x * stepDirection) <= end) break;
+
+        P += dP;
+        Q.z += dQ.z;
+        K += dK;
+    }
+    P -= dP;
+    Q.z -= dQ.z;
+    K -= dK;
+
+    totalStep = originStepCount;
+    Q.xy += dQ.xy * totalStep;
+    hitPoint = Q * (1 / K);
+
+    return intersecting;
+}
+
+inline float GetMarchSize(float2 start, float2 end, float2 samplePos)
+{
+    float2 dir = abs(end - start);
+    return length(float2(min(dir.x, samplePos.x), min(dir.y, samplePos.y)));
+}
+
+inline float4 HizTrace(float thickness, float2 screenSize, float3 rayOrigin, float3 rayDirection)
+{
+    float sampleSize = GetMarchSize(rayOrigin.xy, rayOrigin.xy + rayDirection.xy, screenSize);
+    float3 samplePos = rayOrigin + rayDirection * sampleSize;
+
+    int level = HIZ_START_LEVEL;
+    float mask = 0.0;
+
+    UNITY_LOOP
+    for (int i = 0; i < _MaxSteps; i++)
+    {
+        float2 cellCount = screenSize * exp2(level + 1);
+        float newSampleSize = GetMarchSize(samplePos.xy, samplePos.xy + rayDirection.xy, cellCount);
+        float3 newSamplePos = samplePos + rayDirection * newSampleSize;
+        float sampleMinDepth = SampleDepth(newSamplePos.xy, level);
+
+        UNITY_BRANCH
+        if (sampleMinDepth < newSamplePos.z)
+        {
+            level = min(HIZ_MAX_LEVEL, level + 1);
+            samplePos = newSamplePos;
+        }
+        else
+        {
+            level--;
+        }
+
+        UNITY_BRANCH
+        if (level < HIZ_STOP_LEVEL)
+        {
+            float sceneDepth = -LinearEyeDepth(sampleMinDepth, _ZBufferParams);
+            float rayDepth = -LinearEyeDepth(samplePos.z, _ZBufferParams);
+            float delta = sceneDepth - rayDepth;
+            mask = delta <= thickness && i > 0;
+            return float4(samplePos, mask);
+        }
+    }
+
+    return float4(samplePos, mask);
 }
 
 inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, float maxIterations, out float hit, out float iterations, out bool isSky)

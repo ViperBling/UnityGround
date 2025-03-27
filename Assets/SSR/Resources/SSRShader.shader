@@ -55,41 +55,41 @@
             ENDHLSL
         }
 
-        // Pass
-        // {
-        //     Name "Spatio Filter 2"
+        Pass
+        {
+            Name "Spatio Filter 2"
             
-        //     HLSLPROGRAM
+            HLSLPROGRAM
 
-        //     #pragma enable_d3d11_debug_symbols
-        //     #pragma target 3.5
-        //     #pragma vertex Vert
-        //     #pragma fragment SpatioFilterPass
+            #pragma enable_d3d11_debug_symbols
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment SpatioFilterPass
 
-        //     // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
-        //     // 这个宏定义具体的解码方式
-        //     #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-        //     ENDHLSL
-        // }
+            ENDHLSL
+        }
 
-        // Pass
-        // {
-        //     Name "Temporal Filter 3"
+        Pass
+        {
+            Name "Temporal Filter 3"
 
-        //     HLSLPROGRAM
+            HLSLPROGRAM
 
-        //     #pragma enable_d3d11_debug_symbols
-        //     #pragma target 3.5
-        //     #pragma vertex Vert
-        //     #pragma fragment TemporalFilterPass
+            #pragma enable_d3d11_debug_symbols
+            #pragma target 3.5
+            #pragma vertex Vert
+            #pragma fragment TemporalFilterPass
 
-        //     // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
-        //     // 这个宏定义具体的解码方式
-        //     #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
+            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
+            // 这个宏定义具体的解码方式
+            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-        //     ENDHLSL
-        // }
+            ENDHLSL
+        }
         
         Pass
         {

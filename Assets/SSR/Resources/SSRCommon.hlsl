@@ -92,7 +92,7 @@ uint UnpackMaterialFlags(float packedMaterialFlags)
 
 inline float SampleDepth(float2 uv)
 {
-    return SAMPLE_TEXTURE2D(_CameraDepthTexture, sampler_CameraDepthTexture, uv).r;
+    return SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, uv, 0).r;
 }
 
 float3x3 GetTangentBasis(float3 tangentZ)
@@ -155,7 +155,7 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
 
 inline float3 GetNormalWS(float2 uv, inout float smoothness)
 {
-    float4 normalGBuffer = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, uv);
+    float4 normalGBuffer = SAMPLE_TEXTURE2D_LOD(_GBuffer2, sampler_point_clamp, uv, 0.0);
     smoothness = normalGBuffer.a;
     return UnpackNormal(normalGBuffer.xyz);
 }
@@ -174,6 +174,52 @@ inline float4 ReconstructPositionWS(float2 screenUV, float rawDepth, inout float
     float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
 
     return positionWS;
+}
+
+float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roughness)
+{
+    float3 H = normalize(viewDirVS + reflectDirVS);
+
+    float NoH = max(dot(normalVS, H), 0.0);
+    float NoL = max(dot(normalVS, reflectDirVS), 0.0);
+    float NoV = max(dot(normalVS, viewDirVS), 0.0);
+
+    float D = D_GGX_SSR(NoH, roughness);
+    float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
+    return max(0, D * G);
+}
+
+float2 GetMotionVector(float2 uv, float depth)
+{
+    float4 hitPosNDC, hitPosVS;
+    float4 hitPosWS = ReconstructPositionWS(uv, depth, hitPosNDC, hitPosVS);
+
+    float4 prevClipPos = mul(_PrevViewProjMatrix, hitPosWS);
+    float4 curClipPos = mul(UNITY_MATRIX_VP, hitPosWS);
+
+    float2 prevHPos = prevClipPos.xy / prevClipPos.w;
+    float2 curHPos = curClipPos.xy / curClipPos.w;
+
+    float2 prevVPos = prevHPos * 0.5 + 0.5;
+    float2 curVPos = curHPos * 0.5 + 0.5;
+
+    float2 motionVector = curVPos - prevVPos;
+
+    return motionVector;
+}
+
+float4 Texture2DSampleBicubic(Texture2D tex, SamplerState texSampler, float2 uv, float2 texelSize, in float2 invSize)
+{
+    FCatmullRomSamples samples = GetBicubic2DCatmullRomSamples(uv, texelSize, invSize);
+
+    float4 outColor = 0;
+    for (uint i = 0; i < samples.Count; i++)
+    {
+        outColor += tex.SampleLevel(texSampler, samples.UV[i], 0) * samples.Weight[i];
+    }
+    outColor *= samples.FinalMultiplier;
+
+    return outColor;
 }
 
 float ScreenEdgeMask(float2 screenUV)
@@ -219,7 +265,12 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     float3 rayEndVS = rayOriginVS + rayLength * reflectDirVS;
     
     float4 H0 = mul(UNITY_MATRIX_P, float4(rayOriginVS, 1.0));
+    H0.xy = (float2(H0.x, H0.y * _ProjectionParams.x) + H0.w) * 0.5;
+    H0.xy *= _ScreenResolution.xy;
     float4 H1 = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
+    H1.xy = (float2(H1.x, H1.y * _ProjectionParams.x) + H1.w) * 0.5;
+    H1.xy *= _ScreenResolution.xy;
+
     float K0 = 1.0 / H0.w;
     float K1 = 1.0 / H1.w;
     float2 P0 = H0.xy * K0;
@@ -253,7 +304,6 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     P1 = DistanceSquared(P0, P1) < 0.0001 ? P0 + float2(0.01, 0.01) : P1;
     float2 delta = P1 - P0;
     bool permute = false;
-
     if (abs(delta.x) < abs(delta.y))
     {
         permute = true;
@@ -287,6 +337,10 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     float2 P = P0;
     int originStepCount = 0;
 
+    // hitUV = P0.xy;
+    // hitPoint = float3(P0, 0);
+    // return false;
+
     for (totalStep = 0; totalStep < _MaxSteps; totalStep++)
     {
         rayZMin = prevZMaxEstimate;
@@ -299,7 +353,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
         }
 
         hitUV = permute ? P.yx : P;
-        sceneZ = SAMPLE_TEXTURE2D_LOD(_CameraDepthTexture, sampler_CameraDepthTexture, hitUV * invSize, 0.0).r;
+        sceneZ = SampleDepth(hitUV * invSize);
         sceneZ = -LinearEyeDepth(sceneZ, _ZBufferParams);
         
         bool isBehind = rayZMin <= sceneZ;

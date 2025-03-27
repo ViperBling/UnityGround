@@ -18,5 +18,5 @@ float Vis_SmithGGXCorrelated_SSR(float NoL, float NoV, float roughness)
     float LambdaL = NoV * sqrt((1 - a2) * NoL * NoL + a2);
 	float LambdaV = NoL * sqrt((1 - a2) * NoV * NoV + a2);
     
-	return (0.5 / max((LambdaL + LambdaV), REAL_MIN)) / PI;
+	return (0.5 / max(LambdaL + LambdaV, REAL_MIN)) / PI;
 }

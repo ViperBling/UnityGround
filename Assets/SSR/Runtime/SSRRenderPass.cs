@@ -40,9 +40,9 @@ namespace SSR
             private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
             private const int m_LinearSSTracingPass = 0;
             private const int m_HiZTracingPass = 1;
-            // private const int m_SpatioFilterPass = 2;
-            // private const int m_TemporalFilterPass = 3;
-            private const int m_CompositePass = 2;
+            private const int m_SpatioFilterPass = 2;
+            private const int m_TemporalFilterPass = 3;
+            private const int m_CompositePass = 4;
 
             private bool m_IsPadded = false;
             private float m_Scale;
@@ -151,27 +151,25 @@ namespace SSR
                     }
 
                     // 3. 利用Hit数据进行空间滤波
-                    // cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
-                    // Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_TemporalCurrentHandle, m_Material, pass: m_SpatioFilterPass);
+                    cmd.SetGlobalTexture(m_SceneColorHandle.name, m_SceneColorHandle);
+                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, m_TemporalCurrentHandle, m_Material, pass: m_SpatioFilterPass);
 
-                    // bool useTemporalFiltering = m_SSRVolume.m_UseTemporalFilter.value;
-                    // // 4. Temporal Filter
-                    // if (useTemporalFiltering)
-                    // {
-                    //     cmd.SetGlobalTexture(m_ReflectColorHandle.name, m_ReflectColorHandle);
-                    //     cmd.SetGlobalTexture(m_TemporalHistoryHandle.name, m_TemporalHistoryHandle);
-                    //     Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, m_TempHandle, m_Material, pass: m_TemporalFilterPass);
-                    //     cmd.CopyTexture(m_TempHandle, m_TemporalHistoryHandle);
+                    bool useTemporalFiltering = m_SSRVolume.m_UseTemporalFilter.value;
+                    // 4. Temporal Filter
+                    if (useTemporalFiltering)
+                    {
+                        cmd.SetGlobalTexture(m_ReflectColorHandle.name, m_ReflectColorHandle);
+                        cmd.SetGlobalTexture(m_TemporalHistoryHandle.name, m_TemporalHistoryHandle);
+                        Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, m_TempHandle, m_Material, pass: m_TemporalFilterPass);
+                        cmd.CopyTexture(m_TempHandle, m_TemporalHistoryHandle);
 
-                    //     Blitter.BlitCameraTexture(cmd, m_TempHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
-                    // }
-                    // else
-                    // {
-                    //     Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
-                    // }
-                    // m_FirstFrame = false;
+                        Blitter.BlitCameraTexture(cmd, m_TempHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    }
+                    else
+                    {
+                        Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
+                    }
 
-                    Blitter.BlitCameraTexture(cmd, m_ReflectColorHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();

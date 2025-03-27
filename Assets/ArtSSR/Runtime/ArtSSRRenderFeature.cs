@@ -56,8 +56,11 @@ namespace ArtSSR
 
             if (isSSRActive)
             {
-                m_DepthPyramidPass.m_SSRVolume = artSSRVolume;
-                renderer.EnqueuePass(m_DepthPyramidPass);
+                if (artSSRVolume.m_MarchingMode.value == ArtSSREffect.RayMarchingMode.HiZTracing)
+                {
+                   m_DepthPyramidPass.m_SSRVolume = artSSRVolume;
+                    renderer.EnqueuePass(m_DepthPyramidPass);
+                }
 
                 // m_BackFaceDepthPass.m_SSRVolume = artSSRVolume;
                 // renderer.EnqueuePass(m_BackFaceDepthPass);
