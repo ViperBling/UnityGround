@@ -257,100 +257,101 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
 
     float3 viewDirWS = normalize(positionWS.xyz - positionVS.xyz);
 
-    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    float2 random = SAMPLE_TEXTURE2D_LOD(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV, 0).xy;
-    random.y = lerp(random.y, 0.0, _BRDFBias);
+    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    // float2 random = SAMPLE_TEXTURE2D_LOD(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV, 0).xy;
+    // random.y = lerp(random.y, 0.0, _BRDFBias);
 
-    float4 H = 0.0;
-    if (roughness > 0.1)
-    {
-        H = TangentToWorld(ImportanceSampleGGX_SSR(random, roughness), float4(normalVS, 1.0));
-    }
-    else
-    {
-        H = float4(normalVS, 1.0);
-    }
-    float3 reflectDirVS = reflect(normalize(positionVS.xyz), H.xyz);
+    // float4 H = 0.0;
+    // if (roughness > 0.1)
+    // {
+    //     H = TangentToWorld(ImportanceSampleGGX_SSR(random, roughness), float4(normalVS, 1.0));
+    // }
+    // else
+    // {
+    //     H = float4(normalVS, 1.0);
+    // }
+    // float3 reflectDirVS = reflect(normalize(positionVS.xyz), H.xyz);
 
-    float3 rayOrigin = float3(screenUV, rawDepth);
-    float4 rayDirHS = mul(UNITY_MATRIX_P, float4(positionVS.xyz + reflectDirVS, 1.0));
-    rayDirHS.y *= _ProjectionParams.x;
-    float3 screenPos = positionNDC.xyz;
-    screenPos.y /= _ProjectionParams.x;
-    float3 rayDir = normalize(rayDirHS.xyz / rayDirHS.w - screenPos);
-    rayDir.xy *= 0.5;
+    // float3 rayOrigin = float3(screenUV, rawDepth);
+    // float4 rayDirHS = mul(UNITY_MATRIX_P, float4(positionVS.xyz + reflectDirVS, 1.0));
+    // rayDirHS.y *= _ProjectionParams.x;
+    // float3 screenPos = positionNDC.xyz;
+    // screenPos.y /= _ProjectionParams.x;
+    // float3 rayDir = normalize(rayDirHS.xyz / rayDirHS.w - screenPos);
+    // rayDir.xy *= 0.5;
 
-    float thickness = _ThicknessScale;
-    float2 screenRes = _ScreenResolution.zw;
-    float4 hitData = HizTrace(thickness, screenRes, rayOrigin, rayDir);
+    // float thickness = _ThicknessScale;
+    // float2 screenRes = _ScreenResolution.zw;
+    // float4 hitData = HizTrace(thickness, screenRes, rayOrigin, rayDir);
 
-    float mask = hitData.w;
-    // mask *= ScreenEdgeMask(hitData.xy);
-    // mask *= mask;
+    // float mask = hitData.w;
+    // // mask *= ScreenEdgeMask(hitData.xy);
+    // // mask *= mask;
 
-    float3 finalResult = hitData.xyz;
-    // finalResult = mask;
+    // float3 finalResult = hitData.xyz;
+    // // finalResult = mask;
 
-    return float4(finalResult, mask);
+    // return float4(finalResult, mask);
 
-    // bool valid = false;
-    // float PDF, jitter;
-    // float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, roughness, PDF, jitter, valid);
-    // float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
-
-    // // positionVS的z轴为负，所以要取反才能得到正确的反射位置
-    // float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z * 10;
-    // float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
-    // reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
-    // reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
-    // positionNDC.z = 1 - positionNDC.z;
     
-    // // TextureSpace下的反射方向
-    // float3 outReflectionDirSS = normalize(reflectionEndPosCS - positionNDC).xyz;
-    // // 缩放向量到[0, 1]范围
-    // outReflectionDirSS.xy *= float2(0.5, -0.5);
+    bool valid = false;
+    float PDF, jitter;
+    float3 reflectDirWS = GetReflectDirWS(screenUV, normalWS, viewDirWS, smoothness, PDF, jitter, valid);
+    float3 reflectDirVS = TransformWorldToViewDir(reflectDirWS);
 
-    // // TS下的采样位置
-    // float3 outSamplePosSS = float3(screenUV, positionNDC.z);
+    // positionVS的z轴为负，所以要取反才能得到正确的反射位置
+    float3 reflectionEndPosVS = positionVS.xyz - reflectDirVS * positionVS.z * 10;
+    float4 reflectionEndPosCS = mul(UNITY_MATRIX_P, float4(reflectionEndPosVS, 1.0));
+    reflectionEndPosCS *= rcp(reflectionEndPosCS.w);
+    reflectionEndPosCS.z = 1 - reflectionEndPosCS.z;
+    positionNDC.z = 1 - positionNDC.z;
+    
+    // TextureSpace下的反射方向
+    float3 outReflectionDirSS = normalize(reflectionEndPosCS - positionNDC).xyz;
+    // 缩放向量到[0, 1]范围
+    outReflectionDirSS.xy *= float2(0.5, -0.5);
 
-    // float VoR = saturate(dot(viewDirWS, reflectDirWS));
-    // float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
-    // // 越界检测，超过thickness认为在物体内部
-    // float thickness = _StepStride * _ThicknessScale;
-    // float oneMinusVoR = sqrt(1 - VoR);
-    // float scaledStepStride = _StepStride / oneMinusVoR;
-    // thickness /= oneMinusVoR;
+    // TS下的采样位置
+    float3 outSamplePosSS = float3(screenUV, positionNDC.z);
 
-    // float maxRayLength = _MaxSteps * scaledStepStride;
-    // float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
-    // float fixNumStep = max(maxDist / scaledStepStride, 0);
+    float VoR = saturate(dot(viewDirWS, reflectDirWS));
+    float camVoR = saturate(dot(_WorldSpaceViewDir, reflectDirWS));
+    // 越界检测，超过thickness认为在物体内部
+    float thickness = _StepStride * _ThicknessScale;
+    float oneMinusVoR = sqrt(1 - VoR);
+    float scaledStepStride = _StepStride / oneMinusVoR;
+    thickness /= oneMinusVoR;
 
-    // float hit = 0;
-    // float maskOut = smoothstep(0, 0.1f, camVoR);
+    float maxRayLength = _MaxSteps * scaledStepStride;
+    float maxDist = lerp(min(positionVS.z, maxRayLength), maxRayLength, camVoR);
+    float fixNumStep = max(maxDist / scaledStepStride, 0);
 
-    // UNITY_BRANCH
-    // if (maskOut == 0) return float4(screenUV, 0, 0);
+    float hit = 0;
+    float maskOut = smoothstep(0, 0.1f, camVoR);
 
-    // float iterations;
-    // bool isSky;
-    // float3 intersectPoint = HizTrace(thickness, outSamplePosSS, outReflectionDirSS, _MaxSteps, hit, iterations, isSky);
+    UNITY_BRANCH
+    if (maskOut == 0) return float4(screenUV, 0, 0);
 
-    // float edgeMask = ScreenEdgeMask(intersectPoint.xy);
+    float iterations;
+    bool isSky;
+    float3 intersectPoint = HizTrace(thickness, outSamplePosSS, outReflectionDirSS, _MaxSteps, hit, iterations, isSky);
 
-    // float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, intersectPoint.xy).xyz);
-    // float backFaceDot = dot(tNormal, reflectDirWS);
-    // maskOut = backFaceDot > 0 && !isSky ? 0 : maskOut;
+    float edgeMask = ScreenEdgeMask(intersectPoint.xy);
 
-    // maskOut *= hit * edgeMask;
+    float3 tNormal = UnpackNormal(SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, intersectPoint.xy).xyz);
+    float backFaceDot = dot(tNormal, reflectDirWS);
+    maskOut = backFaceDot > 0 && !isSky ? 0 : maskOut;
 
-    // // float smoothnessPow4 = Pow4(smoothness);
-    // // float stepS = smoothstep(_MinSmoothness, 1, smoothness);
-    // // float fresnel = lerp(smoothnessPow4, 1.0, pow(VoR, 1.0 / smoothnessPow4));
-    // // float alpha = stepS;
+    maskOut *= hit * edgeMask;
 
-    // float3 finalResult = float3(intersectPoint.xy, PDF);
+    // float smoothnessPow4 = Pow4(smoothness);
+    // float stepS = smoothstep(_MinSmoothness, 1, smoothness);
+    // float fresnel = lerp(smoothnessPow4, 1.0, pow(VoR, 1.0 / smoothnessPow4));
+    // float alpha = stepS;
 
-    // return half4(finalResult, maskOut);
+    float3 finalResult = float3(intersectPoint.xy, PDF);
+
+    return half4(finalResult, maskOut);
 }
 //#endregion
 
@@ -378,9 +379,6 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     float2 blueNoise = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV) * 2.0 - 1.0;
     float2x2 offsetRotationMatrix = float2x2(blueNoise.x, blueNoise.y, -blueNoise.y, -blueNoise.x);
-
-    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    // float2x2 offsetRotationMatrix = float2x2(cos(random.x), sin(random.y), -sin(random.x), cos(random.y));
 
     float numWeight = 0;
     float weight = 0;

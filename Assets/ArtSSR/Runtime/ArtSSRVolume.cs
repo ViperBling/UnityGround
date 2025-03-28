@@ -36,6 +36,7 @@ namespace ArtSSR
         public ClampedIntParameter m_MaxSteps = new(value: 64, min: 32, max: 512, overrideState: true);
         
         public ClampedIntParameter m_DownSample = new(value: 0, min: 0, max: 1, overrideState: true);
+        public BoolParameter m_HiZUseComputeShader = new(value: true, overrideState: true);
         public BoolParameter m_UseTemporalFilter = new(value: false, overrideState: true);
         public ClampedFloatParameter m_BRDFBias = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: true);
         [InspectorName("Blue Noise Texture")]

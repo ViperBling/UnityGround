@@ -1,7 +1,7 @@
-﻿#pragma enable_d3d11_debug_symbols
-// #pragma kernel CSMain
+﻿// #pragma enable_d3d11_debug_symbols
+#pragma kernel CSMain
 #pragma kernel DepthCopy
-#pragma kernel GenerateDepthPyramid
+// #pragma kernel GenerateDepthPyramid
 
 // #pragma kernel DebugEdit
 // #pragma kernel DebugCopyScale
@@ -18,49 +18,45 @@ uint _DstSlice;
 uint2 _SceneSize;
 int _HiZPrevDepthLevel;
 
-// RWTexture2DArray<float> _DepthPyramid;
+RWTexture2DArray<float> _DepthPyramidCS;
 Texture2D<float> _CameraDepthTexture;
-RWTexture2D<float> _DepthPyramid;
-RWTexture2D<float> _DepthPyramidTemp;
 
-// SamplerState sampler_DepthPyramid;
+inline float SampleSliceDepth(uint3 pos)
+{
+    return _DepthPyramidCS[uint3(min(pos.xy, float2(_SrcSize.x - 1, _SrcSize.y - 1)), pos.z)];
+}
 
-// inline float SampleSliceDepth(uint3 pos)
-// {
-//     return _DepthPyramid[uint3(min(pos.xy, float2(_SrcSize.x - 1, _SrcSize.y - 1)), pos.z)];
-// }
-
-// [numthreads(THREADS, THREADS, 1)]
-// void CSMain(uint3 id : SV_DispatchThreadID)
-// {
-//     UNITY_BRANCH
-//     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+[numthreads(THREADS, THREADS, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    UNITY_BRANCH
+    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
-//     float minValue = -1;
-//     // 相当于对id.xy乘以2
-//     float2 prevPos = id.xy << 1;
-//     // 对应上一级mip的Index
-//     uint3 prevID = uint3(prevPos.xy, _SrcSlice);
+    float minValue = -1;
+    // 相当于对id.xy乘以2
+    float2 prevPos = id.xy << 1;
+    // 对应上一级mip的Index
+    uint3 prevID = uint3(prevPos.xy, _SrcSlice);
 
-//     uint3 o1 = prevID + uint3(1, 0, 0);
-//     uint3 o2 = prevID + uint3(1, 1, 0);
-//     uint3 o3 = prevID + uint3(0, 1, 0);
+    uint3 o1 = prevID + uint3(1, 0, 0);
+    uint3 o2 = prevID + uint3(1, 1, 0);
+    uint3 o3 = prevID + uint3(0, 1, 0);
 
-//     // 0 -------- 1
-//     // |          |
-//     // |          |
-//     // 3 -------- 2
-//     // 0是当前的深度值，1、2、3是周围的深度值
-//     float d0 = _DepthPyramid[prevID];
-//     float d1 = SampleSliceDepth(o1);
-//     float d2 = SampleSliceDepth(o2);
-//     float d3 = SampleSliceDepth(o3);
+    // 0 -------- 1
+    // |          |
+    // |          |
+    // 3 -------- 2
+    // 0是当前的深度值，1、2、3是周围的深度值
+    float d0 = _DepthPyramidCS[prevID];
+    float d1 = SampleSliceDepth(o1);
+    float d2 = SampleSliceDepth(o2);
+    float d3 = SampleSliceDepth(o3);
 
-//     // 取所有深度值的最小值作为当前mip的深度值
-//     minValue = min(min(d0, d1), min(d2, d3));
+    // 取所有深度值的最小值作为当前mip的深度值
+    minValue = max(max(d0, d1), max(d2, d3));
 
-//     _DepthPyramid[uint3(id.xy, _DstSlice)] = minValue;
-// }
+    _DepthPyramidCS[uint3(id.xy, _DstSlice)] = minValue;
+}
 
 [numthreads(THREADS, THREADS, 1)]
 void DepthCopy(uint3 id : SV_DispatchThreadID)
@@ -68,26 +64,26 @@ void DepthCopy(uint3 id : SV_DispatchThreadID)
     UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
-    _DepthPyramid[id.xy] = _CameraDepthTexture[id.xy];
+    _DepthPyramidCS[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
     // _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
 }
 
-[numthreads(THREADS, THREADS, 1)]
-void GenerateDepthPyramid(uint3 id : SV_DispatchThreadID)
-{
-    UNITY_BRANCH
-    if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
+// [numthreads(THREADS, THREADS, 1)]
+// void GenerateDepthPyramid(uint3 id : SV_DispatchThreadID)
+// {
+//     UNITY_BRANCH
+//     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
 
-    // float2 uv = (float2)(id.xy + 0.5) / (float2)_SceneSize;
+//     // float2 uv = (float2)(id.xy + 0.5) / (float2)_SceneSize;
 
-    float depht0 = _DepthPyramid.Load(int3(id.xy + int2(-1, -1), _HiZPrevDepthLevel)).x;
-    float depht1 = _DepthPyramid.Load(int3(id.xy + int2(-1,  1), _HiZPrevDepthLevel)).x;
-    float depht2 = _DepthPyramid.Load(int3(id.xy + int2( 1, -1), _HiZPrevDepthLevel)).x;
-    float depht3 = _DepthPyramid.Load(int3(id.xy + int2( 1,  1), _HiZPrevDepthLevel)).x;
+//     float depht0 = _DepthPyramid.Load(int3(id.xy + int2(-1, -1), _HiZPrevDepthLevel)).x;
+//     float depht1 = _DepthPyramid.Load(int3(id.xy + int2(-1,  1), _HiZPrevDepthLevel)).x;
+//     float depht2 = _DepthPyramid.Load(int3(id.xy + int2( 1, -1), _HiZPrevDepthLevel)).x;
+//     float depht3 = _DepthPyramid.Load(int3(id.xy + int2( 1,  1), _HiZPrevDepthLevel)).x;
 
-    _DepthPyramidTemp[id.xy] = max(max(depht0, depht1), max(depht2, depht3));
-    // _DepthPyramidTemp[id.xy] = 0;
-}
+//     _DepthPyramidTemp[id.xy] = max(max(depht0, depht1), max(depht2, depht3));
+//     // _DepthPyramidTemp[id.xy] = 0;
+// }
 
 // ==================== Debug ==================== //
 // float _Low;

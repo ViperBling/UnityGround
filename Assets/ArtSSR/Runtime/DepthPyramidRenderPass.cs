@@ -13,14 +13,14 @@ namespace ArtSSR
 
             private const string m_ProfilingTag = "ArtSSR_DepthPyramid";
 
-            // private readonly int m_NumThreads = 8;
-            private const int m_NumSlices = 10;
+            private readonly int m_NumThreads = 8;
+            private const int m_NumSlices = 11;
 
             [SerializeField] internal ComputeShader m_DepthPyramidCS;
             [SerializeField] internal Material m_DepthPyramidMaterial;
-            [SerializeField] internal Mesh m_FullscreenMesh;
 
             private RTHandle m_DepthPyramidHandle;
+            private RTHandle m_DepthPyramidCSHandle;
             private RTHandle m_DepthPyramidTempHandle;
 
             internal struct TargetSlice
@@ -44,29 +44,6 @@ namespace ArtSSR
                 m_DepthPyramidCS = AssetDatabase.LoadAssetAtPath<ComputeShader>("Assets/ArtSSR/Shaders/HiZCompute.compute");
                 var depthShader = Shader.Find("Hidden/ArtSSR/HizCompute");
                 m_DepthPyramidMaterial = CoreUtils.CreateEngineMaterial(depthShader);
-
-                m_FullscreenMesh = CreateFullscreenMesh();
-            }
-
-            static Mesh CreateFullscreenMesh()
-            {
-                // TODO reorder for pre&post-transform cache optimisation.
-                // Simple full-screen triangle.
-                Vector3[] positions =
-                {
-                new Vector3(-1.0f,  1.0f, 0.0f),
-                new Vector3(-1.0f, -3.0f, 0.0f),
-                new Vector3(3.0f,  1.0f, 0.0f)
-            };
-
-                int[] indices = { 0, 1, 2 };
-
-                Mesh mesh = new Mesh();
-                mesh.indexFormat = IndexFormat.UInt16;
-                mesh.vertices = positions;
-                mesh.triangles = indices;
-
-                return mesh;
             }
 
             public void Dispose()
@@ -76,19 +53,14 @@ namespace ArtSSR
                 CoreUtils.Destroy(m_DepthPyramidMaterial);
             }
 
-            // void SetupComputeShader(CommandBuffer cmdBuffer, RTHandle depthPyramid, int srcSlice, int dstSlice, float srcW, float srcH, float dstW, float dstH)
-            // {
-            //     int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");
-            //     cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthPyramid, "_DepthPyramid", depthPyramid);
-            //     cmdBuffer.SetComputeIntParam(m_DepthPyramidCS, "_SrcSlice", srcSlice);
-            //     cmdBuffer.SetComputeIntParam(m_DepthPyramidCS, "_DstSlice", dstSlice);
-            //     cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, "_SrcSize", new Vector2(srcW, srcH));
-            //     cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, "_DstSize", new Vector2(dstW, dstH));
-            // }
-
-            public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraRTDesc)
+            void SetupComputeShader(CommandBuffer cmdBuffer, RTHandle depthPyramid, int srcSlice, int dstSlice, float srcW, float srcH, float dstW, float dstH)
             {
-
+                int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");
+                cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthPyramid, "_DepthPyramid", depthPyramid);
+                cmdBuffer.SetComputeIntParam(m_DepthPyramidCS, "_SrcSlice", srcSlice);
+                cmdBuffer.SetComputeIntParam(m_DepthPyramidCS, "_DstSlice", dstSlice);
+                cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, "_SrcSize", new Vector2(srcW, srcH));
+                cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, "_DstSize", new Vector2(dstW, dstH));
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -101,47 +73,54 @@ namespace ArtSSR
                 m_ScreenSize.x = width;
                 m_ScreenSize.y = height;
 
-                // for (int i = 0; i < m_NumSlices; i++)
-                // {
-                //     float pow2 = Mathf.Pow(2, i);
-                //     m_Slices[i].Resolution.x = Mathf.Max(Mathf.Floor(width / pow2), 1);
-                //     m_Slices[i].Resolution.y = Mathf.Max(Mathf.Floor(height / pow2), 1);
-                //     m_Slices[i].SliceIndex = i;
+                bool useComputeShader = m_SSRVolume.m_HiZUseComputeShader.value;
+                if (useComputeShader)
+                {
+                    for (int i = 0; i < m_NumSlices; i++)
+                    {
+                        float pow2 = Mathf.Pow(2, i);
+                        m_Slices[i].Resolution.x = Mathf.Max(Mathf.Floor(width / pow2), 1);
+                        m_Slices[i].Resolution.y = Mathf.Max(Mathf.Floor(height / pow2), 1);
+                        m_Slices[i].SliceIndex = i;
 
-                //     m_Slices[i].Scale.x = (int)(m_Slices[i].Resolution.x / width);
-                //     m_Slices[i].Scale.y = (int)(m_Slices[i].Resolution.y / height);
-                // }
+                        m_Slices[i].Scale.x = (int)(m_Slices[i].Resolution.x / width);
+                        m_Slices[i].Scale.y = (int)(m_Slices[i].Resolution.y / height);
+                    }
 
-                // RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
-                // desc.depthBufferBits = 0;
-                // desc.msaaSamples = 1;
-                // desc.enableRandomWrite = true;
-                // desc.sRGB = false;
-                // desc.colorFormat = RenderTextureFormat.RFloat;
-                // desc.width = (int)m_ScreenSize.x;
-                // desc.height = (int)m_ScreenSize.y;
-                // desc.volumeDepth = m_NumSlices;
-                // desc.dimension = TextureDimension.Tex2DArray;
+                    RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
+                    desc.depthBufferBits = 0;
+                    desc.msaaSamples = 1;
+                    desc.enableRandomWrite = true;
+                    desc.sRGB = false;
+                    desc.colorFormat = RenderTextureFormat.RFloat;
+                    desc.width = (int)m_ScreenSize.x;
+                    desc.height = (int)m_ScreenSize.y;
+                    desc.volumeDepth = m_NumSlices;
+                    desc.dimension = TextureDimension.Tex2DArray;
 
-                // RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_FinalDepthPyramid");
+                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidCSHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidCS");
+                    cmd.SetGlobalTexture(m_DepthPyramidCSHandle.name, m_DepthPyramidCSHandle);
+                }
+                else
+                {
+                    RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
+                    desc.depthBufferBits = 0;
+                    desc.msaaSamples = 1;
+                    desc.sRGB = false;
+                    desc.enableRandomWrite = true;
+                    desc.colorFormat = RenderTextureFormat.RFloat;
+                    // desc.width = (int)m_ScreenSize.x;
+                    // desc.height = (int)m_ScreenSize.y;
+                    desc.useMipMap = true;
+                    desc.mipCount = m_NumSlices;
+                    desc.autoGenerateMips = true;
+                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramid");
 
-                RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
-                desc.depthBufferBits = 0;
-                desc.msaaSamples = 1;
-                desc.sRGB = false;
-                desc.enableRandomWrite = true;
-                desc.colorFormat = RenderTextureFormat.RFloat;
-                // desc.width = (int)m_ScreenSize.x;
-                // desc.height = (int)m_ScreenSize.y;
-                desc.useMipMap = true;
-                desc.mipCount = m_NumSlices;
-                desc.autoGenerateMips = true;
-                RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramid");
-
-                desc.autoGenerateMips = false;
-                RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidTempHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidTemp");
-
-                cmd.SetGlobalTexture(m_DepthPyramidHandle.name, m_DepthPyramidHandle);
+                    desc.autoGenerateMips = false;
+                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidTempHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidTemp");
+                    cmd.SetGlobalTexture(m_DepthPyramidHandle.name, m_DepthPyramidHandle);
+                }
+                
 
                 ConfigureInput(ScriptableRenderPassInput.Depth);
                 ConfigureTarget(renderingData.cameraData.renderer.cameraColorTargetHandle, renderingData.cameraData.renderer.cameraDepthTargetHandle);
@@ -149,74 +128,66 @@ namespace ArtSSR
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
             {
-                // int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");
-                int kernelDepthCopy = m_DepthPyramidCS.FindKernel("DepthCopy");
-                int kernelGeneratePyramid = m_DepthPyramidCS.FindKernel("GenerateDepthPyramid");
-
                 float width = m_ScreenSize.x;
                 float height = m_ScreenSize.y;
 
-                CommandBuffer cmdBuffer = CommandBufferPool.Get(m_ProfilingTag);
-                // cmdBuffer.Clear();
-                // cmdBuffer.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
-                using (new ProfilingScope(cmdBuffer, new ProfilingSampler(m_ProfilingTag)))
+                bool useComputeShader = m_SSRVolume.m_HiZUseComputeShader.value;
+                if (useComputeShader)
                 {
+                    int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");
+                    int kernelDepthCopy = m_DepthPyramidCS.FindKernel("DepthCopy");
 
-                    // cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthCopy, m_DepthPyramidHandle.name, m_DepthPyramidHandle);
-                    // cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
-                    // cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthCopy, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
-                    Blitter.BlitCameraTexture(cmdBuffer, renderingData.cameraData.renderer.cameraDepthTargetHandle, m_DepthPyramidHandle);
-                    for (int i = 1; i < m_NumSlices; i++)
+                    var cmdBuffer = CommandBufferPool.Get();
+                    using (new ProfilingScope(cmdBuffer, new ProfilingSampler(m_ProfilingTag)))
                     {
-                        // cmdBuffer.SetComputeIntParam(m_DepthPyramidCS, m_HiZPrevDepthLevelID, i - 1);
-                        // cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelGeneratePyramid, m_DepthPyramidTempHandle.name, m_DepthPyramidTempHandle, i);
-                        // cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
-                        // cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelGeneratePyramid, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
-                        // cmdBuffer.CopyTexture(m_DepthPyramidTempHandle, 0, i, m_DepthPyramidHandle, 0, i);
+                        cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthCopy, m_DepthPyramidCSHandle.name, m_DepthPyramidCSHandle);
+                        cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
+                        cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthCopy, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
+                        context.ExecuteCommandBuffer(cmdBuffer);
+                        cmdBuffer.Clear();
+                        // CommandBufferPool.Release(cmdBuffer);
 
-                        cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
-                        Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidTempHandle, i);
-                        // cmdBuffer.SetRenderTarget(m_DepthPyramidTempHandle, i);
-                        // cmdBuffer.DrawMesh(m_FullscreenMesh, Matrix4x4.identity, m_DepthPyramidMaterial, 0, 0);
-                        cmdBuffer.CopyTexture(m_DepthPyramidTempHandle, 0, i, m_DepthPyramidHandle, 0, i);
+                        cmdBuffer.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
+                        for (int i = 0; i < m_NumSlices - 1; i++)
+                        {
+                            SetupComputeShader(cmdBuffer, m_DepthPyramidCSHandle,
+                                m_Slices[i], m_Slices[i + 1],
+                                m_Slices[i].Resolution.x, m_Slices[i].Resolution.y,
+                                m_Slices[i + 1].Resolution.x, m_Slices[i + 1].Resolution.y);
+
+                            int groupX = Mathf.CeilToInt(m_Slices[i + 1].Resolution.x / m_NumThreads);
+                            int groupY = Mathf.CeilToInt(m_Slices[i + 1].Resolution.y / m_NumThreads);
+
+                            cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthPyramid, groupX, groupY, 1);
+                        }
+                        context.ExecuteCommandBuffer(cmdBuffer);
+                        cmdBuffer.Clear();
+                        CommandBufferPool.Release(cmdBuffer);
                     }
-
-                    context.ExecuteCommandBuffer(cmdBuffer);
-                    cmdBuffer.Clear();
-                    CommandBufferPool.Release(cmdBuffer);
                 }
+                else
+                {
+                    CommandBuffer cmdBuffer = CommandBufferPool.Get(m_ProfilingTag);
+                    using (new ProfilingScope(cmdBuffer, new ProfilingSampler(m_ProfilingTag)))
+                    {
+                        // cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthCopy, m_DepthPyramidHandle.name, m_DepthPyramidHandle);
+                        // cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
+                        // cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthCopy, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
+                        Blitter.BlitCameraTexture(cmdBuffer, renderingData.cameraData.renderer.cameraDepthTargetHandle, m_DepthPyramidHandle);
+                        // for (int i = 1; i < m_NumSlices; i++)
+                        // {
+                        //     cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
+                        //     Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidTempHandle, i);
+                        //     // cmdBuffer.SetRenderTarget(m_DepthPyramidTempHandle, i);
+                        //     // cmdBuffer.DrawMesh(m_FullscreenMesh, Matrix4x4.identity, m_DepthPyramidMaterial, 0, 0);
+                        //     cmdBuffer.CopyTexture(m_DepthPyramidTempHandle, 0, i, m_DepthPyramidHandle, 0, i);
+                        // }
 
-                // {
-                // cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthCopy, m_DepthPyramidHandle.name, m_DepthPyramidHandle);
-                // cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
-                // cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthCopy, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
-                // context.ExecuteCommandBuffer(cmdBuffer);
-                // cmdBuffer.Clear();
-                // CommandBufferPool.Release(cmdBuffer);
-                // }
-
-                // {
-                //     var cmdBuffer = CommandBufferPool.Get(m_ProfilingTag + "_CalcDepthPyramid");
-                //     cmdBuffer.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);
-                //     for (int i = 0; i < m_NumSlices - 1; i++)
-                //     {
-                //         SetupComputeShader(cmdBuffer, m_DepthPyramidHandle,
-                //             m_Slices[i], m_Slices[i + 1],
-                //             m_Slices[i].Resolution.x, m_Slices[i].Resolution.y,
-                //             m_Slices[i + 1].Resolution.x, m_Slices[i + 1].Resolution.y);
-
-                //         int groupX = Mathf.CeilToInt(m_Slices[i + 1].Resolution.x / m_NumThreads);
-                //         int groupY = Mathf.CeilToInt(m_Slices[i + 1].Resolution.y / m_NumThreads);
-
-                //         cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthPyramid, groupX, groupY, 1);
-                //     }
-                //     context.ExecuteCommandBuffer(cmdBuffer);
-                //     cmdBuffer.Clear();
-                //     CommandBufferPool.Release(cmdBuffer);
-                // }
-
-                // var cmdBuffer = CommandBufferPool.Get(m_ProfilingTag + "_CalcDepthPyramid");
-                // cmdBuffer.SetExecutionFlags(CommandBufferExecutionFlags.AsyncCompute);  
+                        context.ExecuteCommandBuffer(cmdBuffer);
+                        cmdBuffer.Clear();
+                        CommandBufferPool.Release(cmdBuffer);
+                    }
+                }
             }
         }
     }

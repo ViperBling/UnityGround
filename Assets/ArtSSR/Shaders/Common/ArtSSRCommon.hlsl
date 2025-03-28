@@ -3,7 +3,7 @@
 #define BINARY_STEP_COUNT 32
 
 #define HIZ_START_LEVEL 0
-#define HIZ_MAX_LEVEL 10
+#define HIZ_MAX_LEVEL 11
 #define HIZ_STOP_LEVEL 0
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
@@ -35,8 +35,8 @@ SAMPLER(sampler_SSRSceneColorTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
-TEXTURE2D_X(_DepthPyramid);
-SAMPLER(sampler_DepthPyramid);
+TEXTURE2D_X(_DepthPyramid);         SAMPLER(sampler_DepthPyramid);
+TEXTURE2D_ARRAY(_DepthPyramidCS);   SAMPLER(sampler_DepthPyramidCS);
 
 CBUFFER_START(UnityPerMaterial)
     int         _Frame;
@@ -339,7 +339,7 @@ inline float2 ScaledUV(float2 uv, uint index)
 inline float SampleDepth(float2 uv, uint index)
 {
     uv = ScaledUV(uv, index);
-    return SAMPLE_TEXTURE2D_ARRAY(_DepthPyramid, sampler_DepthPyramid, uv, index);
+    return SAMPLE_TEXTURE2D_ARRAY(_DepthPyramidCS, sampler_DepthPyramidCS, uv, index);
 }
 
 inline float2 GetCrossEps()
