@@ -38,7 +38,7 @@ SAMPLER(sampler_point_clamp);
 TEXTURE2D_X(_DepthPyramid);         SAMPLER(sampler_DepthPyramid);
 TEXTURE2D_ARRAY(_DepthPyramidCS);   SAMPLER(sampler_DepthPyramidCS);
 
-CBUFFER_START(UnityPerMaterial)
+// CBUFFER_START(UnityPerMaterial)
     int         _Frame;
     float3      _WorldSpaceViewDir;
     float       _ThicknessScale;
@@ -52,7 +52,9 @@ CBUFFER_START(UnityPerMaterial)
     int         _RandomSeed;
     float4      _SSRJitter;
     float       _BRDFBias;
-CBUFFER_END
+    float       _TemporalScale;
+    float       _TemporalBlendWeight;
+// CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
     #define kMaterialFlagSpecularSetup 8 // Lit material use specular setup instead of metallic setup
@@ -114,12 +116,12 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
 
 inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float roughness, inout float PDF, inout float jitter, inout bool valid)
 {
-    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    random.y = lerp(random.y, 0.0, _BRDFBias);
-    float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, roughness, valid);
-    PDF = 1.0;
-    jitter = random.x + random.y;
+    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    // random.y = lerp(random.y, 0.0, _BRDFBias);
+    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, roughness, valid);
+    // PDF = 1.0;
+    // jitter = random.x + random.y;
 
     // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
     // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
@@ -149,9 +151,9 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // H = mul(H, tangentToWorld);
     // float3 reflectDirWS = reflect(viewDirWS, H);
 
-    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    // PDF = 1.0;
-    // jitter = 0;
+    float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    PDF = 1.0;
+    jitter = 0;
 
     return normalize(reflectDirWS);
 }
@@ -300,14 +302,13 @@ inline float RGB2Lum(float3 rgb)
     return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b);
 }
 
-float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float smoothness)
+float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roughness)
 {
-    float roughness = clamp(1.0 - smoothness, 0.02, 1);
     float3 H = normalize(viewDirVS + reflectDirVS);
 
-    float NoH = max(dot(normalVS, H), 0.0);
-    float NoL = max(dot(normalVS, reflectDirVS), 0.0);
-    float NoV = max(dot(normalVS, viewDirVS), 0.0);
+    float NoH = saturate(dot(normalVS, H));
+    float NoL = saturate(dot(normalVS, reflectDirVS));
+    float NoV = saturate(dot(normalVS, viewDirVS));
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
@@ -533,9 +534,9 @@ inline float4 HizTrace(float thickness, float2 screenSize, float3 rayOrigin, flo
         float2 cellCount = screenSize * exp2(level + 1);
         float newSampleSize = GetMarchSize(samplePos.xy, samplePos.xy + rayDirection.xy, cellCount);
         float3 newSamplePos = samplePos + rayDirection * newSampleSize;
-        float sampleMinDepth = SampleDepth(newSamplePos.xy, level);
+        float sampleMinDepth = SAMPLE_TEXTURE2D_LOD(_DepthPyramid, sampler_DepthPyramid, newSamplePos.xy, level).r;
 
-        UNITY_BRANCH
+        UNITY_FLATTEN
         if (sampleMinDepth < newSamplePos.z)
         {
             level = min(HIZ_MAX_LEVEL, level + 1);

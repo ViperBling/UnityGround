@@ -20,8 +20,10 @@ namespace ArtSSR
             [SerializeField] internal Material m_DepthPyramidMaterial;
 
             private RTHandle m_DepthPyramidHandle;
+            private RTHandle m_DepthPyramidPingHandle;
+            private RTHandle m_DepthPyramidPongHandle;
             private RTHandle m_DepthPyramidCSHandle;
-            private RTHandle m_DepthPyramidTempHandle;
+            
 
             internal struct TargetSlice
             {
@@ -48,8 +50,10 @@ namespace ArtSSR
 
             public void Dispose()
             {
+                m_DepthPyramidCSHandle?.Release();
                 m_DepthPyramidHandle?.Release();
-                m_DepthPyramidTempHandle?.Release();
+                m_DepthPyramidPingHandle?.Release();
+                m_DepthPyramidPongHandle?.Release();
                 CoreUtils.Destroy(m_DepthPyramidMaterial);
             }
 
@@ -117,10 +121,10 @@ namespace ArtSSR
                     RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramid");
 
                     desc.autoGenerateMips = false;
-                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidTempHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidTemp");
+                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPingHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPing");
+                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPongHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPong");
                     cmd.SetGlobalTexture(m_DepthPyramidHandle.name, m_DepthPyramidHandle);
                 }
-                
 
                 ConfigureInput(ScriptableRenderPassInput.Depth);
                 ConfigureTarget(renderingData.cameraData.renderer.cameraColorTargetHandle, renderingData.cameraData.renderer.cameraDepthTargetHandle);
@@ -170,18 +174,16 @@ namespace ArtSSR
                     CommandBuffer cmdBuffer = CommandBufferPool.Get(m_ProfilingTag);
                     using (new ProfilingScope(cmdBuffer, new ProfilingSampler(m_ProfilingTag)))
                     {
-                        // cmdBuffer.SetComputeTextureParam(m_DepthPyramidCS, kernelDepthCopy, m_DepthPyramidHandle.name, m_DepthPyramidHandle);
-                        // cmdBuffer.SetComputeVectorParam(m_DepthPyramidCS, m_SceneSizeID, new Vector2(width, height));
-                        // cmdBuffer.DispatchCompute(m_DepthPyramidCS, kernelDepthCopy, Mathf.CeilToInt(width / m_NumThreads), Mathf.CeilToInt(height / m_NumThreads), 1);
-                        Blitter.BlitCameraTexture(cmdBuffer, renderingData.cameraData.renderer.cameraDepthTargetHandle, m_DepthPyramidHandle);
-                        // for (int i = 1; i < m_NumSlices; i++)
-                        // {
-                        //     cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
-                        //     Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidTempHandle, i);
-                        //     // cmdBuffer.SetRenderTarget(m_DepthPyramidTempHandle, i);
-                        //     // cmdBuffer.DrawMesh(m_FullscreenMesh, Matrix4x4.identity, m_DepthPyramidMaterial, 0, 0);
-                        //     cmdBuffer.CopyTexture(m_DepthPyramidTempHandle, 0, i, m_DepthPyramidHandle, 0, i);
-                        // }
+                        Blitter.BlitCameraTexture(cmdBuffer, renderingData.cameraData.renderer.cameraDepthTargetHandle, m_DepthPyramidHandle, 0);
+                        
+                        for (int i = 1; i < m_NumSlices; i++)
+                        {
+                            cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
+                            Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidPingHandle, m_DepthPyramidMaterial, 0);
+                            // Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidPingHandle, m_DepthPyramidPongHandle, i);
+                            cmdBuffer.CopyTexture(m_DepthPyramidPingHandle, 0, i, m_DepthPyramidHandle, 0, i);
+                        }
+                        cmdBuffer.CopyTexture(m_DepthPyramidPongHandle, m_DepthPyramidHandle);
 
                         context.ExecuteCommandBuffer(cmdBuffer);
                         cmdBuffer.Clear();

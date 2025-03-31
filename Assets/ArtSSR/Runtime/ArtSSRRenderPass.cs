@@ -38,6 +38,8 @@ namespace ArtSSR
             private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
             private static readonly int m_PrevViewProjMatrixID = Shader.PropertyToID("_PrevViewProjMatrix");
             private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
+            private static readonly int m_TemporalScaleID = Shader.PropertyToID("_TemporalScale");
+            private static readonly int m_TemporalBlendWeightID = Shader.PropertyToID("_TemporalBlendWeight");
 
             private const int m_LinearVSTracingPass = 0;
             private const int m_LinearSSTracingPass = 1;
@@ -88,6 +90,8 @@ namespace ArtSSR
                 m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
 
                 m_Material.SetVector(m_ScreenResolutionID, new Vector4(m_ScreenResolution.x, m_ScreenResolution.y, 1.0f / m_ScreenResolution.x, 1.0f / m_ScreenResolution.y));
+                m_Material.SetFloat(m_TemporalScaleID, m_SSRVolume.m_TemporalScale.value);
+                m_Material.SetFloat(m_TemporalBlendWeightID, m_SSRVolume.m_TemporalBlendWeight.value);
 
                 SetMaterialProperties();
             }

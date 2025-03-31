@@ -53,7 +53,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     float d3 = SampleSliceDepth(o3);
 
     // 取所有深度值的最小值作为当前mip的深度值
-    minValue = max(max(d0, d1), max(d2, d3));
+    minValue = min(min(d0, d1), min(d2, d3));
 
     _DepthPyramidCS[uint3(id.xy, _DstSlice)] = minValue;
 }
@@ -64,7 +64,7 @@ void DepthCopy(uint3 id : SV_DispatchThreadID)
     UNITY_BRANCH
     if (id.x >= _SceneSize.x || id.y >= _SceneSize.y) return;
     
-    _DepthPyramidCS[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
+    _DepthPyramidCS[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
     // _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
 }
 

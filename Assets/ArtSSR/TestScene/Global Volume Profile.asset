@@ -18,13 +18,13 @@ MonoBehaviour:
     m_Value: 1
   m_MarchingMode:
     m_OverrideState: 1
-    m_Value: 2
+    m_Value: 0
   m_DitherMode:
     m_OverrideState: 1
     m_Value: 0
   m_ThicknessScale:
     m_OverrideState: 1
-    m_Value: 1.53
+    m_Value: 1.77
   m_MinSmoothness:
     m_OverrideState: 1
     m_Value: 0.022
@@ -33,7 +33,7 @@ MonoBehaviour:
     m_Value: 0.135
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 7
+    m_Value: 0.01
   m_EdgeFade:
     m_OverrideState: 1
     m_Value: 0.1
@@ -43,9 +43,18 @@ MonoBehaviour:
   m_DownSample:
     m_OverrideState: 1
     m_Value: 0
+  m_HiZUseComputeShader:
+    m_OverrideState: 1
+    m_Value: 1
   m_UseTemporalFilter:
     m_OverrideState: 1
     m_Value: 0
+  m_TemporalScale:
+    m_OverrideState: 1
+    m_Value: 0.99
+  m_TemporalBlendWeight:
+    m_OverrideState: 1
+    m_Value: 1.25
   m_BRDFBias:
     m_OverrideState: 1
     m_Value: 0
