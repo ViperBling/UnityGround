@@ -495,7 +495,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float ssrMask = reflectedColor.w;
 
     float3 finalColor = lerp(sceneColor.rgb, reflectedColor.rgb, ssrMask);
-    finalColor = reflectedColor.rgb;
+    // finalColor = reflectedColor.rgb;
     
     return float4(finalColor.xyz, 1.0);
 }
