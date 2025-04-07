@@ -123,37 +123,20 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     // PDF = 1.0;
     // jitter = random.x + random.y;
 
-    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, roughness);
-    // float3x3 tangentToWorld = GetTangentBasis(normalWS);
-    // H.xyz = mul(H.xyz, tangentToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
+    float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
+    float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
+    random.y = lerp(random.y, 0.0, _BRDFBias);
+    float4 H = ImportanceSampleGGX_SSR(random, roughness);
+    float3x3 tangentToWorld = GetTangentBasis(normalWS);
+    H.xyz = mul(H.xyz, tangentToWorld);
+    float3 reflectDirWS = reflect(viewDirWS, H.xyz);
 
-    // PDF = H.w;
-    // jitter = random.x + random.y;
-    
-    // float3 viewDirTS = mul(tangentToWorld, viewDirWS);
-    // float3 viewDirRough = normalize(float3(a * viewDirTS.x, a * viewDirTS.y, viewDirTS.z));
-    // float lenSq = viewDirRough.x * viewDirRough.x + viewDirRough.y * viewDirRough.y;
-    // float3 T1 = lenSq > 0 ? float3(-viewDirRough.y, viewDirRough.x, 0) * rsqrt(lenSq) : float3(1, 0, 0);
-    // float3 T2 = cross(viewDirRough, T1);
+    PDF = H.w;
+    jitter = random.x + random.y;
 
-    // float r = sqrt(random.x);
-    // float phi = 2.0 * PI * random.y;
-    // float t1 = r * cos(phi);
-    // float t2 = r * sin(phi);
-    // float s = 0.5 * (1.0 + viewDirRough.z);
-    // t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
-    // float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * viewDirRough;
-    // float3 H = normalize(float3(a * Nh.x, a * Nh.y, max(0, Nh.z)));
-    // H = mul(H, tangentToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H);
-
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    PDF = 1.0;
-    jitter = 0;
+    // float3 reflectDirWS = reflect(viewDirWS, normalWS);
+    // PDF = 1.0;
+    // jitter = 0;
 
     return normalize(reflectDirWS);
 }
@@ -398,7 +381,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     hitUV = -1.0;
 
     float thickness = _ThicknessScale * 1;
-    float traceDistance = 512;
+    float traceDistance = 128;
     float nearPlaneZ = -0.01;
     float rayLength = (rayOriginVS.z + reflectDirVS.z * traceDistance) > nearPlaneZ ? (nearPlaneZ - rayOriginVS.z) / reflectDirVS.z : traceDistance;
     float3 rayEndVS = rayOriginVS + rayLength * reflectDirVS;
@@ -494,7 +477,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
         sceneZ = SampleDepth(hitUV * invSize);
         sceneZ = -LinearEyeDepth(sceneZ, _ZBufferParams);
         
-        bool isBehind = rayZMin <= sceneZ;
+        bool isBehind = rayZMin + 0.01 <= sceneZ;
         intersecting = isBehind && (rayZMax >= sceneZ - thickness);
 
         if (intersecting && (P.x * stepDirection) <= end) break;
@@ -514,6 +497,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     return intersecting;
 }
 
+/* 
 inline float GetMarchSize(float2 start, float2 end, float2 samplePos)
 {
     float2 dir = abs(end - start);
@@ -559,7 +543,8 @@ inline float4 HizTrace(float thickness, float2 screenSize, float3 rayOrigin, flo
     }
 
     return float4(samplePos, mask);
-}
+} 
+*/
 
 inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, float maxIterations, out float hit, out float iterations, out bool isSky)
 {
@@ -618,7 +603,7 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
         {
             // 交点不在当前的Cell，计算交点位置，然后进入下一层
             tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
-            level = min(maxLevel, level + 1.0f);
+            level = min(maxLevel, level + 1);
         }
         else if (level == startLevel)
         {
@@ -633,7 +618,7 @@ inline float3 HizTrace(float thickness, float3 positionSS, float3 reflectDirSS, 
             // if (tmpRayPos.z > minZOffset)
             // {
             //     tmpRayPos = IntersectCellBoundary(rayOrigin, dirTS, oldCellIdx, cellCount.xy, crossStep.xy, crossOffset.xy);
-            //     level = HIZ_START_LEVEL + 1;
+            //     level = HIZ_START_LEVEL + 2;
             // }
         }
 
