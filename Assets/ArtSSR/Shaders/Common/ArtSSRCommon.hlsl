@@ -289,9 +289,9 @@ float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roug
 {
     float3 H = normalize(viewDirVS + reflectDirVS);
 
-    float NoH = saturate(dot(normalVS, H));
-    float NoL = saturate(dot(normalVS, reflectDirVS));
-    float NoV = saturate(dot(normalVS, viewDirVS));
+    float NoH = max(dot(normalVS, H), 0.0);
+    float NoL = max(dot(normalVS, reflectDirVS), 0.0);
+    float NoV = max(dot(normalVS, viewDirVS), 0.0);
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
@@ -406,6 +406,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     float yMin = 0.5;
     float alpha = 0;
 
+    // 防止在屏幕边缘时出现拉伸
     UNITY_BRANCH
     if (P1.x > xMax || P1.x < xMin)
     {

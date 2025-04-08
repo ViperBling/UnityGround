@@ -337,7 +337,7 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
         float4 hitPosNDC, hitPosVS;
         float4 hitPosWS = ReconstructPositionWS(hitUV.xy, hitUV.z, hitPosNDC, hitPosVS);
 
-        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, smoothness);
+        weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, roughness);
         // float3 viewDirWS = normalize(hitPosWS.xyz - _WorldSpaceCameraPos);
         // float3 reflectDirWS = reflect(viewDirWS, normalWS);
         // weight = SSRBRDF(viewDirWS, reflectDirWS, normalWS, roughness);
@@ -352,12 +352,18 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
 
     reflectionColor /= numWeight;
     reflectionColor.rgb /= 1 - Luminance(reflectionColor.rgb);
-    reflectionColor.rgb = max(reflectionColor.rgb, 1e-5);
+    reflectionColor = max(reflectionColor, 1e-5);
 
     return reflectionColor;
 
     // float4 hitUV = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);
+    // float3 screenPos = float3(hitUV.xy * 2 - 1, hitUV.z);
+    // screenPos.y *= _ProjectionParams.x;
+    // float4 hitPosVS = mul(UNITY_MATRIX_I_P, float4(screenPos, 1.0));
+    // hitPosVS /= hitPosVS.w;
+    // weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, roughness) * 10;
     // float4 finalResult = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
+    // finalResult.xyz = weight;
     
     // return float4(finalResult.xyz, hitUV.w);
 }
@@ -486,8 +492,8 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float4 reflectedColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
     float ssrMask = reflectedColor.w;
 
-    float3 finalColor = lerp(sceneColor.rgb, reflectedColor.rgb, ssrMask);
-    finalColor = reflectedColor.rgb;
+    float3 finalColor = lerp(sceneColor.rgb, reflectedColor.rgb, ssrMask * 1);
+    // finalColor = reflectedColor.rgb;
     
     return float4(finalColor.xyz, 1.0);
 }
