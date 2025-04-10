@@ -1,8 +1,5 @@
 ﻿#pragma once
 
-#define STEP_STRIDE     _StepStride
-#define NUM_STEPS       uint(_MaxSteps)
-
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/BRDF.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Random.hlsl"
@@ -17,36 +14,42 @@ TEXTURE2D_X(_GBuffer0);         // Diffuse
 TEXTURE2D_X(_GBuffer1);         // Metal
 TEXTURE2D_X(_GBuffer2);         // Normal and Smoothness
 
-TEXTURE2D_X(_SSRCameraBackFaceDepthTexture);
-TEXTURE2D_X(_SSRSceneColorTexture);
-TEXTURE2D_X(_BlueNoiseTexture);
-TEXTURE2D_X(_SSRReflectionColorTexture);
-TEXTURE2D_X(_SSRTemporalHistoryTexture);
+TEXTURE2D_X(_SSR_SceneColorTexture);
+TEXTURE2D_X(_SSR_BlueNoiseTexture);
+TEXTURE2D_X(_SSR_BRDFLUT);
+TEXTURE2D_X(_SSR_ReflectionColorTexture);
+TEXTURE2D_X(_SSR_TemporalHistoryTexture);
 TEXTURE2D_X(_MotionVectorTexture);
 float4 _MotionVectorTexture_TexelSize;
 
-SAMPLER(sampler_BlueNoiseTexture);
-SAMPLER(sampler_SSRSceneColorTexture);
+SAMPLER(sampler_SSR_SceneColorTexture);
+SAMPLER(sampler_SSR_BlueNoiseTexture);
+SAMPLER(sampler_SSR_BRDFLUT);
+SAMPLER(sampler_SSR_ReflectionColorTexture);
+SAMPLER(sampler_SSR_TemporalHistoryTexture);
 SAMPLER(sampler_BlitTexture);
 SAMPLER(sampler_point_clamp);
 
-TEXTURE2D_ARRAY(_DepthPyramid);
-SAMPLER(sampler_DepthPyramid);
-
 CBUFFER_START(UnityPerMaterial)
-    int         _Frame;
-    float3      _WorldSpaceViewDir;
-    float       _ThicknessScale;
-    float       _EdgeFade;
-    float       _StepStride;
-    float       _MaxSteps;
-    float       _MinSmoothness;
-    float       _FadeSmoothness;
-    float4      _ScreenResolution;
-    int         _ReflectSky;
-    int         _RandomSeed;
-    float4      _SSRJitter;
-    float       _BRDFBias;
+    float4      _SSR_Jitter;
+    float       _SSR_BRDFBias;
+    float       _SSR_NumSteps;
+    float       _SSR_ScreenFade;
+    float       _SSR_Thickness;
+    float       _SSR_TemporalScale;
+    float       _SSR_TemporalWeight;
+    float4      _SSR_ScreenResolution;
+    float       _SSR_RayStepStride;
+    float       _SSR_TraceDistance;
+    float4      _SSR_ProjectionInfo;
+    float4x4    _SSR_ProjectionMatrix;
+    float4x4    _SSR_ViewProjectionMatrix;
+    float4x4    _SSR_PrevViewProjectionMatrix;
+    float4x4    _SSR_InvProjectionMatrix;
+    float4x4    _SSR_InvViewProjectionMatrix;
+    float4x4    _SSR_WorldToCameraMatrix;
+    float4x4    _SSR_CameraToWorldMatrix;
+    float4x4    _SSR_ProjectToPixelMatrix;
 CBUFFER_END
 
 #ifndef kMaterialFlagSpecularSetup
@@ -59,16 +62,9 @@ CBUFFER_END
 
 static const int2 sampleOffsets[9] = {
     int2(-1.0, -1.0), int2(0.0, -1.0), int2(1.0, -1.0),
-    int2(-1.0, 0.0), int2(0.0, 0.0), int2(1.0, 0.0),
-    int2(-1.0, 1.0), int2(0.0, 1.0), int2(1.0, 1.0)
+    int2(-1.0,  0.0), int2(0.0,  0.0), int2(1.0, 0.0),
+    int2(-1.0,  1.0), int2(0.0,  1.0), int2(1.0, 1.0)
 };
-
-// void Swap(inout float a, inout float b)
-// {
-//     float temp = a;
-//     a = b;
-//     b = temp;
-// }
 
 uint UnpackMaterialFlags(float packedMaterialFlags)
 {
@@ -109,50 +105,6 @@ inline float4 TangentToWorld(float4 vec, float4 tangentZ)
     return float4(T2W, vec.w);
 }
 
-inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS, float roughness, inout float PDF, inout float jitter, inout bool valid)
-{
-    // float2 random = float2(GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed), GenerateRandomFloat(screenUV, _ScreenResolution.xy, _RandomSeed));
-    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float3 reflectDirWS = ImportanceSampleGGX_SSR(random, normalWS, viewDirWS, roughness, valid);
-    // PDF = 1.0;
-
-    // float2 noiseUV = (screenUV + _SSRJitter.zw) * _ScreenResolution.xy / 1024;
-    // float2 random = SAMPLE_TEXTURE2D(_BlueNoiseTexture, sampler_BlueNoiseTexture, noiseUV).xy;
-    // random.y = lerp(random.y, 0.0, _BRDFBias);
-    // float4 H = ImportanceSampleGGX_SSR(random, roughness);
-    // float3x3 tangentToWorld = GetTangentBasis(normalWS);
-    // H.xyz = mul(H.xyz, tangentToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H.xyz);
-
-    // PDF = H.w;
-    // jitter = random.x + random.y;
-    
-    // float3 viewDirTS = mul(tangentToWorld, viewDirWS);
-    // float3 viewDirRough = normalize(float3(a * viewDirTS.x, a * viewDirTS.y, viewDirTS.z));
-    // float lenSq = viewDirRough.x * viewDirRough.x + viewDirRough.y * viewDirRough.y;
-    // float3 T1 = lenSq > 0 ? float3(-viewDirRough.y, viewDirRough.x, 0) * rsqrt(lenSq) : float3(1, 0, 0);
-    // float3 T2 = cross(viewDirRough, T1);
-
-    // float r = sqrt(random.x);
-    // float phi = 2.0 * PI * random.y;
-    // float t1 = r * cos(phi);
-    // float t2 = r * sin(phi);
-    // float s = 0.5 * (1.0 + viewDirRough.z);
-    // t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
-    // float3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * viewDirRough;
-    // float3 H = normalize(float3(a * Nh.x, a * Nh.y, max(0, Nh.z)));
-    // H = mul(H, tangentToWorld);
-    // float3 reflectDirWS = reflect(viewDirWS, H);
-
-    float3 reflectDirWS = reflect(viewDirWS, normalWS);
-    PDF = 1.0;
-    jitter = 0;
-
-    return normalize(reflectDirWS);
-}
-
 inline float3 GetNormalWS(float2 uv, inout float smoothness)
 {
     float4 normalGBuffer = SAMPLE_TEXTURE2D_LOD(_GBuffer2, sampler_point_clamp, uv, 0.0);
@@ -160,20 +112,31 @@ inline float3 GetNormalWS(float2 uv, inout float smoothness)
     return UnpackNormal(normalGBuffer.xyz);
 }
 
-inline float4 ReconstructPositionWS(float2 screenUV, float rawDepth, inout float4 positionNDC, inout float4 positionVS)
+inline float3 GetPositionWS(float3 positionNDC, float4x4 invViewProjMatrix)
 {
-    positionNDC = float4(screenUV * 2.0 - 1.0, rawDepth, 1.0);
-    // 等价
-    positionNDC.y *= _ProjectionParams.x;
-    // #ifdef UNITY_UV_STARTS_AT_TOP
-    //     positionNDC.y *= -1;
-    // #endif
-    positionVS = mul(UNITY_MATRIX_I_P, positionNDC);
-    // 后面会直接用到positionVS，所以要先除以w
-    positionVS *= rcp(positionVS.w);
-    float4 positionWS = mul(UNITY_MATRIX_I_V, positionVS);
+    float4 positionWS = mul(invViewProjMatrix, float4(positionNDC, 1.0));
+    return positionWS.xyz / positionWS.w;
+}
 
-    return positionWS;
+inline float3 GetPositionVS(float3 positionNDC, float4x4 invProjMatrix)
+{
+    float4 positionVS = mul(invProjMatrix, float4(positionNDC, 1.0));
+    return positionVS / positionVS.w;
+}
+
+inline float3 ReconstructCSPosition(float4 screenTexelSize, float4 projInfo, float2 screenUV, float depth)
+{
+    float linearEyeZ = -LinearEyeDepth(depth, _ZBufferParams);
+    float3 positionCS = float3(((screenUV * screenTexelSize.zw) * projInfo.xy + projInfo.zw) * linearEyeZ, linearEyeZ);
+    return positionCS;
+}
+
+inline float3 GetRayOriginVS(float4 screenTexelSize, float4 projInfo, float2 screenUV)
+{
+    float3 rayOriginVS = 0;
+    rayOriginVS.z = SampleDepth(screenUV);
+    rayOriginVS = ReconstructCSPosition(screenTexelSize, projInfo, screenUV, rayOriginVS.z);
+    return rayOriginVS;
 }
 
 float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roughness)
@@ -191,11 +154,11 @@ float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roug
 
 float2 GetMotionVector(float2 uv, float depth)
 {
-    float4 hitPosNDC, hitPosVS;
-    float4 hitPosWS = ReconstructPositionWS(uv, depth, hitPosNDC, hitPosVS);
+    float3 hitPosNDC = float4(uv * 2.0 - 1.0, depth, 1.0);
+    float4 hitPosWS = float4(GetPositionWS(hitPosNDC, _SSR_InvViewProjectionMatrix), 1.0);
 
-    float4 prevClipPos = mul(_PrevViewProjMatrix, hitPosWS);
-    float4 curClipPos = mul(UNITY_MATRIX_VP, hitPosWS);
+    float4 prevClipPos = mul(_SSR_PrevViewProjectionMatrix, hitPosWS);
+    float4 curClipPos = mul(_SSR_ViewProjectionMatrix, hitPosWS);
 
     float2 prevHPos = prevClipPos.xy / prevClipPos.w;
     float2 curHPos = curClipPos.xy / curClipPos.w;
@@ -225,13 +188,13 @@ float4 Texture2DSampleBicubic(Texture2D tex, SamplerState texSampler, float2 uv,
 float ScreenEdgeMask(float2 screenUV)
 {
     UNITY_BRANCH
-    if (_EdgeFade == 0.0)
+    if (_SSR_ScreenFade == 0.0)
     {
         return 1.0;
     }
     else
     {
-        half fadeRcpLength = rcp(_EdgeFade);
+        half fadeRcpLength = rcp(_SSR_ScreenFade);
         float2 coordCS = screenUV * 2.0 - 1.0;
         float2 t = Remap10(abs(coordCS.xy), fadeRcpLength, fadeRcpLength);
         return Smoothstep01(t.x) * Smoothstep01(t.y);
@@ -255,21 +218,17 @@ bool IntersectsDepthBuffer(float rayZMin, float rayZMax, float sceneZ, float thi
 
 bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int stepSize, inout float2 hitUV, inout float3 hitPoint, inout float totalStep)
 {
-    float2 invSize = _ScreenResolution.zw;
+    float2 invSize = _SSR_ScreenResolution.zw;
     hitUV = -1.0;
 
-    float thickness = _ThicknessScale * 1;
-    float traceDistance = 512;
+    float thickness = _SSR_Thickness * 1;
+    float traceDistance = _SSR_TraceDistance;
     float nearPlaneZ = -0.01;
     float rayLength = (rayOriginVS.z + reflectDirVS.z * traceDistance) > nearPlaneZ ? (nearPlaneZ - rayOriginVS.z) / reflectDirVS.z : traceDistance;
     float3 rayEndVS = rayOriginVS + rayLength * reflectDirVS;
     
-    float4 H0 = mul(UNITY_MATRIX_P, float4(rayOriginVS, 1.0));
-    H0.xy = (float2(H0.x, H0.y * _ProjectionParams.x) + H0.w) * 0.5;
-    H0.xy *= _ScreenResolution.xy;
-    float4 H1 = mul(UNITY_MATRIX_P, float4(rayEndVS, 1.0));
-    H1.xy = (float2(H1.x, H1.y * _ProjectionParams.x) + H1.w) * 0.5;
-    H1.xy *= _ScreenResolution.xy;
+    float4 H0 = mul(_SSR_ProjectToPixelMatrix, float4(rayOriginVS, 1.0));
+    float4 H1 = mul(_SSR_ProjectToPixelMatrix, float4(rayEndVS, 1.0));
 
     float K0 = 1.0 / H0.w;
     float K1 = 1.0 / H1.w;
@@ -278,8 +237,8 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     float3 Q0 = rayOriginVS * K0;
     float3 Q1 = rayEndVS * K1;
 
-    float xMax = _ScreenResolution.x - 0.5;
-    float yMax = _ScreenResolution.y - 0.5;
+    float xMax = _SSR_ScreenResolution.x - 0.5;
+    float yMax = _SSR_ScreenResolution.y - 0.5;
     float xMin = 0.5;
     float yMin = 0.5;
     float alpha = 0;
@@ -341,7 +300,7 @@ bool LinearSSTrace(float3 rayOriginVS, float3 reflectDirVS, float jitter, int st
     // hitPoint = float3(P0, 0);
     // return false;
 
-    for (totalStep = 0; totalStep < _MaxSteps; totalStep++)
+    for (totalStep = 0; totalStep < _SSR_NumSteps; totalStep++)
     {
         rayZMin = prevZMaxEstimate;
         rayZMax = (dQ.z * 0.5 + Q.z) / (dK * 0.5 + K);

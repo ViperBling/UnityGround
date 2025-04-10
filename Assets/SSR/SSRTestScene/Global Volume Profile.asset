@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   components:
   - {fileID: 543614744962620085}
-  - {fileID: 8078430346938652423}
+  - {fileID: 5721969042426430206}
 --- !u!114 &543614744962620085
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -27,53 +27,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5907265fe2e703041aad343e9c2b1471, type: 3}
   m_Name: ScreenSpaceReflectionEffect
   m_EditorClassIdentifier: 
-  active: 0
+  active: 1
   m_State:
     m_OverrideState: 1
     m_Value: 1
   m_MarchingMode:
     m_OverrideState: 1
     m_Value: 0
-  m_DitherMode:
-    m_OverrideState: 1
-    m_Value: 0
-  m_ThicknessScale:
-    m_OverrideState: 1
-    m_Value: 0.1
-  m_MinSmoothness:
-    m_OverrideState: 1
-    m_Value: 0.06
-  m_FadeSmoothness:
-    m_OverrideState: 1
-    m_Value: 0.249
-  m_StepStrideLength:
-    m_OverrideState: 1
-    m_Value: 7.8
-  m_EdgeFade:
-    m_OverrideState: 1
-    m_Value: 0.233
-  m_MaxSteps:
-    m_OverrideState: 1
-    m_Value: 512
-  m_DownSample:
-    m_OverrideState: 1
-    m_Value: 0
-  m_UseTemporalFilter:
-    m_OverrideState: 1
-    m_Value: 0
   m_BRDFBias:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 0.715
+  m_ThicknessScale:
+    m_OverrideState: 1
+    m_Value: 0.05
+  m_EdgeFade:
+    m_OverrideState: 1
+    m_Value: 0.1
+  m_LinearRayDistance:
+    m_OverrideState: 1
+    m_Value: 512
+  m_LinearRaySteps:
+    m_OverrideState: 1
+    m_Value: 256
+  m_LinearRayStepSize:
+    m_OverrideState: 1
+    m_Value: 10
   m_BlueNoiseTexture:
     m_OverrideState: 1
     m_Value: {fileID: 2800000, guid: 75211e26fad3d75408c944a166204150, type: 3}
   m_BRDFLUT:
     m_OverrideState: 1
     m_Value: {fileID: 2800000, guid: 69924c4ea75875f44b0f5ec95cdfaa5d, type: 3}
-  m_ReflectSky:
+  m_UseTemporalFilter:
     m_OverrideState: 1
-    m_Value: 0
---- !u!114 &8078430346938652423
+    m_Value: 1
+  m_TemporalScale:
+    m_OverrideState: 1
+    m_Value: 1.25
+  m_TemporalWeight:
+    m_OverrideState: 1
+    m_Value: 0.99
+--- !u!114 &5721969042426430206
 MonoBehaviour:
   m_ObjectHideFlags: 3
   m_CorrespondingSourceObject: {fileID: 0}
@@ -88,37 +82,46 @@ MonoBehaviour:
   active: 1
   m_State:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   m_MarchingMode:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   m_DitherMode:
     m_OverrideState: 1
     m_Value: 0
   m_ThicknessScale:
     m_OverrideState: 1
-    m_Value: 0.18
+    m_Value: 3
   m_MinSmoothness:
     m_OverrideState: 1
-    m_Value: 0.067
+    m_Value: 0.1
   m_FadeSmoothness:
     m_OverrideState: 1
-    m_Value: 0.245
+    m_Value: 0
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.01
   m_EdgeFade:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 0.1
   m_MaxSteps:
     m_OverrideState: 1
-    m_Value: 511
+    m_Value: 256
   m_DownSample:
     m_OverrideState: 1
     m_Value: 0
+  m_HiZUseComputeShader:
+    m_OverrideState: 1
+    m_Value: 1
   m_UseTemporalFilter:
     m_OverrideState: 1
     m_Value: 0
+  m_TemporalScale:
+    m_OverrideState: 1
+    m_Value: 1.25
+  m_TemporalBlendWeight:
+    m_OverrideState: 1
+    m_Value: 0.99
   m_BRDFBias:
     m_OverrideState: 1
     m_Value: 0

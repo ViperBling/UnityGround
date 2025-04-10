@@ -38,8 +38,8 @@ namespace ArtSSR
         public ClampedIntParameter m_DownSample = new(value: 0, min: 0, max: 1, overrideState: true);
         public BoolParameter m_HiZUseComputeShader = new(value: true, overrideState: true);
         public BoolParameter m_UseTemporalFilter = new(value: false, overrideState: true);
-        public ClampedFloatParameter m_TemporalScale = new(value: 0.5f, min: 0.0f, max: 0.99f, overrideState: true);
-        public ClampedFloatParameter m_TemporalBlendWeight = new(value: 0.5f, min: 0.0f, max: 10.0f, overrideState: true);
+        public ClampedFloatParameter m_TemporalScale = new(value: 0.5f, min: 0.0f, max: 10.0f, overrideState: true);
+        public ClampedFloatParameter m_TemporalBlendWeight = new(value: 0.5f, min: 0.0f, max: 0.99f, overrideState: true);
         public ClampedFloatParameter m_BRDFBias = new(value: 0.5f, min: 0.0f, max: 1.0f, overrideState: true);
         [InspectorName("Blue Noise Texture")]
         public Texture2DParameter m_BlueNoiseTexture = new Texture2DParameter(null, true);

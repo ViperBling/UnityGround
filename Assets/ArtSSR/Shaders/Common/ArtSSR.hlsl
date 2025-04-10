@@ -193,8 +193,6 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     {
         H = float4(normalVS, 1.0);
     }
-    // H = float4(normalVS, 1.0);
-    // jitter = 0.0;
     float3 reflectDirVS = reflect(normalize(positionVS.xyz), H.xyz);
 
     UNITY_BRANCH
@@ -217,6 +215,10 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
         float3 rayHitNormal = GetNormalWS(hitUV, smoothness);
         float3 reflectDirWS = mul(UNITY_MATRIX_I_V, float4(reflectDirVS, 0)).xyz;
         if (dot(rayHitNormal, reflectDirWS) > 0.0) hitMask = 0.0;
+    }
+    else
+    {
+        hitUV = screenUV;
     }
     hitMask = pow(hitMask * ScreenEdgeMask(hitUV), 2);
 
@@ -284,6 +286,8 @@ float4 HiZTracingPass(Varyings fsIn) : SV_Target
     float edgeMask = ScreenEdgeMask(intersectPoint.xy);
     float maskOut = hit * edgeMask;
     maskOut *= maskOut;
+
+    UNITY_BRANCH if (!hit) return float4(screenUV.xy, 0, maskOut);
 
     float curDepth = SampleDepth(intersectPoint.xy);
 
@@ -357,11 +361,6 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     return reflectionColor;
 
     // float4 hitUV = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);
-    // float3 screenPos = float3(hitUV.xy * 2 - 1, hitUV.z);
-    // screenPos.y *= _ProjectionParams.x;
-    // float4 hitPosVS = mul(UNITY_MATRIX_I_P, float4(screenPos, 1.0));
-    // hitPosVS /= hitPosVS.w;
-    // weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS).xyz, normalVS, roughness) * 10;
     // float4 finalResult = SAMPLE_TEXTURE2D(_SSRSceneColorTexture, sampler_SSRSceneColorTexture, hitUV.xy);
     // finalResult.xyz = weight;
     
@@ -378,8 +377,7 @@ float4 TemporalFilterPass(Varyings fsIn) : SV_Target
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
 
-    float2 depthVelocity = SAMPLE_TEXTURE2D(_MotionVectorTexture, sampler_point_clamp, screenUV + _MotionVectorTexture_TexelSize.xy * 1.0).xy;;
-
+    float2 depthVelocity = SAMPLE_TEXTURE2D(_MotionVectorTexture, sampler_point_clamp, screenUV/*  + _MotionVectorTexture_TexelSize.xy * 1.0 */).xy;;
     float4 reflectUV = SAMPLE_TEXTURE2D(_SSRReflectionColorTexture, sampler_point_clamp, screenUV);
     float hitDepth = SampleDepth(reflectUV.xy);
     float2 motionVector = GetMotionVector(reflectUV.xy, hitDepth);
@@ -397,7 +395,6 @@ float4 TemporalFilterPass(Varyings fsIn) : SV_Target
     for (uint i = 0; i < 9; i++)
     {
         // sampledColors[i] = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV + sampleOffsets[i] * _ScreenResolution.zw);
-        float4 bicubicSize = _ScreenResolution;
         sampledColors[i] = Texture2DSampleBicubic(_BlitTexture, sampler_BlitTexture, screenUV + (sampleOffsets[i] / _ScreenResolution), _ScreenResolution.xy, _ScreenResolution.zw);
     }
     
@@ -491,10 +488,10 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     
     float4 reflectedColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
     float ssrMask = reflectedColor.w;
+    // reflectedColor *= ssrMask;
 
-    float3 finalColor = lerp(sceneColor.rgb, reflectedColor.rgb, ssrMask * 1);
-    // finalColor = reflectedColor.rgb;
+    float4 finalColor = lerp(sceneColor, reflectedColor, ssrMask * 1);
     
-    return float4(finalColor.xyz, 1.0);
+    return finalColor;
 }
 //#endregion

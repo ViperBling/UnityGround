@@ -130,7 +130,6 @@ inline float3 GetReflectDirWS(float2 screenUV, float3 normalWS, float3 viewDirWS
     float3x3 tangentToWorld = GetTangentBasis(normalWS);
     H.xyz = mul(H.xyz, tangentToWorld);
     float3 reflectDirWS = reflect(viewDirWS, H.xyz);
-
     PDF = H.w;
     jitter = random.x + random.y;
 
