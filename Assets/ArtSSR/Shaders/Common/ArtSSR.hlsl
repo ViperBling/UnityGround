@@ -490,7 +490,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     float ssrMask = reflectedColor.w;
     // reflectedColor *= ssrMask;
 
-    float4 finalColor = lerp(sceneColor, reflectedColor, ssrMask * 1);
+    float4 finalColor = lerp(sceneColor, reflectedColor, ssrMask * preintegrateDFG);
     
     return finalColor;
 }

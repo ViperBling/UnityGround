@@ -185,6 +185,29 @@ float4 Texture2DSampleBicubic(Texture2D tex, SamplerState texSampler, float2 uv,
     return outColor;
 }
 
+float4 PreintegrateDFGLUT(inout float3 energyCompensation, float3 specularColor, float roughness, float NoV)
+{
+    float3 envFilterDFG = SAMPLE_TEXTURE2D_LOD(_SSR_BRDFLUT, sampler_SSR_BRDFLUT, float2(roughness, NoV), 0.0).rgb;
+    float3 reflectionDFG = lerp(saturate(50.0 * specularColor.g) * envFilterDFG.ggg, envFilterDFG.rrr, specularColor);
+
+    energyCompensation = 1.0 + specularColor * (1.0 / envFilterDFG.r - 1.0);
+
+    return float4(reflectionDFG, envFilterDFG.b);
+}
+
+inline void HitDataFromGBuffer(float2 texCoord, inout half3 albedo, inout half3 specular, inout half occlusion, inout half3 normal, inout half smoothness)
+{
+    half4 gBuffer0 = SAMPLE_TEXTURE2D(_GBuffer0, sampler_point_clamp, texCoord);
+    half4 gBuffer1 = SAMPLE_TEXTURE2D(_GBuffer1, sampler_point_clamp, texCoord);
+    half4 gBuffer2 = SAMPLE_TEXTURE2D(_GBuffer2, sampler_point_clamp, texCoord);
+
+    albedo = gBuffer0.rgb;
+    specular = (UnpackMaterialFlags(gBuffer0.a) == kMaterialFlagSpecularSetup) ? gBuffer1.rgb : lerp(kDielectricSpec.rgb, max(albedo.rgb, kDielectricSpec.rgb), gBuffer1.r); // Specular & Metallic setup conversion
+    occlusion = gBuffer1.a;
+    normal = UnpackNormal(gBuffer2.xyz);
+    smoothness = gBuffer2.w;
+}
+
 float ScreenEdgeMask(float2 screenUV)
 {
     UNITY_BRANCH

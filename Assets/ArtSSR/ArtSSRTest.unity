@@ -2135,7 +2135,7 @@ PrefabInstance:
     - target: {fileID: 6749832694490006765, guid: c89c1e9c9cd4495438ea57c9c562f5c8,
         type: 3}
       propertyPath: m_MotionVectors
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6776752134095428400, guid: c89c1e9c9cd4495438ea57c9c562f5c8,
         type: 3}

@@ -136,10 +136,14 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     return reflectionColor;
 
     // float4 hitUV = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);
+    // float3 hitPosNDC = float3(hitUV.xy * 2 - 1, hitUV.z);
+    // float3 hitPosVS = GetPositionVS(hitPosNDC, _SSR_InvProjectionMatrix);
+
+    // weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS), normalVS, roughness);
     // float3 finalResult = SAMPLE_TEXTURE2D_LOD(_SSR_SceneColorTexture, sampler_SSR_SceneColorTexture, hitUV.xy, 0.0);
-    // finalResult.rgb = hitUV.xyz;
+    // finalResult *= weight;
     
-    // return float4(finalResult.rgb, 1);
+    // return float4(finalResult.rgb, hitUV.w);
 }
 
 float4 TemporalFilterPass(Varyings fsIn) : SV_Target
@@ -175,7 +179,7 @@ float4 TemporalFilterPass(Varyings fsIn) : SV_Target
     float sampleWeights[9];
     for (uint j = 0; j < 9; j++)
     {
-        sampleWeights[j] = HDRWeight4(sampledColors[j].rgb, 0);
+        sampleWeights[j] = HDRWeight4(sampledColors[j].rgb, 10);
     }
     float totalWeight = 0;
     for (uint k = 0; k < 9; k++)
@@ -242,18 +246,28 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
     UNITY_BRANCH
     if (rawDepth == 0.0) return sceneColor;
 
-    // half3 albedo;
-    // half3 specular;
-    // half occlusion;
-    // half3 normal;
-    // half smoothness;
-    // HitDataFromGBuffer(screenUV, albedo, specular, occlusion, normal, smoothness);
+    float3 albedo;
+    float3 specularColor;
+    float occlusion;
+    float3 normalWS;
+    float smoothness;
+    HitDataFromGBuffer(screenUV, albedo, specularColor, occlusion, normalWS, smoothness);
+    float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
+
+    float3 positionNDC = float3(screenUV * 2 - 1, rawDepth);
+    float3 positionWS = GetPositionWS(positionNDC, _SSR_InvViewProjectionMatrix);
+    float3 positionVS = GetPositionVS(positionNDC, _SSR_InvProjectionMatrix);
+    float3 viewDirWS = normalize(positionWS - _WorldSpaceCameraPos);
+
+    float NoV = saturate(dot(-viewDirWS, normalWS.xyz));
+    float3 eneryCompensation;
+    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV) * 10;
     
     float4 reflectedColor = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);
     float hitMask = reflectedColor.w;
     // reflectedColor = reflectedColor * hitMask;
     
-    float4 finalColor = lerp(sceneColor, reflectedColor, hitMask);
-    // finalColor.rgb = reflectedColor.rgb;
+    float4 finalColor = lerp(sceneColor, reflectedColor, hitMask * saturate(preintegrateDFG));
+    // finalColor.rgb = reflectedColor.rgb * reflectedColor.w;
     return finalColor;
 }
