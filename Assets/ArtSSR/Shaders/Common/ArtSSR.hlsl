@@ -485,7 +485,7 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     float NoV = saturate(dot(-viewDirWS, normalWS.xyz));
     float3 eneryCompensation;
-    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV) * 2;
+    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV);
     
     float4 reflectedColor = SAMPLE_TEXTURE2D(_BlitTexture, sampler_BlitTexture, screenUV);
     float ssrMask = reflectedColor.w;

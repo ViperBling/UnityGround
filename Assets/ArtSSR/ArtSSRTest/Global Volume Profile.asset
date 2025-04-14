@@ -12,10 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41f1020c1068466fb481589f69c6ed19, type: 3}
   m_Name: ArtSSREffect
   m_EditorClassIdentifier: 
-  active: 0
+  active: 1
   m_State:
     m_OverrideState: 1
-    m_Value: 0
+    m_Value: 1
   m_MarchingMode:
     m_OverrideState: 1
     m_Value: 1
@@ -33,7 +33,7 @@ MonoBehaviour:
     m_Value: 0.75
   m_StepStrideLength:
     m_OverrideState: 1
-    m_Value: 1.2
+    m_Value: 10
   m_EdgeFade:
     m_OverrideState: 1
     m_Value: 0.12
@@ -51,13 +51,13 @@ MonoBehaviour:
     m_Value: 1
   m_TemporalScale:
     m_OverrideState: 1
-    m_Value: 1.25
+    m_Value: 2
   m_TemporalBlendWeight:
     m_OverrideState: 1
     m_Value: 0.99
   m_BRDFBias:
     m_OverrideState: 1
-    m_Value: 0.709
+    m_Value: 0.7
   m_BlueNoiseTexture:
     m_OverrideState: 1
     m_Value: {fileID: 2800000, guid: 75211e26fad3d75408c944a166204150, type: 3}
@@ -79,16 +79,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5907265fe2e703041aad343e9c2b1471, type: 3}
   m_Name: ScreenSpaceReflectionEffect
   m_EditorClassIdentifier: 
-  active: 1
+  active: 0
   m_State:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0
   m_MarchingMode:
     m_OverrideState: 1
     m_Value: 0
   m_BRDFBias:
     m_OverrideState: 1
-    m_Value: 0.49
+    m_Value: 0.754
   m_ThicknessScale:
     m_OverrideState: 1
     m_Value: 0.05
