@@ -111,7 +111,8 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
 
     for (int i = 0; i < 9; i++)
     {
-        offsetUV = mul(offsetRotationMatrix, 2 * sampleOffsets[i] * _SSR_ScreenResolution.zw);
+        // offsetUV = mul(offsetRotationMatrix, 2 * sampleOffsets[i] * _SSR_ScreenResolution.zw);
+        offsetUV = 2 * sampleOffsets[i] * _SSR_ScreenResolution.zw;
         neighborUV = screenUV + offsetUV;
 
         float4 hitUV = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, neighborUV, 0.0);
@@ -120,7 +121,7 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
         float3 hitPosVS = GetPositionVS(hitPosNDC, _SSR_InvProjectionMatrix);
 
         weight = SSRBRDF(normalize(-positionVS.xyz), normalize(hitPosVS - positionVS), normalVS, roughness);
-        weight = 1;
+        // weight = 1;
         sampleColor = SAMPLE_TEXTURE2D_LOD(_SSR_SceneColorTexture, sampler_SSR_SceneColorTexture, hitUV.xy, 0.0);
         sampleColor.rgb /= 1 + Luminance(sampleColor.rgb);
         sampleColor.a = hitUV.w;
@@ -261,13 +262,13 @@ float4 CompositeFragmentPass(Varyings fsIn) : SV_Target
 
     float NoV = saturate(dot(-viewDirWS, normalWS.xyz));
     float3 eneryCompensation;
-    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV) * 10;
+    float4 preintegrateDFG = PreintegrateDFGLUT(eneryCompensation, specularColor.rgb, roughness, NoV) * 2;
     
     float4 reflectedColor = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);
     float hitMask = reflectedColor.w;
     // reflectedColor = reflectedColor * hitMask;
     
     float4 finalColor = lerp(sceneColor, reflectedColor, hitMask * saturate(preintegrateDFG));
-    // finalColor.rgb = reflectedColor.rgb * reflectedColor.w;
+    // finalColor = preintegrateDFG;
     return finalColor;
 }

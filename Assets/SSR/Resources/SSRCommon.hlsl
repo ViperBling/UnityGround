@@ -143,13 +143,13 @@ float SSRBRDF(float3 viewDirVS, float3 reflectDirVS, float3 normalVS, float roug
 {
     float3 H = normalize(viewDirVS + reflectDirVS);
 
-    float NoH = max(dot(normalVS, H), 0.0);
-    float NoL = max(dot(normalVS, reflectDirVS), 0.0);
-    float NoV = max(dot(normalVS, viewDirVS), 0.0);
+    float NoH = saturate(dot(normalVS, H));
+    float NoL = saturate(dot(normalVS, reflectDirVS));
+    float NoV = saturate(dot(normalVS, viewDirVS));
 
     float D = D_GGX_SSR(NoH, roughness);
     float G = Vis_SmithGGXCorrelated_SSR(NoL, NoV, roughness);
-    return max(0, D * G);
+    return (D * G * INV_PI) / 4.0;
 }
 
 float2 GetMotionVector(float2 uv, float depth)

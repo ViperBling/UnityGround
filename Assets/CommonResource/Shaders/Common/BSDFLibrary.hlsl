@@ -6,17 +6,18 @@
 
 float D_GGX_SSR(float NoH, float roughness)
 {
-    float a4 = Pow4(roughness);
-    float D = (NoH * a4 - NoH) * NoH + 1.0; // 1.0 is the NoH^2 term
+    float a2 = roughness * roughness;
+    float D = (NoH * a2 - NoH) * NoH + 1.0; // 1.0 is the NoH^2 term
 
-    return a4 / (PI * D * D);
+    return INV_PI * a2 / (D * D + 1e-7f);
 }
 
 float Vis_SmithGGXCorrelated_SSR(float NoL, float NoV, float roughness)
 {
-    float a2 = roughness * roughness;
-    float LambdaL = NoV * sqrt((1 - a2) * NoL * NoL + a2);
-	float LambdaV = NoL * sqrt((1 - a2) * NoV * NoV + a2);
+    float a = roughness;
+    float a2 = a * a;
+    float LambdaL = NoV * (NoL * (1 - a) + a);
+	float LambdaV = NoL * (NoV * (1 - a) + a);
     
-	return (0.5 / max(LambdaL + LambdaV, REAL_MIN)) / PI;
+	return (0.5f / (LambdaL + LambdaV + 1e-7f));
 }
