@@ -22,6 +22,9 @@ namespace ArtSSR
         [InspectorName("Screen Edge Fade Distance"), Tooltip("The distance from the edge of the screen where SSR fades out.")]
         public ClampedFloatParameter m_EdgeFade = new(value: 0.1f, min: 0.0f, max: 1.0f, overrideState: true);
 
+        [Header("HiZ Trace")]
+        public BoolParameter m_HiZUseCompute = new(value: true, overrideState: true);
+
         [Header("Linear Trace")]
         public ClampedIntParameter m_LinearRayDistance = new(value: 512, min: 128, max: 512, overrideState: true);
         [InspectorName("Linear Ray Steps")]

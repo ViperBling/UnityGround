@@ -1,7 +1,7 @@
 ﻿// #pragma enable_d3d11_debug_symbols
 #pragma kernel CSMain
 #pragma kernel DepthCopy
-// #pragma kernel GenerateDepthPyramid
+#pragma kernel GenerateDepthPyramid
 
 // #pragma kernel DebugEdit
 // #pragma kernel DebugCopyScale
@@ -20,6 +20,15 @@ int _HiZPrevDepthLevel;
 
 RWTexture2DArray<float> _DepthPyramidCS;
 Texture2D<float> _CameraDepthTexture;
+
+Texture2D<float> _SourceDepthTexture;
+SamplerState sampler_SourceDepthTexture;
+RWTexture2D<float> _DepthPyramidTexture;
+
+float4 _BlitScreenSize;
+
+#define CurDepthSize _BlitScreenSize.xy
+#define PreDepthSize _BlitScreenSize.zw
 
 inline float SampleSliceDepth(uint3 pos)
 {
@@ -66,6 +75,27 @@ void DepthCopy(uint3 id : SV_DispatchThreadID)
     
     _DepthPyramidCS[uint3(id.xy, 0)] = 1 - _CameraDepthTexture[id.xy];
     // _DepthPyramid[uint3(id.xy, 0)] = _CameraDepthTexture[id.xy];
+}
+
+static const int2 SampleOffsets[9] = {
+    int2(-1.0, -1.0), int2(0.0, -1.0), int2(1.0, -1.0),
+    int2(-1.0,  0.0), int2(0.0,  0.0), int2(1.0,  0.0),
+    int2(-1.0,  1.0), int2(0.0,  1.0), int2(1.0,  1.0)
+};
+
+[numthreads(THREADS, THREADS, 1)]
+void GenerateDepthPyramid(uint3 id : SV_DispatchThreadID)
+{
+    float2 uv = (id.xy + 0.5f) * CurDepthSize;
+
+    float depth = 0.0;
+    for (int i = 0; i < 9; i++)
+    {
+        float2 sampleUV = uv + SampleOffsets[i] * PreDepthSize;
+        // 采样深度值
+        depth = max(depth, _SourceDepthTexture.SampleLevel(sampler_SourceDepthTexture, sampleUV, 0));
+    }
+    _DepthPyramidTexture[id.xy] = depth;
 }
 
 // [numthreads(THREADS, THREADS, 1)]

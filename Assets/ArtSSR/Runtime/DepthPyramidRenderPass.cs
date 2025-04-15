@@ -23,6 +23,8 @@ namespace ArtSSR
             private RTHandle m_DepthPyramidPingHandle;
             private RTHandle m_DepthPyramidPongHandle;
             private RTHandle m_DepthPyramidCSHandle;
+
+            private int[] m_DepthIDs;
             
 
             internal struct TargetSlice
@@ -69,15 +71,13 @@ namespace ArtSSR
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
-                // m_Scale = m_SSRVolume.m_DownSample.value + 1.0f;
-
                 float width = renderingData.cameraData.cameraTargetDescriptor.width;
                 float height = renderingData.cameraData.cameraTargetDescriptor.height;
 
                 m_ScreenSize.x = width;
                 m_ScreenSize.y = height;
 
-                bool useComputeShader = /* m_SSRVolume.m_HiZUseComputeShader.value */true;
+                bool useComputeShader = m_SSRVolume.m_HiZUseCompute.value;
                 if (useComputeShader)
                 {
                     for (int i = 0; i < m_NumSlices; i++)
@@ -117,12 +117,12 @@ namespace ArtSSR
                     // desc.height = (int)m_ScreenSize.y;
                     desc.useMipMap = true;
                     desc.mipCount = m_NumSlices;
-                    desc.autoGenerateMips = true;
+                    desc.autoGenerateMips = false;
                     RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramid");
 
-                    desc.autoGenerateMips = false;
-                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPingHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPing");
-                    RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPongHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPong");
+                    // desc.autoGenerateMips = false;
+                    // RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPingHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPing");
+                    // RenderingUtils.ReAllocateIfNeeded(ref m_DepthPyramidPongHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_DepthPyramidPong");
                     cmd.SetGlobalTexture(m_DepthPyramidHandle.name, m_DepthPyramidHandle);
                 }
 
@@ -135,7 +135,7 @@ namespace ArtSSR
                 float width = m_ScreenSize.x;
                 float height = m_ScreenSize.y;
 
-                bool useComputeShader = /* m_SSRVolume.m_HiZUseComputeShader.value */true;
+                bool useComputeShader = m_SSRVolume.m_HiZUseCompute.value;
                 if (useComputeShader)
                 {
                     int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");
@@ -171,23 +171,29 @@ namespace ArtSSR
                 }
                 else
                 {
+                    int depthPyramid = m_DepthPyramidCS.FindKernel("GenerateDepthPyramid");
+
                     CommandBuffer cmdBuffer = CommandBufferPool.Get(m_ProfilingTag);
                     using (new ProfilingScope(cmdBuffer, new ProfilingSampler(m_ProfilingTag)))
                     {
                         Blitter.BlitCameraTexture(cmdBuffer, renderingData.cameraData.renderer.cameraDepthTargetHandle, m_DepthPyramidHandle, 0);
-                        
-                        for (int i = 1; i < m_NumSlices; i++)
-                        {
-                            cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
-                            Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidPingHandle, m_DepthPyramidMaterial, 0);
-                            // Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidPingHandle, m_DepthPyramidPongHandle, i);
-                            cmdBuffer.CopyTexture(m_DepthPyramidPingHandle, 0, i, m_DepthPyramidHandle, 0, i);
-                        }
-                        cmdBuffer.CopyTexture(m_DepthPyramidPongHandle, m_DepthPyramidHandle);
 
-                        context.ExecuteCommandBuffer(cmdBuffer);
-                        cmdBuffer.Clear();
-                        CommandBufferPool.Release(cmdBuffer);
+                        // Vector2Int 
+
+                        // for (int i = 0;)
+                        
+                        // for (int i = 1; i < m_NumSlices; i++)
+                        // {
+                        //     cmdBuffer.SetGlobalInt(m_HiZPrevDepthLevelID, i - 1);
+                        //     Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidHandle, m_DepthPyramidPingHandle, m_DepthPyramidMaterial, 0);
+                        //     // Blitter.BlitCameraTexture(cmdBuffer, m_DepthPyramidPingHandle, m_DepthPyramidPongHandle, i);
+                        //     cmdBuffer.CopyTexture(m_DepthPyramidPingHandle, 0, i, m_DepthPyramidHandle, 0, i);
+                        // }
+                        // cmdBuffer.CopyTexture(m_DepthPyramidPongHandle, m_DepthPyramidHandle);
+
+                        // context.ExecuteCommandBuffer(cmdBuffer);
+                        // cmdBuffer.Clear();
+                        // CommandBufferPool.Release(cmdBuffer);
                     }
                 }
             }
