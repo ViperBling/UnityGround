@@ -8,7 +8,7 @@ float4 LinearSSTracingPass(Varyings fsIn) : SV_Target
     float2 screenUV = fsIn.texcoord;
 
     float rawDepth = SampleDepth(screenUV);
-    // UNITY_BRANCH if (rawDepth == 0.0) return float4(screenUV, 0, 0);
+    UNITY_BRANCH if (rawDepth == 0.0) return float4(screenUV, 0, 0);
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
@@ -86,13 +86,13 @@ float4 SpatioFilterPass(Varyings fsIn) : SV_Target
     float2 screenUV = fsIn.texcoord;
 
     float rawDepth = SampleDepth(screenUV);
-    // UNITY_BRANCH if (rawDepth == 0.0) return float4(screenUV, 0, 0);
+    UNITY_BRANCH if (rawDepth == 0.0) return float4(screenUV, 0, 0);
 
     float smoothness;
     float3 normalWS = GetNormalWS(screenUV, smoothness);
     float3 normalVS = normalize(mul((float3x3)_SSR_WorldToCameraMatrix, normalWS));
     float roughness = clamp(1.0 - smoothness, 0.01, 1.0);
-    // UNITY_BRANCH if (roughness > 0.8) return float4(screenUV, 0, 0);
+    UNITY_BRANCH if (roughness > 0.8) return float4(screenUV, 0, 0);
 
     float3 positionNDC = float3(screenUV * 2 - 1, rawDepth);
     float3 positionWS = GetPositionWS(positionNDC, _SSR_InvViewProjectionMatrix);
@@ -227,7 +227,7 @@ float4 TemporalFilterPass(Varyings fsIn) : SV_Target
     float4 prevColor = SAMPLE_TEXTURE2D_LOD(_SSR_TemporalHistoryTexture, sampler_SSR_TemporalHistoryTexture, screenUV - velocity, 0.0);
     prevColor = clamp(prevColor, colorMin, colorMax);
 
-    float temporalBlendWeight = saturate(1 - length(velocity) * 8 * _SSR_TemporalWeight);
+    float temporalBlendWeight = saturate((1 - length(velocity) * 8) * _SSR_TemporalWeight);
     float4 reflectionColor = lerp(ssrCurColor, prevColor, temporalBlendWeight);
 
     // float4 curColor = SAMPLE_TEXTURE2D_LOD(_BlitTexture, sampler_BlitTexture, screenUV, 0.0);

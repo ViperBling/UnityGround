@@ -51,12 +51,12 @@ namespace ArtSSR
         public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
         {
             var stack = VolumeManager.instance.stack;
-            ArtSSREffect artSSRVolume = stack.GetComponent<ArtSSREffect>();
+            ArtScreenSpaceReflection artSSRVolume = stack.GetComponent<ArtScreenSpaceReflection>();
             bool isSSRActive = artSSRVolume != null && artSSRVolume.IsActive();
 
             if (isSSRActive)
             {
-                if (artSSRVolume.m_MarchingMode.value == ArtSSREffect.RayMarchingMode.HiZTracing)
+                if (artSSRVolume.m_MarchingMode.value == ArtScreenSpaceReflection.RayMarchingMode.HiZTracing)
                 {
                    m_DepthPyramidPass.m_SSRVolume = artSSRVolume;
                     renderer.EnqueuePass(m_DepthPyramidPass);

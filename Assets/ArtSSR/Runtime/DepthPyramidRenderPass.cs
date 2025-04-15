@@ -9,7 +9,7 @@ namespace ArtSSR
     {
         internal class ArtDepthPyramid : ScriptableRenderPass
         {
-            public ArtSSREffect m_SSRVolume;
+            public ArtScreenSpaceReflection m_SSRVolume;
 
             private const string m_ProfilingTag = "ArtSSR_DepthPyramid";
 
@@ -69,7 +69,7 @@ namespace ArtSSR
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
             {
-                m_Scale = m_SSRVolume.m_DownSample.value + 1.0f;
+                // m_Scale = m_SSRVolume.m_DownSample.value + 1.0f;
 
                 float width = renderingData.cameraData.cameraTargetDescriptor.width;
                 float height = renderingData.cameraData.cameraTargetDescriptor.height;
@@ -77,7 +77,7 @@ namespace ArtSSR
                 m_ScreenSize.x = width;
                 m_ScreenSize.y = height;
 
-                bool useComputeShader = m_SSRVolume.m_HiZUseComputeShader.value;
+                bool useComputeShader = /* m_SSRVolume.m_HiZUseComputeShader.value */true;
                 if (useComputeShader)
                 {
                     for (int i = 0; i < m_NumSlices; i++)
@@ -135,7 +135,7 @@ namespace ArtSSR
                 float width = m_ScreenSize.x;
                 float height = m_ScreenSize.y;
 
-                bool useComputeShader = m_SSRVolume.m_HiZUseComputeShader.value;
+                bool useComputeShader = /* m_SSRVolume.m_HiZUseComputeShader.value */true;
                 if (useComputeShader)
                 {
                     int kernelDepthPyramid = m_DepthPyramidCS.FindKernel("CSMain");

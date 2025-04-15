@@ -10,11 +10,11 @@ namespace ArtSSR
     {
         internal class ArtSSRRenderPass : ScriptableRenderPass
         {
-            private const string m_ProfilingTag = "ArtSSR_RenderReflection";
+            const string m_ProfilingTag = "ArtSSR_RenderReflection";
 
-            public ArtSSREffect m_SSRVolume;
-
-            private static int m_Frame = 0; // Frame counter
+            public ArtScreenSpaceReflection m_SSRVolume;
+            
+            // private static int m_Frame = 0; // Frame counter
 
             private readonly Material m_Material;
             private RTHandle m_SceneColorHandle;
@@ -23,39 +23,46 @@ namespace ArtSSR
             private RTHandle m_TemporalHistoryHandle;
             private RTHandle m_TempHandle;
 
-            private static readonly int m_FrameID = Shader.PropertyToID("_Frame");
-            private static readonly int m_MinSmoothnessID = Shader.PropertyToID("_MinSmoothness");
-            private static readonly int m_FadeSmoothnessID = Shader.PropertyToID("_FadeSmoothness");
-            private static readonly int m_EdgeFadeID = Shader.PropertyToID("_EdgeFade");
-            private static readonly int m_ThicknessScaleID = Shader.PropertyToID("_ThicknessScale");
-            private static readonly int m_StepStrideID = Shader.PropertyToID("_StepStride");
-            private static readonly int m_MaxStepsID = Shader.PropertyToID("_MaxSteps");
-            private static readonly int m_WorldSpaceViewDirID = Shader.PropertyToID("_WorldSpaceViewDir");
-            private static readonly int m_SSRJitterID = Shader.PropertyToID("_SSRJitter");
-            private static readonly int m_ScreenResolutionID = Shader.PropertyToID("_ScreenResolution");
-            private static readonly int m_BlueNoiseTextureID = Shader.PropertyToID("_BlueNoiseTexture");
-            private static readonly int m_BRDFLUTID = Shader.PropertyToID("_BRDFLUT");
-            private static readonly int m_ReflectSkyID = Shader.PropertyToID("_ReflectSky");
-            private static readonly int m_PrevViewProjMatrixID = Shader.PropertyToID("_PrevViewProjMatrix");
-            private static readonly int m_BRDFBiasID = Shader.PropertyToID("_BRDFBias");
-            private static readonly int m_TemporalScaleID = Shader.PropertyToID("_TemporalScale");
-            private static readonly int m_TemporalBlendWeightID = Shader.PropertyToID("_TemporalBlendWeight");
+            private const int m_LinearSSTracingPass = 0;
+            private const int m_HiZTracingPass = 1;
+            private const int m_SpatioFilterPass = 2;
+            private const int m_TemporalFilterPass = 3;
+            private const int m_CompositePass = 4;
 
-            private const int m_LinearVSTracingPass = 0;
-            private const int m_LinearSSTracingPass = 1;
-            private const int m_HiZTracingPass = 2;
-            private const int m_SpatioFilterPass = 3;
-            private const int m_TemporalFilterPass = 4;
-            private const int m_CompositePass = 5;
-
-            private bool m_IsPadded = false;
-            private float m_Scale;
+            // private bool m_IsPadded = false;
+            // private float m_Scale;
             private Vector2 m_ScreenResolution;
-            private Matrix4x4 m_PrevViewProjMatrix = Matrix4x4.identity;
+            private Matrix4x4 m_SSR_ProjectionMatrix = Matrix4x4.identity;
+            private Matrix4x4 m_SSR_ViewProjectionMatrix = Matrix4x4.identity;
+            private Matrix4x4 m_SSR_PrevViewProjectionMatrix = Matrix4x4.identity;
+            private Matrix4x4 m_SSR_WorldToCameraMatrix = Matrix4x4.identity;
+            private Matrix4x4 m_SSR_CameraToWorldMatrix = Matrix4x4.identity;
         
             private int m_SampleIndex = 0;
             private const int k_SampleCount = 64;
             private Vector2 m_RandomSample;
+
+            private static readonly int m_SSR_JitterID = Shader.PropertyToID("_SSR_Jitter");
+            private static readonly int m_SSR_BRDFBiasID = Shader.PropertyToID("_SSR_BRDFBias");
+            private static readonly int m_SSR_NumStepsID = Shader.PropertyToID("_SSR_NumSteps");
+            private static readonly int m_SSR_ScreenFadeID = Shader.PropertyToID("_SSR_ScreenFade");
+            private static readonly int m_SSR_ThicknessID = Shader.PropertyToID("_SSR_Thickness");
+            private static readonly int m_SSR_TemporalScaleID = Shader.PropertyToID("_SSR_TemporalScale");
+            private static readonly int m_SSR_TemporalWeightID = Shader.PropertyToID("_SSR_TemporalWeight");
+            private static readonly int m_SSR_ScreenResolutionID = Shader.PropertyToID("_SSR_ScreenResolution");
+            private static readonly int m_SSR_RayStepStrideID = Shader.PropertyToID("_SSR_RayStepStride");
+            private static readonly int m_SSR_ProjectionInfoID = Shader.PropertyToID("_SSR_ProjectionInfo");
+            private static readonly int m_SSR_TraceDistanceID = Shader.PropertyToID("_SSR_TraceDistance");
+            private static readonly int m_SSR_BlueNoiseTextureID = Shader.PropertyToID("_SSR_BlueNoiseTexture");
+            private static readonly int m_SSR_BRDFLUTID = Shader.PropertyToID("_SSR_BRDFLUT");
+            private static readonly int m_SSR_ProjectionMatrixID = Shader.PropertyToID("_SSR_ProjectionMatrix");
+            private static readonly int m_SSR_ViewProjectionMatrixID = Shader.PropertyToID("_SSR_ViewProjectionMatrix");
+            private static readonly int m_SSR_PrevViewProjectionMatrixID = Shader.PropertyToID("_SSR_PrevViewProjectionMatrix");
+            private static readonly int m_SSR_InvProjectionMatrixID = Shader.PropertyToID("_SSR_InvProjectionMatrix");
+            private static readonly int m_SSR_InvViewProjectionMatrixID = Shader.PropertyToID("_SSR_InvViewProjectionMatrix");
+            private static readonly int m_SSR_WorldToCameraMatrixID = Shader.PropertyToID("_SSR_WorldToCameraMatrix");
+            private static readonly int m_SSR_CameraToWorldMatrixID = Shader.PropertyToID("_SSR_CameraToWorldMatrix");
+            private static readonly int m_SSR_ProjectToPixelMatrixID = Shader.PropertyToID("_SSR_ProjectToPixelMatrix");
 
             public ArtSSRRenderPass(Material material)
             {
@@ -73,27 +80,8 @@ namespace ArtSSR
 
             public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraRTDesc)
             {
-                // if (m_Material == null) return;
                 base.Configure(cmd, cameraRTDesc);
-
-                m_Material.SetInt(m_FrameID, m_Frame);
-                m_Material.SetTexture(m_BlueNoiseTextureID, m_SSRVolume.m_BlueNoiseTexture.value);
-                m_Material.SetTexture(m_BRDFLUTID, m_SSRVolume.m_BRDFLUT.value);
-
-                m_IsPadded = m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.HiZTracing;
-                m_Scale = m_IsPadded ? 1 : m_SSRVolume.m_DownSample.value + 1.0f;
                 m_RandomSample = GenerateRandomOffset();
-
-                float globalResolution = 1.0f / m_Scale;
-
-                m_ScreenResolution.x = cameraRTDesc.width * globalResolution;
-                m_ScreenResolution.y = cameraRTDesc.height * globalResolution;
-
-                m_Material.SetVector(m_ScreenResolutionID, new Vector4(m_ScreenResolution.x, m_ScreenResolution.y, 1.0f / m_ScreenResolution.x, 1.0f / m_ScreenResolution.y));
-                m_Material.SetFloat(m_TemporalScaleID, m_SSRVolume.m_TemporalScale.value);
-                m_Material.SetFloat(m_TemporalBlendWeightID, m_SSRVolume.m_TemporalBlendWeight.value);
-
-                SetMaterialProperties();
             }
 
             public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -105,13 +93,15 @@ namespace ArtSSR
                 desc.colorFormat = RenderTextureFormat.ARGBFloat;
 
                 FilterMode filterMode = FilterMode.Bilinear;
-                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRSceneColorTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_SceneColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSR_SceneColorTexture");
                 filterMode = FilterMode.Point;
                 desc.useMipMap = false;
-                RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRReflectionColorTexture");
-                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalCurrentHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalCurrentTexture");
-                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalHistoryHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTemporalHistoryTexture");
-                RenderingUtils.ReAllocateIfNeeded(ref m_TempHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSRTempTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_ReflectColorHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSR_ReflectionColorTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalCurrentHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSR_TemporalCurrentTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TemporalHistoryHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSR_TemporalHistoryTexture");
+                RenderingUtils.ReAllocateIfNeeded(ref m_TempHandle, desc, filterMode, TextureWrapMode.Clamp, name: "_SSR_TempTexture");
+
+                SetMaterialProperties(renderingData);
                 
                 ConfigureInput(ScriptableRenderPassInput.Depth | ScriptableRenderPassInput.Motion);
                 ConfigureTarget(m_SceneColorHandle, m_SceneColorHandle);
@@ -121,13 +111,18 @@ namespace ArtSSR
             {
                 m_SceneColorHandle = null;
                 m_ReflectColorHandle = null;
+                m_TemporalCurrentHandle = null;
+                m_TemporalHistoryHandle = null;
+                m_TempHandle = null;
             }
 
             public override void FrameCleanup(CommandBuffer cmd)
             {
                 if (m_SceneColorHandle != null) cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_SceneColorHandle.name));
                 if (m_ReflectColorHandle != null) cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_ReflectColorHandle.name));
-                m_Frame++;
+                if (m_TemporalCurrentHandle != null) cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_TemporalCurrentHandle.name));
+                if (m_TemporalHistoryHandle != null) cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_TemporalHistoryHandle.name));
+                if (m_TempHandle != null) cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_TempHandle.name));
             }
 
             public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -137,21 +132,17 @@ namespace ArtSSR
                 CommandBuffer cmd = CommandBufferPool.Get();
                 using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
                 {
-                    m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
+                //     m_Material.SetVector(m_WorldSpaceViewDirID, renderingData.cameraData.camera.transform.forward);
 
-                    var renderCameraData = renderingData.cameraData;
-                    Matrix4x4 currVPMat = renderCameraData.GetGPUProjectionMatrix() * renderCameraData.GetViewMatrix();
-                    cmd.SetGlobalMatrix(m_PrevViewProjMatrixID, m_PrevViewProjMatrix);
+                //     var renderCameraData = renderingData.cameraData;
+                //     Matrix4x4 currVPMat = renderCameraData.GetGPUProjectionMatrix() * renderCameraData.GetViewMatrix();
+                //     cmd.SetGlobalMatrix(m_PrevViewProjMatrixID, m_PrevViewProjMatrix);
 
                     // 1. 获取SceneColor
                     Blitter.BlitCameraTexture(cmd, renderingData.cameraData.renderer.cameraColorTargetHandle, m_SceneColorHandle);
 
                     // 2. 利用SceneColor进行反射计算，得到HitUV、Mask
-                    if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearViewSpaceTracing)
-                    {
-                        Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearVSTracingPass);
-                    }
-                    else if (m_SSRVolume.m_MarchingMode == ArtSSREffect.RayMarchingMode.LinearScreenSpaceTracing)
+                    if (m_SSRVolume.m_MarchingMode == ArtScreenSpaceReflection.RayMarchingMode.LinearScreenSpaceTracing)
                     {
                         Blitter.BlitCameraTexture(cmd, m_SceneColorHandle, m_ReflectColorHandle, m_Material, pass: m_LinearSSTracingPass);
                     }
@@ -179,40 +170,70 @@ namespace ArtSSR
                     {
                         Blitter.BlitCameraTexture(cmd, m_TemporalCurrentHandle, renderingData.cameraData.renderer.cameraColorTargetHandle, m_Material, pass: m_CompositePass);
                     }
-                    // m_FirstFrame = false;
+
 
                     context.ExecuteCommandBuffer(cmd);
                     cmd.Clear();
                     CommandBufferPool.Release(cmd);
-                    m_PrevViewProjMatrix = currVPMat;
+                    m_SSR_PrevViewProjectionMatrix = m_SSR_ViewProjectionMatrix;
                 }
             }
 
-            private void SetMaterialProperties()
+            private void SetMaterialProperties(RenderingData renderingData)
             {
-                if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Disabled)
-                {
-                    m_Material.DisableKeyword("DITHER_8x8");
-                    m_Material.DisableKeyword("DITHER_INTERLEAVED_GRADIENT");
-                }
-                else if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.Dither8x8)
-                {
-                    m_Material.EnableKeyword("DITHER_8x8");
-                }
-                else if (m_SSRVolume.m_DitherMode == ArtSSREffect.DitherMode.InterleavedGradient)
-                {
-                    m_Material.EnableKeyword("DITHER_INTERLEAVED_GRADIENT");
-                }
-                
-                m_Material.SetFloat(m_MinSmoothnessID, m_SSRVolume.m_MinSmoothness.value);
-                m_Material.SetFloat(m_FadeSmoothnessID, m_SSRVolume.m_FadeSmoothness.value);
-                m_Material.SetFloat(m_EdgeFadeID, m_SSRVolume.m_EdgeFade.value);
-                m_Material.SetFloat(m_ThicknessScaleID, m_SSRVolume.m_ThicknessScale.value);
-                m_Material.SetFloat(m_StepStrideID, m_SSRVolume.m_StepStrideLength.value);
-                m_Material.SetFloat(m_MaxStepsID, m_SSRVolume.m_MaxSteps.value);
-                m_Material.SetFloat(m_BRDFBiasID, m_SSRVolume.m_BRDFBias.value);
-                m_Material.SetInt(m_ReflectSkyID, m_SSRVolume.m_ReflectSky.value ? 1 : 0);
-                m_Material.SetVector(m_SSRJitterID, new Vector4(m_ScreenResolution.x / 1024.0f, m_ScreenResolution.y / 1024.0f, m_RandomSample.x, m_RandomSample.y));
+                var camera = renderingData.cameraData.camera;
+                Vector2 halfCameraSize = new Vector2(camera.pixelWidth, camera.pixelHeight) * 0.5f;
+
+                m_ScreenResolution.x = camera.pixelWidth;
+                m_ScreenResolution.y = camera.pixelHeight;
+
+                m_Material.SetTexture(m_SSR_BlueNoiseTextureID, m_SSRVolume.m_BlueNoiseTexture.value);
+                m_Material.SetTexture(m_SSR_BRDFLUTID, m_SSRVolume.m_BRDFLUT.value);
+
+                m_Material.SetFloat(m_SSR_TraceDistanceID, m_SSRVolume.m_LinearRayDistance.value);
+                m_Material.SetFloat(m_SSR_TemporalScaleID, m_SSRVolume.m_TemporalScale.value);
+                m_Material.SetFloat(m_SSR_TemporalWeightID, m_SSRVolume.m_TemporalWeight.value);
+                m_Material.SetVector(m_SSR_ScreenResolutionID, new Vector4(m_ScreenResolution.x, m_ScreenResolution.y, 1.0f / m_ScreenResolution.x, 1.0f / m_ScreenResolution.y));
+                m_Material.SetFloat(m_SSR_ScreenFadeID, m_SSRVolume.m_EdgeFade.value);
+                m_Material.SetFloat(m_SSR_ThicknessID, m_SSRVolume.m_ThicknessScale.value);
+                m_Material.SetFloat(m_SSR_RayStepStrideID, m_SSRVolume.m_LinearRayStepSize.value);
+                m_Material.SetFloat(m_SSR_NumStepsID, m_SSRVolume.m_LinearRaySteps.value);
+                m_Material.SetFloat(m_SSR_BRDFBiasID, m_SSRVolume.m_BRDFBias.value);
+                m_Material.SetVector(m_SSR_JitterID, new Vector4(m_ScreenResolution.x / 1024.0f, m_ScreenResolution.y / 1024.0f, m_RandomSample.x, m_RandomSample.y));
+
+                var cameraData = renderingData.cameraData;
+                m_SSR_WorldToCameraMatrix = cameraData.camera.worldToCameraMatrix;
+                m_SSR_CameraToWorldMatrix = cameraData.camera.cameraToWorldMatrix;
+                m_SSR_ProjectionMatrix = GL.GetGPUProjectionMatrix(cameraData.camera.projectionMatrix, false);
+                m_SSR_ViewProjectionMatrix = m_SSR_ProjectionMatrix * m_SSR_WorldToCameraMatrix;
+                m_Material.SetMatrix(m_SSR_ProjectionMatrixID, m_SSR_ProjectionMatrix);
+                m_Material.SetMatrix(m_SSR_ViewProjectionMatrixID, m_SSR_ViewProjectionMatrix);
+                m_Material.SetMatrix(m_SSR_InvProjectionMatrixID, m_SSR_ProjectionMatrix.inverse);
+                m_Material.SetMatrix(m_SSR_InvViewProjectionMatrixID, m_SSR_ViewProjectionMatrix.inverse);
+                m_Material.SetMatrix(m_SSR_WorldToCameraMatrixID, m_SSR_WorldToCameraMatrix);
+                m_Material.SetMatrix(m_SSR_CameraToWorldMatrixID, m_SSR_CameraToWorldMatrix);
+                m_Material.SetMatrix(m_SSR_PrevViewProjectionMatrixID, m_SSR_PrevViewProjectionMatrix);
+
+                Matrix4x4 warpToScreenSpaceMatrix = Matrix4x4.identity;
+                warpToScreenSpaceMatrix.m00 = halfCameraSize.x;
+                warpToScreenSpaceMatrix.m11 = halfCameraSize.y;
+                warpToScreenSpaceMatrix.m03 = halfCameraSize.x;
+                warpToScreenSpaceMatrix.m13 = halfCameraSize.y;
+
+                Matrix4x4 projectToPixelMatrix = warpToScreenSpaceMatrix * m_SSR_ProjectionMatrix;
+                m_Material.SetMatrix(m_SSR_ProjectToPixelMatrixID, projectToPixelMatrix);
+
+                Vector4 ssrProjInfo = new Vector4(
+                    (-2 / (m_ScreenResolution.x * m_SSR_ProjectionMatrix[0])),
+                    (-2 / (m_ScreenResolution.y * m_SSR_ProjectionMatrix[5])),
+                    (1 - m_SSR_ProjectionMatrix[2]) / m_SSR_ProjectionMatrix[0],
+                    (1 - m_SSR_ProjectionMatrix[6]) / m_SSR_ProjectionMatrix[5]
+                );
+                m_Material.SetVector(m_SSR_ProjectionInfoID, ssrProjInfo);
+
+                // Vector3 clipInfo = float.IsPositiveInfinity(camera.farClipPlane) ? 
+                //     new Vector3(camera.nearClipPlane, -1, 1) : 
+                //     new Vector3(camera.nearClipPlane * camera.farClipPlane, camera.nearClipPlane - camera.farClipPlane, camera.farClipPlane);
             }
 
             private float GetHaltonValue(int index, int radix)
@@ -239,82 +260,5 @@ namespace ArtSSR
                 return new Vector2(u, v);
             }
         }
-
-        internal class ArtSSRBackFaceDepthPass : ScriptableRenderPass
-        {
-            const string m_ProfilingTag = "ArtSSR_RenderBackFaceDepth";
-            private readonly Material m_SSRMaterial;
-            public ArtSSREffect m_SSRVolume;
-            private RTHandle m_BackFaceDepthHandle;
-
-            private RenderStateBlock m_DepthRenderStateBlock = new(RenderStateMask.Nothing);
-
-            private static readonly int m_SSRBackFaceDepthID = Shader.PropertyToID("_SSRCameraBackFaceDepthTexture");
-
-            public ArtSSRBackFaceDepthPass(Material material)
-            {
-                m_SSRMaterial = material;
-            }
-
-            public void Dispose()
-            {
-                m_BackFaceDepthHandle?.Release();
-            }
-
-            public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
-            {
-                RenderTextureDescriptor desc = renderingData.cameraData.cameraTargetDescriptor;
-                desc.msaaSamples = 1;
-
-                RenderingUtils.ReAllocateIfNeeded(ref m_BackFaceDepthHandle, desc, FilterMode.Point, TextureWrapMode.Clamp, name: "_SSRCameraBackFaceDepthTexture");
-                cmd.SetGlobalTexture(m_SSRBackFaceDepthID, m_BackFaceDepthHandle);
-            }
-
-            public override void OnCameraCleanup(CommandBuffer cmd)
-            {
-                m_BackFaceDepthHandle = null;
-            }
-
-            public override void FrameCleanup(CommandBuffer cmd)
-            {
-                if (m_BackFaceDepthHandle != null)
-                {
-                    cmd.ReleaseTemporaryRT(Shader.PropertyToID(m_BackFaceDepthHandle.name));
-                }
-            }
-
-            public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
-            {
-                CommandBuffer cmd = CommandBufferPool.Get();
-                using (new ProfilingScope(cmd, new ProfilingSampler(m_ProfilingTag)))
-                {
-                    // 只存Depth
-                    cmd.SetRenderTarget(m_BackFaceDepthHandle,
-                        RenderBufferLoadAction.DontCare,
-                        RenderBufferStoreAction.DontCare,
-                        m_BackFaceDepthHandle,
-                        RenderBufferLoadAction.DontCare,
-                        RenderBufferStoreAction.Store);
-                    cmd.ClearRenderTarget(clearDepth: true, clearColor: true, Color.clear);
-
-                    RendererListDesc rendererListDesc = new(new ShaderTagId("DepthOnly"), renderingData.cullResults, renderingData.cameraData.camera);
-                    m_DepthRenderStateBlock.depthState = new DepthState(true, CompareFunction.LessEqual);
-                    m_DepthRenderStateBlock.mask |= RenderStateMask.Depth;
-                    m_DepthRenderStateBlock.rasterState = new RasterState(CullMode.Front);
-                    m_DepthRenderStateBlock.mask |= RenderStateMask.Raster;
-
-                    rendererListDesc.stateBlock = m_DepthRenderStateBlock;
-                    rendererListDesc.sortingCriteria = renderingData.cameraData.defaultOpaqueSortFlags;
-                    rendererListDesc.renderQueueRange = RenderQueueRange.opaque;
-                    RendererList rendererList = context.CreateRendererList(rendererListDesc);
-
-                    cmd.DrawRendererList(rendererList);
-                }
-                context.ExecuteCommandBuffer(cmd);
-                cmd.Clear();
-                CommandBufferPool.Release(cmd);
-            }
-        }
     }
-
 }

@@ -1,8 +1,8 @@
 ﻿Shader "Hidden/ArtSSRShader"
 {
-    Properties 
+    Properties
     {
-        [HideInInspector] _RandomSeed("Random Seed", int) = 0.0
+
     }
     
     SubShader
@@ -21,25 +21,7 @@
         
         Pass
         {
-            Name "Linear View Space Tracing 0"
-            
-            HLSLPROGRAM
-
-            #pragma enable_d3d11_debug_symbols
-            #pragma target 3.5
-            #pragma vertex Vert
-            #pragma fragment LinearVSTracingPass
-
-            // 在使用了Accurate GBuffer Normal的情况下，需要解码法线
-            // 这个宏定义具体的解码方式
-            #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
-            
-            ENDHLSL
-        }
-
-        Pass
-        {
-            Name "Linear Screen Space Tracing 1"
+            Name "Linear Screen Space Tracing 0"
             
             HLSLPROGRAM
 
@@ -57,7 +39,7 @@
         
         Pass
         {
-            Name "HiZ Tracing 2"
+            Name "HiZ Tracing 1"
             
             HLSLPROGRAM
 
@@ -75,7 +57,7 @@
 
         Pass
         {
-            Name "Spatio Filter 3"
+            Name "Spatio Filter 2"
             
             HLSLPROGRAM
 
@@ -93,7 +75,7 @@
 
         Pass
         {
-            Name "Temporal Filter 4"
+            Name "Temporal Filter 3"
 
             HLSLPROGRAM
 
@@ -111,7 +93,7 @@
         
         Pass
         {
-            Name "Composite 5"
+            Name "Composite 4"
             
             // Blend SrcAlpha OneMinusSrcAlpha, SrcAlpha SrcAlpha
             
