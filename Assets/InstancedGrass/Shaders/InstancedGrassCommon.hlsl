@@ -84,7 +84,7 @@ half3 SimpleLit(half3 albedo, half3 normalWS, half3 viewDirWS, half3 lightDir, h
     half rim = pow(1.0 - NoV, 7) * 2 * tipMask;
     half3 rimLight = lighting * rim;
 
-    half3 color = directColor + indirectColor + rimLight;
+    half3 color = indirectColor;
     // color = backTranslucency;
     return color;
 }
