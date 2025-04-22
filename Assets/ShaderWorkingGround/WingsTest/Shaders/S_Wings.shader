@@ -1,201 +1,315 @@
-Shader "VFXTest/DistortionWings"
+Shader "VFX/S_Wings"
 {
     Properties
     {
-        _MainTex ("Texture", 2D) = "white" { }
+        _MainTex ("Wing Shape Mask", 2D) = "white" { }
+        _FeatherTex ("Feather Texture", 2D) = "white" { }// 新增：羽毛/纤维纹理
+        
+        [Header(Color Settings)]
+        [HDR]_Color01 ("Inner Core Color (Blue)", Color) = (0.2, 1.0, 5.0, 1)
+        [HDR]_Color02 ("Mid Energy Color (Purple)", Color) = (2.0, 0.2, 4.0, 1)
+        [HDR]_Color03 ("Outer Energy Color (Pink)", Color) = (3.0, 0.0, 1.5, 1)
+        [HDR]_Color04 ("Edge Lightning Color", Color) = (0.5, 2.0, 4.0, 1)
 
-        [HDR]_Color01 ("Color01", Color) = (1, 1, 1, 1)
-        [HDR]_Color02 ("Color02", Color) = (1, 1, 1, 1)
-        [HDR]_Color03 ("Color03", Color) = (1, 1, 1, 1)
-        [HDR]_Color04 ("Color04", Color) = (1, 1, 1, 1)
+        [Header(Color Gradient)]
+        _GradientScale ("Base Gradient Scale", Range(0.1, 5)) = 1.2
+        _GradientVariation ("Gradient Variation", Range(0, 2)) = 0.8
+        _GradientSpeed ("Gradient Animation Speed", Range(0, 3)) = 1.0
+        [Space(5)]
+        
+        [Header(Noise Maps)]
         _DistortionNoise ("Distortion Noise", 2D) = "white" { }
-        _DistortionScale ("Distortion Scale", Vector) = (1, 1, 0, 0)
-        _WavedNoise ("Waved Noise", 2D) = "white" { }
-
-        _EdgeWidth ("Edge Width", Range(0, 10)) = 0.5
-        _EdgeSoftFactor ("Edge Width Controll", Range(0, 10)) = 0.5
-        _EdgeFactor ("Edge Factor", Range(0, 10)) = 0.5
-        _Mask01Exp ("Mask01 Exp", Range(0, 10)) = 1
-
-        _GradientThresholds ("Gradient Thresholds (x,y,z,w)", Vector) = (0.25, 0.5, 0.75, 1.0)
-        _GradientSmoothness ("Gradient Smoothness", Range(0.001, 10)) = 0.1
+        _FlowNoise ("Energy Flow Noise", 2D) = "white" { }
+        _LightningMask ("Lightning Pattern", 2D) = "white" { }
+        [Space(5)]
+        
+        [Header(Animation)]
+        _DistortionScale ("Distortion Scale", Vector) = (0.15, 0.25, 0, 0)
+        _FlowSpeed ("Flow Speed", Range(0.1, 5)) = 1.2
+        _PulseRate ("Pulse Rate", Range(0.1, 10)) = 1.8
+        _PulseIntensity ("Pulse Intensity", Range(0, 1)) = 0.3
+        _VerticalFlowSpeed ("Vertical Flow Speed", Range(0, 2)) = 0.4  // 新增：垂直流动速度
+        [Space(5)]
+        
+        [Header(Wing Shape)]
+        _FeatherAmount ("Feather Amount", Range(0, 5)) = 2.0  // 新增：羽毛数量
+        _FeatherLength ("Feather Length", Range(0, 2)) = 1.0  // 新增：羽毛长度
+        _WingAspect ("Wing Aspect Ratio", Range(0.5, 5)) = 2.2  // 新增：翅膀长宽比
+        [Space(5)]
+        
+        [Header(Edge Effects)]
+        _EdgeWidth ("Edge Width", Range(0, 2)) = 0.4
+        _EdgeSoftFactor ("Edge Softness", Range(0, 2)) = 0.5
+        _EdgeFactor ("Edge Glow", Range(0, 1)) = 0.7
+        _Mask01Exp ("Mask Power", Range(0.2, 5)) = 1.5
+        [Space(5)]
+        
+        [Header(Lightning Effects)]
+        _LightningSpeed ("Lightning Speed", Range(0.1, 20)) = 6.5
+        _LightningIntensity ("Lightning Intensity", Range(0, 3)) = 1.2
+        _LightningScale ("Lightning Scale", Range(0.2, 10)) = 3
+        _LightningSmoothness ("Lightning Smoothness", Range(0.1, 5)) = 1.5
+        _LightningVariation ("Lightning Variation", Range(0, 1)) = 0.7
+        _LightningThreshold ("Lightning Threshold", Range(0, 1)) = 0.6
+        // _GradientScale ("Color Gradient Scale", Range(0.1, 5)) = 1.2
+        [Space(5)]
+        
+        [Header(Emission)]
+        _EmissionIntensity ("Emission Power", Range(1, 10)) = 2.5
     }
+    
+    // SubShader 部分沿用您现有的代码结构
     SubShader
     {
-        Tags { "RenderType" = "Transparent" "Queue" = "Transparent" }
-
+        Tags { "RenderType" = "Transparent" "Queue" = "Transparent" "IgnoreProjector" = "True" }
+        
+        Blend SrcAlpha OneMinusSrcAlpha
+        ZWrite Off
+        Cull Off
+        
         Pass
         {
-            Name "Wings Effect"
-
-            // Tags { "LightMode" = "UniversalForward" }
-
             HLSLPROGRAM
-
             #pragma vertex VertexPass
             #pragma fragment FragmentPass
-
-            #pragma multi_compile_instancing
-
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
-
+            
+            // 纹理声明 - 添加了羽毛纹理
             TEXTURE2D(_MainTex);            SAMPLER(sampler_MainTex);
             TEXTURE2D(_DistortionNoise);    SAMPLER(sampler_DistortionNoise);
-            TEXTURE2D(_WavedNoise);         SAMPLER(sampler_WavedNoise);
-
+            TEXTURE2D(_FlowNoise);          SAMPLER(sampler_FlowNoise);
+            TEXTURE2D(_LightningMask);      SAMPLER(sampler_LightningMask);
+            TEXTURE2D(_FeatherTex);         SAMPLER(sampler_FeatherTex);
+            
+            // 在CBUFFER中添加新的参数
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
                 half4 _Color01;
                 half4 _Color02;
                 half4 _Color03;
                 half4 _Color04;
+                half _GradientScale;
+                half _GradientVariation;
+                half _GradientSpeed;
                 float4 _DistortionNoise_ST;
-                float4 _WavedNoise_ST;
+                float4 _FlowNoise_ST;
+                float4 _LightningMask_ST;
+                float4 _FeatherTex_ST;
                 float4 _DistortionScale;
-
+                
                 half _EdgeWidth;
                 half _EdgeSoftFactor;
                 half _EdgeFactor;
                 half _Mask01Exp;
-                half4 _GradientThresholds;
-                half4 _GradientSmoothness;
+                half _FlowSpeed;
+                half _PulseRate;
+                half _PulseIntensity;
+                half _LightningSpeed;
+                half _LightningIntensity;
+                half _LightningScale;
+                half _LightningSmoothness;
+                half _LightningVariation;
+                half _LightningThreshold;
+                half _EmissionIntensity;
+                half _VerticalFlowSpeed;
+                half _FeatherAmount;
+                half _FeatherLength;
+                half _WingAspect;
             CBUFFER_END
-
+            
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float2 texcoord : TEXCOORD0;
+                float4 color : COLOR;  // 添加顶点颜色输入
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
-
+            
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 texcoord : TEXCOORD0;
                 float4 positionOS : TEXCOORD1;
-                
+                float4 color : COLOR;  // 添加顶点颜色
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
-
-            // 在片段着色器中
-            half3 MixMultipleColors(float t)
+            
+            // 能量梯度颜色 - 优化版本
+            half3 EnergyGradient(float t, half dynamicScale)
             {
-                // 重新映射噪声值到0-3范围(对应4种颜色)
-                float indexF = t * 4.0;
-                int index = floor(indexF); // 0, 1, 或 2
-                float frac = indexF - index; // 小数部分
+                // 应用渐变缩放参数，针对翅膀效果稍微调整了分布
+                t = pow(t, dynamicScale);
                 
-                // 选择相邻两种颜色
-                half3 colorA, colorB;
-                if (index == 0)
+                // 在4个颜色间创建平滑渐变
+                if (t < 0.4)
                 {
-                    colorA = _Color01.rgb;
-                    colorB = _Color02.rgb;
+                    return lerp(_Color01.rgb, _Color02.rgb, smoothstep(0.0, 0.4, t));
                 }
-                else if (index == 1)
+                else if (t < 0.7)
                 {
-                    colorA = _Color02.rgb;
-                    colorB = _Color03.rgb;
+                    return lerp(_Color02.rgb, _Color03.rgb, smoothstep(0.4, 0.7, t));
                 }
                 else
                 {
-                    colorA = _Color03.rgb;
-                    colorB = _Color04.rgb;
+                    return lerp(_Color03.rgb, _Color04.rgb, smoothstep(0.7, 1.0, t));
                 }
-                
-                // 混合这两种颜色
-                return lerp(colorA, colorB, smoothstep(0.0, 1.0, frac));
             }
-
-            half3 SampleGradient(float t, float smoothing)
-            {
-                float steps = 5 - 1;
-                
-                // 计算梯度索引和分数
-                float index = t * steps;
-                int i0 = floor(index);
-                int i1 = min(i0 + 1, steps);
-                float frac = index - i0;
-                
-                // 平滑过渡
-                if (smoothing > 0)
-                {
-                    frac = smoothstep(0.0, 1.0, frac);
-                }
-                
-                // 根据索引获取颜色
-                half3 color0, color1;
-                if (i0 == 0) color0 = _Color01.rgb;
-                else if (i0 == 1) color0 = _Color02.rgb;
-                else if (i0 == 2) color0 = _Color03.rgb;
-                else color0 = _Color04.rgb;
-                    
-                if (i1 == 0) color1 = _Color01.rgb;
-                else if (i1 == 1) color1 = _Color02.rgb;
-                else if (i1 == 2) color1 = _Color03.rgb;
-                else color1 = _Color04.rgb;
-                    
-                // 混合颜色
-                return lerp(color0, color1, frac);
-            }
-
+            
             Varyings VertexPass(Attributes vsIn)
             {
                 Varyings vsOut = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(vsIn);
                 UNITY_TRANSFER_INSTANCE_ID(vsIn, vsOut);
-
+                
                 vsOut.positionCS = TransformObjectToHClip(vsIn.positionOS);
                 vsOut.texcoord = vsIn.texcoord;
                 vsOut.positionOS = vsIn.positionOS;
+                vsOut.color = vsIn.color;
                 return vsOut;
             }
-
+            
             half4 FragmentPass(Varyings fsIn) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(fsIn);
-
-                half softEdgeFactor = (_EdgeFactor + 0.001) * (_EdgeSoftFactor + 1.0);
                 
-                float2 distortionNoiseUV = fsIn.texcoord * _DistortionNoise_ST.xy + _DistortionNoise_ST.zw;
-                half4 distortionNoise = SAMPLE_TEXTURE2D(_DistortionNoise, sampler_DistortionNoise, distortionNoiseUV);
-                float2 wavedNoiseUV = fsIn.texcoord + distortionNoise.rg * _DistortionScale.xy;
-                wavedNoiseUV = wavedNoiseUV * _WavedNoise_ST.xy + _WavedNoise_ST.zw;
-                wavedNoiseUV.y += _Time.y * 0.08;
-                half4 wavedNoise = SAMPLE_TEXTURE2D(_WavedNoise, sampler_WavedNoise, wavedNoiseUV.xy);
+                // 调整UV来匹配翅膀形状，应用翅膀长宽比
+                float2 uv = fsIn.texcoord;
+                uv.x = (uv.x - 0.5) * _WingAspect + 0.5;
+                
+                float timeFactor = _Time.y;
+                
+                // 基础翅膀形状遮罩
+                half4 mainMask = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, uv);
+                
+                // 电流脉冲效果 - 使用更加有机的波动
+                float pulseBase = sin(timeFactor * _PulseRate) * 0.5 + 0.5;
+                float pulseVariation = sin(timeFactor * _PulseRate * 1.3 + 1.57) * 0.5 + 0.5;  // 相位差异
+                float pulseEffect = lerp(pulseBase, pulseVariation, uv.y) * _PulseIntensity + (1.0 - _PulseIntensity);
+                
+                // 主扭曲效果 - 与原始代码相似，稍作调整
+                float2 distortionUV1 = uv * _DistortionNoise_ST.xy + _DistortionNoise_ST.zw + timeFactor * _DistortionScale.xy/*  + float2(timeFactor * 0.17, timeFactor * 0.13) */;
+                float2 distortionUV2 = uv * _DistortionNoise_ST.xy * 1.4 + _DistortionNoise_ST.zw + timeFactor * _DistortionScale.zw/*  + float2(timeFactor * 0.22, timeFactor * 0.18) */;
+                half4 distortion1 = SAMPLE_TEXTURE2D(_DistortionNoise, sampler_DistortionNoise, distortionUV1);
+                half4 distortion2 = SAMPLE_TEXTURE2D(_DistortionNoise, sampler_DistortionNoise, distortionUV2);
+                
+                // 组合两个扭曲图层，增加复杂性
+                half2 finalDistortion = (distortion1.rg * 2.0 - 1.0) + (distortion2.rg * 2.0 - 1.0);
+                finalDistortion *= /* _DistortionScale.xy *  */pulseEffect;
+                
+                // 添加垂直流动组件，创造能量下流效果
+                float2 verticalFlow = float2(0, -timeFactor * _VerticalFlowSpeed);
+                verticalFlow = 0;
+                
+                // 能量流动效果
+                float2 flowUV = uv + finalDistortion * 0.5;
+                flowUV = flowUV * _FlowNoise_ST.xy + _FlowNoise_ST.zw;
+                
+                // 创建旋转流动效果，调整为更适合翅膀的模式
+                float flowTime = timeFactor * _FlowSpeed;
+                float2 flowUV1 = flowUV + flowTime * float2(-0.1, -0.2) + verticalFlow;
+                float2 flowUV2 = flowUV + flowTime * float2(0.15, 0.1) + 0.5 + verticalFlow * 0.7;
+                
+                half4 flowNoise1 = SAMPLE_TEXTURE2D(_FlowNoise, sampler_FlowNoise, flowUV1);
+                half4 flowNoise2 = SAMPLE_TEXTURE2D(_FlowNoise, sampler_FlowNoise, flowUV2);
+                
+                // 羽毛/纤维纹理效果
+                float2 featherUV = uv * _FeatherTex_ST.xy + _FeatherTex_ST.zw;
+                featherUV.y += timeFactor * _VerticalFlowSpeed * 0.2;  // 羽毛轻微飘动
+                featherUV += finalDistortion * 0.15;  // 添加扭曲
+                half4 featherTex = SAMPLE_TEXTURE2D(_FeatherTex, sampler_FeatherTex, featherUV);
+                
+                // 组合流动和羽毛纹理
+                half energyFlow = saturate(flowNoise1.r * flowNoise2.r + flowNoise1.g * 0.5);
+                half featherMask = featherTex.r * _FeatherAmount * (1.0 - pow(uv.y, _FeatherLength));
+                energyFlow = lerp(energyFlow, featherMask, 0.4);  // 混合羽毛效果
+                
+                // 闪电效果
+                float2 lightningUV = uv * _LightningScale + finalDistortion * 0.2;
+                lightningUV.x += timeFactor * _LightningSpeed * 0.1;
+                lightningUV.y -= timeFactor * _LightningSpeed * 0.17;
+                half4 lightningPattern = SAMPLE_TEXTURE2D(_LightningMask, sampler_LightningMask, lightningUV);
+                
+                // 创建闪电强度变化 - 更明显的闪烁
+                float lightningFlicker1 = frac(sin(timeFactor * _LightningSpeed) * 12345.6789);
+                float lightningFlicker2 = frac(sin(timeFactor * _LightningSpeed * 1.4) * 23456.7891);
+                float lightningIntensity = lightningPattern.r * (lightningFlicker1 * 0.7 + lightningFlicker2 * 0.3) * _LightningIntensity;
 
-                half noiseMask = saturate(pow(wavedNoise.r, _Mask01Exp));
+                // 闪电效果 - 优化版本
+                // 三层闪电效果，不同速度和比例
+                float2 lightningUV1 = uv * _LightningScale + finalDistortion * 0.2;
+                lightningUV1.x += timeFactor * _LightningSpeed * 0.1;
+                lightningUV1.y -= timeFactor * _LightningSpeed * 0.17;
+                
+                float2 lightningUV2 = uv * (_LightningScale * 1.5) + finalDistortion * 0.3;
+                lightningUV2.x -= timeFactor * _LightningSpeed * 0.15;
+                lightningUV2.y += timeFactor * _LightningSpeed * 0.12;
+                
+                float2 lightningUV3 = uv * (_LightningScale * 0.8) - finalDistortion * 0.15;
+                lightningUV3.y += sin(timeFactor * _LightningSpeed * 0.2) * 0.1;
+                
+                half4 lightningPattern1 = SAMPLE_TEXTURE2D(_LightningMask, sampler_LightningMask, lightningUV1);
+                half4 lightningPattern2 = SAMPLE_TEXTURE2D(_LightningMask, sampler_LightningMask, lightningUV2);
+                half4 lightningPattern3 = SAMPLE_TEXTURE2D(_LightningMask, sampler_LightningMask, lightningUV3);
+                
+                // 平滑闪电强度计算
+                float phase1 = frac(timeFactor * _LightningSpeed * 0.05);
+                float phase2 = frac(timeFactor * _LightningSpeed * 0.07 + 0.33);
+                float phase3 = frac(timeFactor * _LightningSpeed * 0.03 + 0.66);
+                
+                // 使用噪声来决定闪电触发
+                float noiseBase = flowNoise1.b * flowNoise2.g;
+                
+                // 更自然的闪电强度变化
+                float lightningPulse1 = smoothstep(_LightningThreshold, _LightningThreshold + _LightningSmoothness * 0.1,
+                abs(sin(phase1 * 6.283) * noiseBase));
+                float lightningPulse2 = smoothstep(_LightningThreshold - 0.1, _LightningThreshold + _LightningSmoothness * 0.1,
+                abs(sin(phase2 * 6.283) * (noiseBase + 0.2)));
+                float lightningPulse3 = smoothstep(_LightningThreshold + 0.1, _LightningThreshold + _LightningSmoothness * 0.1,
+                abs(sin(phase3 * 6.283) * (noiseBase - 0.1)));
+                
+                // 混合三层闪电
+                float lightningBlend = saturate(lightningPattern1.r * lightningPulse1 * 0.7 +
+                lightningPattern2.g * lightningPulse2 * 0.6 +
+                lightningPattern3.b * lightningPulse3 * 0.5);
+                
+                // 应用闪电变化
+                float lightningStrength = lightningBlend * _LightningIntensity * (1.0 - _LightningVariation + _LightningVariation * noiseBase);
+                
+                // 最终能量/扭曲掩码
+                half noiseMask = saturate(pow(energyFlow, _Mask01Exp));
                 noiseMask = saturate((noiseMask / _EdgeWidth + noiseMask) * 0.5);
+                
+                // 边缘软化处理
+                half softEdgeFactor = (_EdgeFactor + 0.001) * (_EdgeSoftFactor + 1.0);
                 half smoothedMask = smoothstep(softEdgeFactor - _EdgeSoftFactor, softEdgeFactor, noiseMask);
+                
+                // 将闪电添加到能量流中
+                half energyWithLightning = saturate(smoothedMask/*  + lightningIntensity */);
 
-                float noise = smoothedMask;
+                float flowVariation = flowNoise1.g * flowNoise2.r + flowNoise2.b * 0.3;
+                float gradientTimeVariation = sin(timeFactor * _GradientSpeed) * 0.5 + 0.5;
+                float dynamicGradientScale = _GradientScale + _GradientVariation * flowVariation * gradientTimeVariation;
                 
-                // 计算四种颜色的权重
-                float w1 = smoothstep(0.0, _GradientThresholds.x + _GradientSmoothness, noise) - smoothstep(_GradientThresholds.x - _GradientSmoothness, _GradientThresholds.x, noise);
+                // 使用梯度颜色和能量强度 - 调整为更加动态的颜色混合
+                float colorNoise = flowNoise1.g * 0.4 + flowNoise2.b * 0.3/*  + lightningIntensity * 0.3 */;
+                float colorIndex = uv.x * 0.4 + uv.y * 0.4 + colorNoise * 0.2; // 混合位置和噪声
+                half3 finalColor = EnergyGradient(colorIndex, dynamicGradientScale) * energyWithLightning;
                 
-                float w2 = smoothstep(_GradientThresholds.x - _GradientSmoothness, _GradientThresholds.x + _GradientSmoothness, noise) -
-                smoothstep(_GradientThresholds.y - _GradientSmoothness, _GradientThresholds.y + _GradientSmoothness, noise);
+                // 添加闪电高光
+                finalColor += _Color04.rgb * lightningStrength * 2.5;
                 
-                float w3 = smoothstep(_GradientThresholds.y - _GradientSmoothness, _GradientThresholds.y + _GradientSmoothness, noise) -
-                smoothstep(_GradientThresholds.z - _GradientSmoothness, _GradientThresholds.z + _GradientSmoothness, noise);
+                // 添加羽毛高光
+                finalColor += _Color02.rgb * featherMask * 0.5;
                 
-                float w4 = smoothstep(_GradientThresholds.z - _GradientSmoothness, _GradientThresholds.z + _GradientSmoothness, noise);
+                // 应用发光强度和顶点颜色
+                finalColor *= _EmissionIntensity * fsIn.color.rgb;
                 
-                // 混合所有颜色
-                half3 color = _Color01.rgb * w1 +
-                    _Color02.rgb * w2 +
-                    _Color03.rgb * w3 +
-                    _Color04.rgb * w4;
-                // color = lerp(color, _Color03.rgb, smoothedMask);
-
-                half3 finalColor = SampleGradient(wavedNoise.r, _EdgeSoftFactor);
-                // finalColor = MixMultipleColors(frac(wavedNoise.r + _Time.y * 0.1));
-                finalColor = color;
-                half alpha = 1;
-
+                // 计算透明度 - 考虑主遮罩和能量强度
+                half alpha = smoothedMask * energyWithLightning * mainMask.r * fsIn.color.a;
+                
                 return half4(finalColor, alpha);
             }
-
+            
             ENDHLSL
         }
     }

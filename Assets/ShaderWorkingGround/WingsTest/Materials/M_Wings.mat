@@ -24,29 +24,66 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _DistortionNoise:
-        m_Texture: {fileID: 2800000, guid: fb8d4509c32eaac49a548d59241d7d9e, type: 3}
+        m_Texture: {fileID: 2800000, guid: ece33663dbca1d94bbd2674c40bdd51d, type: 3}
+        m_Scale: {x: 0.13, y: 0.13}
+        m_Offset: {x: 0, y: 0}
+    - _FeatherTex:
+        m_Texture: {fileID: 2800000, guid: 260d49ff309a7bc48b2e439a6bb57b24, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _FlowNoise:
+        m_Texture: {fileID: 2800000, guid: fd68bb15a0be572428980f3173dc0386, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _LightningMask:
+        m_Texture: {fileID: 2800000, guid: 8fc5495a05e74232a71f4c29ed959975, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 0}
+        m_Texture: {fileID: 2800000, guid: 3fee76deed1a5c343930f130e874c1a6, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _WavedNoise:
-        m_Texture: {fileID: 2800000, guid: 6a23e189542019f4ca21fdbcd0086406, type: 3}
+        m_Texture: {fileID: 2800000, guid: fd68bb15a0be572428980f3173dc0386, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _EdgeFactor: 0.57
-    - _EdgeSoftFactor: 1.42
-    - _EdgeWidth: 0.84
+    - _DirectionalIntensity: 1
+    - _EdgeFactor: 0.255
+    - _EdgeSoftFactor: 0.521
+    - _EdgeWidth: 0.322
+    - _EmissionIntensity: 2.96
+    - _FeatherAmount: 0.81
+    - _FeatherLength: 0.321
+    - _FlowSpeed: 1.46
+    - _GradientScale: 2.04
     - _GradientSmoothness: 1.28
-    - _Mask01Exp: 0.45
+    - _GradientSpeed: 2.61
+    - _GradientVariation: 1.119
+    - _LightningIntensity: 2.61
+    - _LightningScale: 2.49
+    - _LightningSmoothness: 1.67
+    - _LightningSpeed: 3.86
+    - _LightningThreshold: 0.06
+    - _LightningVariation: 0.738
+    - _Mask01Exp: 0.84
+    - _PulseIntensity: 0
+    - _PulseRate: 0.1
+    - _TurbulenceScale: 1
+    - _UseCustomFlowDirection: 0
+    - _VerticalFlowSpeed: 0.887
+    - _VortexStrength: 0
+    - _WingAspect: 0.5
     m_Colors:
-    - _Color01: {r: 0.8509804, g: 0, b: 0.0147054335, a: 1}
-    - _Color02: {r: 1, g: 0.89550054, b: 0, a: 1}
-    - _Color03: {r: 0.051886797, g: 0.13312566, b: 1, a: 1}
-    - _Color04: {r: 0, g: 0.7765691, b: 1, a: 1}
-    - _DistortionScale: {r: 0.1, g: 0.42, b: 0, a: 0}
+    - _Color01: {r: 1.4980391, g: 0, b: 1.38317, a: 1}
+    - _Color02: {r: 0, g: 0.7974004, b: 1.9999999, a: 1}
+    - _Color03: {r: 0, g: 1.47451, b: 1.4980389, a: 1}
+    - _Color04: {r: 0, g: 0.43755507, b: 3.482202, a: 1}
+    - _DistortionScale: {r: -0.01, g: -0.04, b: -0.04, a: -0.06}
+    - _FlowDirection: {r: -0.61, g: 1.05, b: -0.13, a: 0}
+    - _FlowDirection1: {r: 0.15, g: 0.49, b: -0.8, a: 0}
+    - _FlowDirection2: {r: 0, g: 0, b: 0, a: 0}
     - _GradientThresholds: {r: 0.24, g: 0.44, b: 0.61, a: 1.89}
+    - _VortexCenter: {r: 0.2, g: 0.5, b: 0, a: 0}
   m_BuildTextureStacks: []
